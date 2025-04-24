@@ -1,0 +1,13 @@
+{
+    "task_detail": {
+      "title": "Task Detail",
+      "memo": "Note",
+      "deadline": "Deadline",
+      "delete_confirm": "Are you sure you want to delete this task?"
+    },
+    "settings": {
+      "language": "Language",
+      "select_language": "Select Language"
+    }
+  }
+  

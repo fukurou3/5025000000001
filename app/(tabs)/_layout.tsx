@@ -1,45 +1,100 @@
-import { Tabs } from 'expo-router';
-import React from 'react';
-import { Platform } from 'react-native';
+// app/(tabs)/_layout.tsx
+import { useEffect } from 'react';
+import { Alert, Platform } from 'react-native';
+import { Tabs, useNavigation } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useUnsavedStore } from '@/hooks/useUnsavedStore';
 
-import { HapticTab } from '@/components/HapticTab';
-import { IconSymbol } from '@/components/ui/IconSymbol';
-import TabBarBackground from '@/components/ui/TabBarBackground';
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
+export default function Layout() {
+  const navigation = useNavigation();
+  const { unsaved, reset } = useUnsavedStore();
+  const insets = useSafeAreaInsets();
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  useEffect(() => {
+    const unsub = navigation.addListener('beforeRemove', (e: any) => {
+      if (!unsaved) return;
+
+      e.preventDefault();
+      Alert.alert('変更を破棄しますか？', '保存されていない内容は失われます。', [
+        { text: 'キャンセル', style: 'cancel' },
+        {
+          text: '破棄',
+          style: 'destructive',
+          onPress: () => {
+            reset();
+            navigation.dispatch(e.data.action);
+          },
+        },
+      ]);
+    });
+    return () => unsub();
+  }, [navigation, unsaved]);
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
-        tabBarButton: HapticTab,
-        tabBarBackground: TabBarBackground,
-        tabBarStyle: Platform.select({
-          ios: {
-            // Use a transparent background on iOS to show the blur effect
-            position: 'absolute',
-          },
-          default: {},
-        }),
-      }}>
+        tabBarStyle: {
+          height: 60 + insets.bottom,
+          paddingBottom: insets.bottom,
+          paddingTop: 6, // 上の余白も少しつけるとバランスがいい
+        },
+      }}
+    >
       <Tabs.Screen
-        name="index"
+        name="calendar"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          title: 'カレンダー',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="calendar-outline" color={color} size={size} />
+          ),
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="tasks"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: 'タスク一覧',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="list" color={color} size={size} />
+          ),
         }}
       />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: '設定',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="settings-outline" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="test"
+        options={{
+          title: 'テスト画面',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="flask-outline" size={size} color={color} />
+          ),
+        }}
+      />
+
+      {/* 非表示にするページたち */}
+      {[
+        "add",
+        "drafts",
+        "index",
+        "edit-draft",
+        "edit-task",
+        "explore",
+        "task-detail",
+      ].map((name) => (
+        <Tabs.Screen
+          key={name}
+          name={name}
+          options={{ href: null }}
+        />
+      ))}
     </Tabs>
   );
 }

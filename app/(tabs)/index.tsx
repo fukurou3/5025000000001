@@ -1,9 +1,9 @@
-import { Image, StyleSheet, Platform } from 'react-native';
-
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+import { Image, StyleSheet, Platform, TouchableOpacity, Text, View } from 'react-native'
+import { HelloWave } from '@/components/HelloWave'
+import ParallaxScrollView from '@/components/ParallaxScrollView'
+import { ThemedText } from '@/components/ThemedText'
+import { ThemedView } from '@/components/ThemedView'
+import Toast from 'react-native-toast-message'
 
 export default function HomeScreen() {
   return (
@@ -19,6 +19,22 @@ export default function HomeScreen() {
         <ThemedText type="title">Welcome!</ThemedText>
         <HelloWave />
       </ThemedView>
+
+      {/* ✅ ここにテストボタンを追加 */}
+      <View style={{ paddingHorizontal: 16, marginBottom: 16 }}>
+        <TouchableOpacity
+          onPress={() => {
+            Toast.show({
+              type: 'success',
+              text1: 'Hello',
+              text2: 'This is a test toast message'
+            })
+          }}
+          style={styles.toastButton}>
+          <Text style={styles.toastButtonText}>Show Toast</Text>
+        </TouchableOpacity>
+      </View>
+
       <ThemedView style={styles.stepContainer}>
         <ThemedText type="subtitle">Step 1: Try it</ThemedText>
         <ThemedText>
@@ -51,7 +67,7 @@ export default function HomeScreen() {
         </ThemedText>
       </ThemedView>
     </ParallaxScrollView>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -71,4 +87,15 @@ const styles = StyleSheet.create({
     left: 0,
     position: 'absolute',
   },
-});
+  toastButton: {
+    backgroundColor: '#007aff',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  toastButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+})

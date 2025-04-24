@@ -1,0 +1,21 @@
+{
+  "task_detail": {
+    "title": "タスク詳細",
+    "memo": "メモ",
+    "deadline": "締切",
+    "delete_confirm_title": "削除確認",
+    "delete_confirm": "このタスクを削除しますか？"
+  },
+  "common": {
+    "loading": "読み込み中...",
+    "cancel": "キャンセル",
+    "delete": "削除"
+  },
+  "settings": {
+    "title": "設定",
+    "language": "言語",
+    "select_language": "言語を選択してください",
+    "language_ja": "日本語",
+    "language_en": "英語"
+  }
+}
