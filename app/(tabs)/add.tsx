@@ -129,23 +129,23 @@ const createStyles = (isDark: boolean, subColor: string) =>
     // 共通ラベル
     label: {
       fontSize: 20,
-      marginBottom: 8,
+      marginBottom: 3,
       fontWeight: '600',
     },
     // テキスト入力
     input: {
       backgroundColor: isDark ? DARK_INPUT_BG : LIGHT_INPUT_BG,
       color: isDark ? '#fff' : '#000',
-      padding: 15,
-      borderRadius: 10,
-      marginBottom: 10,
+      padding: 13,
+      borderRadius: 8,
+      marginBottom: 16,
     },
     // 写真セレクトボタン（未選択時）
     pickerButton: {
       backgroundColor: isDark ? DARK_INPUT_BG : LIGHT_INPUT_BG,
-      borderRadius: 10,
+      borderRadius: 8,
       padding: 12,
-      marginBottom: 10,
+      marginBottom: 22,
       alignItems: 'center',
     },
     // プレビュー付き写真セクションの大枠
