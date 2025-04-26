@@ -1,45 +1,23 @@
+// app/i18n.ts
 import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 import * as Localization from 'expo-localization'
-import AsyncStorage from '@react-native-async-storage/async-storage'
-
-import ja from '../locales/ja.json'
 import en from '../locales/en.json'
+import ja from '../locales/ja.json'
 
-const LANG_KEY = 'APP_LANG'
-
+// 翻訳リソース
 const resources = {
-  ja: { translation: ja },
   en: { translation: en },
+  ja: { translation: ja },
 }
 
-// カスタム言語検出
-const languageDetector = {
-  type: 'languageDetector',
-  async: true,
-  detect: async (callback: (lang: string) => void) => {
-    try {
-      const savedLang = await AsyncStorage.getItem(LANG_KEY)
-      if (savedLang) return callback(savedLang)
-
-        const bestLang = (Localization as any).findBestAvailableLanguage(['ja', 'en']);
-      callback(bestLang?.languageTag ?? 'ja')
-    } catch (e) {
-      callback('ja')
-    }
-  },
-  init: () => {},
-  cacheUserLanguage: async (lang: string) => {
-    await AsyncStorage.setItem(LANG_KEY, lang)
-  },
-}
-
+// i18n初期化
 i18n
-  .use(languageDetector as any)
   .use(initReactI18next)
   .init({
-    fallbackLng: 'ja',
-    resources,
+    resources, // optionsに渡す（正しい位置）
+    lng: Localization.locale.startsWith('ja') ? 'ja' : 'en',
+    fallbackLng: 'en',
     interpolation: {
       escapeValue: false,
     },

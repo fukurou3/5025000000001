@@ -88,6 +88,7 @@ export default function Layout() {
         "edit-task",
         "explore",
         "task-detail",
+        "language",
       ].map((name) => (
         <Tabs.Screen
           key={name}

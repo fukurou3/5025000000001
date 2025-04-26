@@ -1,4 +1,5 @@
 // app/(tabs)/edit-task.tsx
+// app/(tabs)/edit-task.tsx
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View,
@@ -27,6 +28,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import { useUnsavedStore } from '@/hooks/useUnsavedStore';
 import { useAppTheme } from '@/hooks/ThemeContext';
+import { useTranslation } from 'react-i18next';
 
 const LIGHT_INPUT_BG = '#e0e0e0';
 const DARK_INPUT_BG = '#2e2d2d';
@@ -236,284 +238,281 @@ const createStyles = (isDark: boolean, subColor: string) =>
       fontWeight: 'bold',
     },
   });
-
-export default function EditTaskScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const router = useRouter();
-  const navigation = useNavigation();
-  const { colorScheme, subColor } = useAppTheme();
-  const isDark = colorScheme === 'dark';
-  const styles = createStyles(isDark, subColor);
-  const { reset: resetUnsaved } = useUnsavedStore();
-
-  const [title, setTitle] = useState('');
-  const [memo, setMemo] = useState('');
-  const [memoHeight, setMemoHeight] = useState(40);
-  const [imageUris, setImageUris] = useState<string[]>([]);
-  const [deadline, setDeadline] = useState(new Date());
-  const [notifyEnabled, setNotifyEnabled] = useState(true);
-  const [customUnit, setCustomUnit] = useState<'minutes' | 'hours' | 'days'>('hours');
-  const [customAmount, setCustomAmount] = useState(1);
-  const original = useRef<any>(null);
-
-  const getRange = useCallback((unit: 'minutes' | 'hours' | 'days') => {
-    const max = unit === 'minutes' ? 60 : unit === 'hours' ? 48 : 31;
-    return Array.from({ length: max }, (_, i) => i + 1);
-  }, []);
-
-  // 初期ロード
-  useEffect(() => {
-    (async () => {
+  export default function EditTaskScreen() {
+    const { id } = useLocalSearchParams<{ id: string }>();
+    const router = useRouter();
+    const navigation = useNavigation();
+    const { colorScheme, subColor } = useAppTheme();
+    const isDark = colorScheme === 'dark';
+    const styles = createStyles(isDark, subColor);
+    const { reset: resetUnsaved } = useUnsavedStore();
+    const { t } = useTranslation();
+  
+    const [title, setTitle] = useState('');
+    const [memo, setMemo] = useState('');
+    const [memoHeight, setMemoHeight] = useState(40);
+    const [imageUris, setImageUris] = useState<string[]>([]);
+    const [deadline, setDeadline] = useState(new Date());
+    const [notifyEnabled, setNotifyEnabled] = useState(true);
+    const [customUnit, setCustomUnit] = useState<'minutes' | 'hours' | 'days'>('hours');
+    const [customAmount, setCustomAmount] = useState(1);
+    const original = useRef<any>(null);
+  
+    const getRange = useCallback((unit: 'minutes' | 'hours' | 'days') => {
+      const max = unit === 'minutes' ? 60 : unit === 'hours' ? 48 : 31;
+      return Array.from({ length: max }, (_, i) => i + 1);
+    }, []);
+  
+    useEffect(() => {
+      (async () => {
+        const raw = await AsyncStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const list = JSON.parse(raw);
+        const task = list.find((t: any) => t.id === id);
+        if (!task) return;
+        original.current = task;
+        setTitle(task.title);
+        setMemo(task.memo);
+        setMemoHeight(Math.max(40, task.memo.length));
+        setDeadline(new Date(task.deadline));
+        setImageUris(task.imageUris || []);
+        setNotifyEnabled(typeof task.notifyEnabled === 'boolean' ? task.notifyEnabled : true);
+        setCustomUnit(task.customUnit ?? 'hours');
+        setCustomAmount(task.customAmount ?? 1);
+      })();
+    }, [id]);
+  
+    useEffect(() => {
+      const unsub = navigation.addListener('beforeRemove', (e: any) => {
+        if (!original.current) return;
+        const o = original.current;
+        const changed =
+          title !== o.title ||
+          memo !== o.memo ||
+          deadline.toISOString() !== o.deadline ||
+          notifyEnabled !== o.notifyEnabled ||
+          customUnit !== o.customUnit ||
+          customAmount !== o.customAmount ||
+          JSON.stringify(imageUris) !== JSON.stringify(o.imageUris || []);
+        if (!changed) return;
+        e.preventDefault();
+        Alert.alert(
+          t('edit_task.alert_discard_changes_title'),
+          t('edit_task.alert_discard_changes_message'),
+          [
+            { text: t('common.cancel'), style: 'cancel' },
+            {
+              text: t('edit_task.alert_discard'),
+              style: 'destructive',
+              onPress: () => {
+                resetUnsaved();
+                router.replace('/(tabs)/tasks');
+              },
+            },
+          ]
+        );
+      });
+      return unsub;
+    }, [navigation, title, memo, deadline, imageUris, notifyEnabled, customUnit, customAmount]);
+  
+    const showDatePicker = useCallback(() => {
+      DateTimePickerAndroid.open({
+        value: deadline,
+        mode: 'date',
+        is24Hour: true,
+        onChange: (_e, d) =>
+          d && setDeadline(new Date(d.getFullYear(), d.getMonth(), d.getDate(), deadline.getHours(), deadline.getMinutes())),
+      });
+    }, [deadline]);
+  
+    const showTimePicker = useCallback(() => {
+      DateTimePickerAndroid.open({
+        value: deadline,
+        mode: 'time',
+        is24Hour: true,
+        onChange: (_e, t) =>
+          t && setDeadline(new Date(deadline.getFullYear(), deadline.getMonth(), deadline.getDate(), t.getHours(), t.getMinutes())),
+      });
+    }, [deadline]);
+  
+    const handlePickImages = useCallback(async () => {
+      const res = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsMultipleSelection: true,
+        quality: 1,
+      });
+      if (!res.canceled) {
+        const uris = res.assets.map(a => a.uri);
+        setImageUris(prev => [...prev, ...uris.filter(u => !prev.includes(u))]);
+      }
+    }, []);
+  
+    const handleRemoveImage = useCallback((uri: string) => {
+      setImageUris(prev => prev.filter(u => u !== uri));
+    }, []);
+  
+    const handleSave = useCallback(async () => {
+      if (!title.trim()) {
+        Alert.alert(t('edit_task.alert_no_title'));
+        return;
+      }
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      const list = JSON.parse(raw);
-      const task = list.find((t: any) => t.id === id);
-      if (!task) return;
-      original.current = task;
-      setTitle(task.title);
-      setMemo(task.memo);
-      setMemoHeight(Math.max(40, task.memo.length));
-      setDeadline(new Date(task.deadline));
-      setImageUris(task.imageUris || []);
-      setNotifyEnabled(typeof task.notifyEnabled === 'boolean' ? task.notifyEnabled : true);
-      setCustomUnit(task.customUnit ?? 'hours');
-      setCustomAmount(task.customAmount ?? 1);
-    })();
-  }, [id]);
-
-  // 未保存確認
-  useEffect(() => {
-    const unsub = navigation.addListener('beforeRemove', (e: any) => {
-      if (!original.current) return;
-      const o = original.current;
-      const changed =
-        title !== o.title ||
-        memo !== o.memo ||
-        deadline.toISOString() !== o.deadline ||
-        notifyEnabled !== o.notifyEnabled ||
-        customUnit !== o.customUnit ||
-        customAmount !== o.customAmount ||
-        JSON.stringify(imageUris) !== JSON.stringify(o.imageUris || []);
-      if (!changed) return;
-      e.preventDefault();
-      Alert.alert('変更を破棄しますか？', '保存されていない変更は失われます。', [
-        { text: 'キャンセル', style: 'cancel' },
-        {
-          text: '破棄',
-          style: 'destructive',
-          onPress: () => {
-            resetUnsaved();
-            router.replace('/(tabs)/tasks');
-          },
-        },
-      ]);
-    });
-    return unsub;
-  }, [navigation, title, memo, deadline, imageUris, notifyEnabled, customUnit, customAmount]);
-
-  const showDatePicker = useCallback(() => {
-    DateTimePickerAndroid.open({
-      value: deadline,
-      mode: 'date',
-      is24Hour: true,
-      onChange: (_e, d) =>
-        d && setDeadline(new Date(d.getFullYear(), d.getMonth(), d.getDate(), deadline.getHours(), deadline.getMinutes())),
-    });
-  }, [deadline]);
-
-  const showTimePicker = useCallback(() => {
-    DateTimePickerAndroid.open({
-      value: deadline,
-      mode: 'time',
-      is24Hour: true,
-      onChange: (_e, t) =>
-        t && setDeadline(new Date(deadline.getFullYear(), deadline.getMonth(), deadline.getDate(), t.getHours(), t.getMinutes())),
-    });
-  }, [deadline]);
-
-  const handlePickImages = useCallback(async () => {
-    const res = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsMultipleSelection: true,
-      quality: 1,
-    });
-    if (!res.canceled) {
-      const uris = res.assets.map(a => a.uri);
-      setImageUris(prev => [...prev, ...uris.filter(u => !prev.includes(u))]);
-    }
-  }, []);
-
-  const handleRemoveImage = useCallback((uri: string) => {
-    setImageUris(prev => prev.filter(u => u !== uri));
-  }, []);
-
-  const handleSave = useCallback(async () => {
-    if (!title.trim()) {
-      Alert.alert('タイトルは必須です');
-      return;
-    }
-    const raw = await AsyncStorage.getItem(STORAGE_KEY);
-    const list = raw ? JSON.parse(raw) : [];
-    const updated = list.map((t: any) =>
-      t.id === id
-        ? {
-            ...t,
-            title,
-            memo,
-            deadline: deadline.toISOString(),
-            imageUris,
-            notifyEnabled,
-            customUnit,
-            customAmount,
-          }
-        : t
-    );
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    Toast.show({ type: 'success', text1: '保存しました' });
-    resetUnsaved();
-    router.replace('/(tabs)/tasks');
-  }, [id, title, memo, deadline, imageUris, notifyEnabled, customUnit, customAmount]);
-
-  return (
-    <SafeAreaView style={styles.container}>
-      {/* AppBar */}
-      <View style={styles.appBar}>
-        <TouchableOpacity onPress={() => router.replace('/(tabs)/tasks')}>
-          <Ionicons name="arrow-back" size={24} color={subColor} />
-        </TouchableOpacity>
-        <Text style={styles.appBarTitle}>編集</Text>
-        <View style={{ width: 24 }} />
-      </View>
-
-      <ScrollView contentContainerStyle={{ padding: 20 }} keyboardShouldPersistTaps="handled">
-        {/* タイトル */}
-        <Text style={[styles.label, { color: subColor }]}>タイトル</Text>
-        <TextInput
-          value={title}
-          onChangeText={setTitle}
-          placeholder="タイトルを入力"
-          placeholderTextColor={isDark ? DARK_PLACEHOLDER : LIGHT_PLACEHOLDER}
-          multiline
-          style={[styles.input, { minHeight: 40 }]}
-        />
-
-        {/* メモ */}
-        <Text style={[styles.label, { color: subColor }]}>メモ</Text>
-        <TextInput
-          value={memo}
-          onChangeText={setMemo}
-          placeholder="メモを入力"
-          placeholderTextColor={isDark ? DARK_PLACEHOLDER : LIGHT_PLACEHOLDER}
-          multiline
-          onContentSizeChange={(e: NativeSyntheticEvent<TextInputContentSizeChangeEventData>) =>
-            setMemoHeight(e.nativeEvent.contentSize.height)
-          }
-          style={[styles.input, { height: Math.max(40, memoHeight) }]}
-        />
-
-        {/* 写真 */}
-        <Text style={[styles.label, { color: subColor }]}>写真</Text>
-        {imageUris.length === 0 ? (
-          <TouchableOpacity style={styles.pickerButton} onPress={handlePickImages}>
-            <Text style={{ color: isDark ? '#fff' : '#000' }}>写真を選択</Text>
+      const list = raw ? JSON.parse(raw) : [];
+      const updated = list.map((t: any) =>
+        t.id === id
+          ? {
+              ...t,
+              title,
+              memo,
+              deadline: deadline.toISOString(),
+              imageUris,
+              notifyEnabled,
+              customUnit,
+              customAmount,
+            }
+          : t
+      );
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      Toast.show({ type: 'success', text1: t('edit_task.save_success') });
+      resetUnsaved();
+      router.replace('/(tabs)/tasks');
+    }, [id, title, memo, deadline, imageUris, notifyEnabled, customUnit, customAmount]);
+  
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.appBar}>
+          <TouchableOpacity onPress={() => router.replace('/(tabs)/tasks')}>
+            <Ionicons name="arrow-back" size={24} color={subColor} />
           </TouchableOpacity>
-        ) : (
-          <View style={styles.pickerButtonWithPreview}>
-            <TouchableOpacity style={styles.addMoreButton} onPress={handlePickImages}>
-              <Text style={styles.addMoreButtonText}>写真を追加</Text>
+          <Text style={styles.appBarTitle}>{t('edit_task.title')}</Text>
+          <View style={{ width: 24 }} />
+        </View>
+  
+        <ScrollView contentContainerStyle={{ padding: 20 }} keyboardShouldPersistTaps="handled">
+          <Text style={[styles.label, { color: subColor }]}>{t('edit_task.input_title')}</Text>
+          <TextInput
+            value={title}
+            onChangeText={setTitle}
+            placeholder={t('edit_task.input_title_placeholder')}
+            placeholderTextColor={isDark ? DARK_PLACEHOLDER : LIGHT_PLACEHOLDER}
+            multiline
+            style={[styles.input, { minHeight: 40 }]}
+          />
+  
+          <Text style={[styles.label, { color: subColor }]}>{t('edit_task.memo')}</Text>
+          <TextInput
+            value={memo}
+            onChangeText={setMemo}
+            placeholder={t('edit_task.memo_placeholder')}
+            placeholderTextColor={isDark ? DARK_PLACEHOLDER : LIGHT_PLACEHOLDER}
+            multiline
+            onContentSizeChange={(e: NativeSyntheticEvent<TextInputContentSizeChangeEventData>) =>
+              setMemoHeight(e.nativeEvent.contentSize.height)
+            }
+            style={[styles.input, { height: Math.max(40, memoHeight) }]}
+          />
+  
+          <Text style={[styles.label, { color: subColor }]}>{t('edit_task.photo')}</Text>
+          {imageUris.length === 0 ? (
+            <TouchableOpacity style={styles.pickerButton} onPress={handlePickImages}>
+              <Text style={{ color: isDark ? '#fff' : '#000' }}>{t('edit_task.select_photo')}</Text>
             </TouchableOpacity>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {imageUris.map(uri => (
-                <View key={uri} style={styles.previewWrapper}>
-                  <Image source={{ uri }} style={styles.previewImage} />
-                  <TouchableOpacity style={styles.removeIcon} onPress={() => handleRemoveImage(uri)}>
-                    <Ionicons name="close-circle" size={20} color="red" />
-                  </TouchableOpacity>
-                </View>
-              ))}
-            </ScrollView>
-          </View>
-        )}
-
-        {/* 期限＋通知 */}
-        <View style={styles.notifyContainer}>
-          <Text style={[styles.label, { color: subColor }]}>期限</Text>
-          {Platform.OS === 'android' && (
-            <View style={styles.datetimeRow}>
-              <TouchableOpacity style={[styles.fieldWrapper, styles.dateWrapper]} onPress={showDatePicker}>
-                <Text style={styles.datetimeText}>{deadline.toLocaleDateString()}</Text>
+          ) : (
+            <View style={styles.pickerButtonWithPreview}>
+              <TouchableOpacity style={styles.addMoreButton} onPress={handlePickImages}>
+                <Text style={styles.addMoreButtonText}>{t('edit_task.add_photo')}</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.fieldWrapper, styles.timeWrapper]} onPress={showTimePicker}>
-                <Text style={styles.datetimeText}>
-                  {deadline.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </Text>
-              </TouchableOpacity>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                {imageUris.map(uri => (
+                  <View key={uri} style={styles.previewWrapper}>
+                    <Image source={{ uri }} style={styles.previewImage} />
+                    <TouchableOpacity style={styles.removeIcon} onPress={() => handleRemoveImage(uri)}>
+                      <Ionicons name="close-circle" size={20} color="red" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </ScrollView>
             </View>
           )}
-          <View style={styles.notifyHeader}>
-            <Text style={[styles.notifyLabel, { color: subColor }]}>通知</Text>
-            <TouchableOpacity
-              style={[
-                styles.toggleContainer,
-                notifyEnabled
-                  ? { backgroundColor: subColor }
-                  : { backgroundColor: isDark ? DARK_INPUT_BG : LIGHT_INPUT_BG },
-              ]}
-              onPress={() => setNotifyEnabled(v => !v)}
-            >
-              <View
+  
+          <View style={styles.notifyContainer}>
+            <Text style={[styles.label, { color: subColor }]}>{t('edit_task.deadline')}</Text>
+            {Platform.OS === 'android' && (
+              <View style={styles.datetimeRow}>
+                <TouchableOpacity style={[styles.fieldWrapper, styles.dateWrapper]} onPress={showDatePicker}>
+                  <Text style={styles.datetimeText}>{deadline.toLocaleDateString()}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.fieldWrapper, styles.timeWrapper]} onPress={showTimePicker}>
+                  <Text style={styles.datetimeText}>
+                    {deadline.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+  
+            <View style={styles.notifyHeader}>
+              <Text style={[styles.notifyLabel, { color: subColor }]}>{t('edit_task.notification')}</Text>
+              <TouchableOpacity
                 style={[
+                  styles.toggleContainer,
+                  notifyEnabled
+                    ? { backgroundColor: subColor }
+                    : { backgroundColor: isDark ? DARK_INPUT_BG : LIGHT_INPUT_BG },
+                ]}
+                onPress={() => setNotifyEnabled(v => !v)}
+              >
+                <View style={[
                   styles.toggleCircle,
                   notifyEnabled ? { alignSelf: 'flex-end' } : { alignSelf: 'flex-start' },
-                ]}
-              />
+                ]} />
+              </TouchableOpacity>
+            </View>
+  
+            {notifyEnabled && (
+              <View style={styles.slotPickerRow}>
+                <View style={[styles.fieldWrapper, styles.slotPickerWrapper]}>
+                  <Picker
+                    mode={Platform.OS === 'android' ? 'dropdown' : 'dialog'}
+                    selectedValue={customAmount}
+                    onValueChange={setCustomAmount}
+                    style={styles.slotPicker}
+                    dropdownIconColor={isDark ? '#fff' : '#000'}
+                  >
+                    {getRange(customUnit).map(n => (
+                      <Picker.Item key={n} label={`${n}`} value={n} />
+                    ))}
+                  </Picker>
+                </View>
+                <View style={[styles.fieldWrapper, styles.slotPickerWrapper]}>
+                  <Picker
+                    mode={Platform.OS === 'android' ? 'dropdown' : 'dialog'}
+                    selectedValue={customUnit}
+                    onValueChange={v => {
+                      setCustomUnit(v);
+                      setCustomAmount(1);
+                    }}
+                    style={styles.slotPicker}
+                    dropdownIconColor={isDark ? '#fff' : '#000'}
+                  >
+                    <Picker.Item label={t('edit_task.minutes_before')} value="minutes" />
+                    <Picker.Item label={t('edit_task.hours_before')} value="hours" />
+                    <Picker.Item label={t('edit_task.days_before')} value="days" />
+                  </Picker>
+                </View>
+              </View>
+            )}
+          </View>
+  
+          <View style={styles.buttonRow}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.replace('/(tabs)/tasks')}>
+              <Text style={styles.saveButtonText}>{t('edit_task.back')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+              <Text style={styles.saveButtonText}>{t('edit_task.save')}</Text>
             </TouchableOpacity>
           </View>
-          {notifyEnabled && (
-            <View style={styles.slotPickerRow}>
-              <View style={[styles.fieldWrapper, styles.slotPickerWrapper]}>
-                <Picker
-                  mode={Platform.OS === 'android' ? 'dropdown' : 'dialog'}
-                  selectedValue={customAmount}
-                  onValueChange={setCustomAmount}
-                  style={styles.slotPicker}
-                  dropdownIconColor={isDark ? '#fff' : '#000'}
-                >
-                  {getRange(customUnit).map(n => (
-                    <Picker.Item key={n} label={`${n}`} value={n} />
-                  ))}
-                </Picker>
-              </View>
-              <View style={[styles.fieldWrapper, styles.slotPickerWrapper]}>
-                <Picker
-                  mode={Platform.OS === 'android' ? 'dropdown' : 'dialog'}
-                  selectedValue={customUnit}
-                  onValueChange={v => {
-                    setCustomUnit(v);
-                    setCustomAmount(1);
-                  }}
-                  style={styles.slotPicker}
-                  dropdownIconColor={isDark ? '#fff' : '#000'}
-                >
-                  <Picker.Item label="分前" value="minutes" />
-                  <Picker.Item label="時間前" value="hours" />
-                  <Picker.Item label="日前" value="days" />
-                </Picker>
-              </View>
-            </View>
-          )}
-        </View>
-
-        {/* ボタン */}
-        <View style={styles.buttonRow}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.replace('/(tabs)/tasks')}>
-            <Text style={styles.saveButtonText}>戻る</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-            <Text style={styles.saveButtonText}>保存</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+  

@@ -3,19 +3,161 @@
     "title": "タスク詳細",
     "memo": "メモ",
     "deadline": "締切",
+    "photo": "写真",
     "delete_confirm_title": "削除確認",
     "delete_confirm": "このタスクを削除しますか？"
+  },
+  "settings": {
+    "title": "設定",
+    "language": "言語設定",
+    "select_language": "言語を選択してください",
+    "language_ja": "日本語",
+    "language_en": "英語",
+    "display_mode": "表示モード",
+    "sub_color": "サブカラーを選択",
+    "theme_system": "システムに従う",
+    "theme_light": "ライトモード",
+    "current": "現在",
+    "theme_dark": "ダークモード",
+    "font_size": "文字サイズ",
+    "font_size_small": "小",
+    "font_size_normal": "標準",
+    "font_size_medium": "中",
+    "font_size_large": "大",
+    "font_size_xlarge": "特大"
   },
   "common": {
     "loading": "読み込み中...",
     "cancel": "キャンセル",
     "delete": "削除"
   },
-  "settings": {
-    "title": "設定",
-    "language": "言語",
-    "select_language": "言語を選択してください",
-    "language_ja": "日本語",
-    "language_en": "英語"
-  }
-}
+  "add_task": {
+    "title": "タスク追加",
+    "drafts": "下書き一覧",
+    "input_title": "タイトル",
+    "input_title_placeholder": "タイトルを入力",
+    "memo": "メモ",
+    "memo_placeholder": "メモを入力",
+    "photo": "写真",
+    "select_photo": "写真を選択",
+    "add_photo": "写真を追加",
+    "deadline": "期限",
+    "notification": "通知",
+    "minutes_before": "分前",
+    "hours_before": "時間前",
+    "days_before": "日前",
+    "add_task_button": "タスクに追加",
+    "save_draft_button": "下書きとして保存",
+    "alert_no_title": "タイトルは必須です",
+    "alert_discard_changes_title": "変更を破棄しますか？",
+    "alert_discard_changes_message": "保存されていない内容は失われます。",
+    "alert_discard": "破棄"
+  },
+    "edit_task": {
+      "title": "編集",
+      "input_title": "タイトル",
+      "input_title_placeholder": "タイトルを入力",
+      "memo": "メモ",
+      "memo_placeholder": "メモを入力",
+      "photo": "写真",
+      "select_photo": "写真を選択",
+      "add_photo": "写真を追加",
+      "deadline": "期限",
+      "notification": "通知",
+      "minutes_before": "分前",
+      "hours_before": "時間前",
+      "days_before": "日前",
+      "back": "戻る",
+      "save": "保存",
+      "save_success": "保存しました",
+      "alert_no_title": "タイトルは必須です",
+      "alert_discard_changes_title": "変更を破棄しますか？",
+      "alert_discard_changes_message": "保存されていない変更は失われます。",
+      "alert_discard": "破棄"
+    },
+      "edit_draft": {
+      "title": "下書き編集",
+      "input_title": "タイトル",
+      "input_title_placeholder": "タイトルを入力",
+      "memo": "メモ",
+      "memo_placeholder": "メモを入力",
+      "photo": "写真",
+      "select_photo": "写真を選択",
+      "add_photo": "写真を追加",
+      "deadline": "期限",
+      "notification": "通知",
+      "minutes_before": "分前",
+      "hours_before": "時間前",
+      "days_before": "日前",
+      "save_draft_button": "下書きを保存",
+      "convert_to_task_button": "タスクに追加",
+      "save_success": "下書きを保存しました",
+      "convert_success": "タスクに変換しました",
+      "alert_no_title": "タイトルは必須です",
+      "alert_discard_changes_title": "変更を破棄しますか？",
+      "alert_discard_changes_message": "保存されていない変更は失われます。",
+      "alert_discard": "破棄"
+    },
+      "task_list": {
+        "title": "タスク一覧",
+        "no_tasks": "タスクがありません",
+        "empty": "右下の＋からタスクを追加しましょう",
+        "delete_confirm_title": "削除確認",
+        "delete_confirm_message": "このタスクを削除しますか？",
+        "sort_date": "日付順",
+        "sort_custom": "カスタム順",
+        "sorting_label": "並び替え",
+        "deadline_label": "締切",
+        "completed_label": "完了日時",
+        "section_expired": "期限切れ",
+        "section_today": "今日",
+        "section_tomorrow": "明日",
+        "section_week": "1週間以内",
+        "section_later": "それ以降",
+        "minutes_ago": "{{count}}分経過",
+        "hours_ago": "{{count}}時間経過",
+        "days_ago": "{{count}}日経過",
+        "remaining_minutes": "残り{{count}}分",
+        "remaining_hours": "残り{{count}}時間",
+        "remaining_days": "残り{{count}}日"
+      },
+      "tab": {
+        "incomplete": "未完了",
+        "completed": "完了済み"
+      },
+      "button": {
+        "sort": "並べ替え"
+      },
+      "label": {
+        "sorting": "並び替え",
+        "deadline": "締切",
+        "completed": "完了"
+      },
+      "sort": {
+        "date": "締切順",
+        "custom": "カスタム順",
+        "priority": "優先度順"
+      },
+      "section": {
+        "expired": "期限切れ",
+        "today": "今日",
+        "tomorrow": "明日",
+        "week": "1週間以内",
+        "later": "それ以降"
+      },
+      "time": {
+        "minutesAgo": "{{count}}分経過",
+        "hoursAgo": "{{count}}時間経過",
+        "daysAgo": "{{count}}日経過",
+        "remainingMinutes": "残り{{count}}分",
+        "remainingHours": "残り{{count}}時間",
+        "remainingDays": "残り{{count}}日"
+      },
+        
+      "draft_list": {
+        "title": "下書き一覧",
+        "no_drafts": "下書きがありません",
+        "delete_confirm_title": "削除確認",
+        "delete_confirm_message": "この下書きを削除しますか？"
+      }
+    } 

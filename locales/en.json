@@ -1,13 +1,158 @@
 {
-    "task_detail": {
-      "title": "Task Detail",
-      "memo": "Note",
-      "deadline": "Deadline",
-      "delete_confirm": "Are you sure you want to delete this task?"
-    },
-    "settings": {
-      "language": "Language",
-      "select_language": "Select Language"
-    }
+  "task_detail": {
+    "title": "Task Details",
+    "memo": "Memo",
+    "deadline": "Deadline",
+    "photo": "Photo",
+    "delete_confirm_title": "Delete Confirmation",
+    "delete_confirm": "Are you sure you want to delete this task?"
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language Settings",
+    "select_language": "Please select a language",
+    "language_ja": "Japanese",
+    "language_en": "English",
+    "display_mode": "Display Mode",
+    "sub_color": "Select Sub Color",
+    "theme_system": "Follow System",
+    "theme_light": "Light Mode",
+    "current": "Current",
+    "theme_dark": "Dark Mode",
+    "font_size": "Font Size",
+    "font_size_small": "Small",
+    "font_size_normal": "Normal",
+    "font_size_medium": "Medium",
+    "font_size_large": "Large",
+    "font_size_xlarge": "Extra Large"
+  },
+  "common": {
+    "loading": "Loading...",
+    "cancel": "Cancel",
+    "delete": "Delete"
+  },
+  "add_task": {
+    "title": "Add Task",
+    "drafts": "Draft List",
+    "input_title": "Title",
+    "input_title_placeholder": "Enter title",
+    "memo": "Memo",
+    "memo_placeholder": "Enter memo",
+    "photo": "Photo",
+    "select_photo": "Select Photo",
+    "add_photo": "Add Photo",
+    "deadline": "Deadline",
+    "notification": "Notification",
+    "minutes_before": "minutes before",
+    "hours_before": "hours before",
+    "days_before": "days before",
+    "add_task_button": "Add to Task",
+    "save_draft_button": "Save as Draft",
+    "alert_no_title": "Title is required",
+    "alert_discard_changes_title": "Discard Changes?",
+    "alert_discard_changes_message": "Unsaved changes will be lost.",
+    "alert_discard": "Discard"
+  },
+  "edit_task": {
+    "title": "Edit Task",
+    "input_title": "Title",
+    "input_title_placeholder": "Enter title",
+    "memo": "Memo",
+    "memo_placeholder": "Enter memo",
+    "photo": "Photo",
+    "select_photo": "Select Photo",
+    "add_photo": "Add Photo",
+    "deadline": "Deadline",
+    "notification": "Notification",
+    "minutes_before": "minutes before",
+    "hours_before": "hours before",
+    "days_before": "days before",
+    "back": "Back",
+    "save": "Save",
+    "save_success": "Saved successfully",
+    "alert_no_title": "Title is required",
+    "alert_discard_changes_title": "Discard Changes?",
+    "alert_discard_changes_message": "Unsaved changes will be lost.",
+    "alert_discard": "Discard"
+  },
+  "edit_draft": {
+    "title": "Edit Draft",
+    "input_title": "Title",
+    "input_title_placeholder": "Enter title",
+    "memo": "Memo",
+    "memo_placeholder": "Enter memo",
+    "photo": "Photo",
+    "select_photo": "Select Photo",
+    "add_photo": "Add Photo",
+    "deadline": "Deadline",
+    "notification": "Notification",
+    "minutes_before": "minutes before",
+    "hours_before": "hours before",
+    "days_before": "days before",
+    "save_draft_button": "Save Draft",
+    "convert_to_task_button": "Convert to Task",
+    "save_success": "Draft saved successfully",
+    "convert_success": "Converted to task successfully",
+    "alert_no_title": "Title is required",
+    "alert_discard_changes_title": "Discard Changes?",
+    "alert_discard_changes_message": "Unsaved changes will be lost.",
+    "alert_discard": "Discard"
+  },
+  "task_list": {
+    "title": "Task List",
+    "sort_date": "By Date",
+    "sort_custom": "Custom Order",
+    "sorting_label": "Sorting",
+    "deadline_label": "Deadline",
+    "completed_label": "Completed At",
+    "section_expired": "Expired",
+    "section_today": "Today",
+    "section_tomorrow": "Tomorrow",
+    "section_week": "Within a Week",
+    "section_later": "Later",
+    "minutes_ago": "{{count}} minutes ago",
+    "hours_ago": "{{count}} hours ago",
+    "days_ago": "{{count}} days ago",
+    "remaining_minutes": "{{count}} minutes left",
+    "remaining_hours": "{{count}} hours left",
+    "remaining_days": "{{count}} days left"
+  },
+  "tab": {
+    "incomplete": "Incomplete",
+    "completed": "Completed"
+  },
+  "button": {
+    "sort": "Sort"
+  },
+  "label": {
+    "sorting": "Sorting",
+    "deadline": "Deadline",
+    "completed": "Completed"
+  },
+  "sort": {
+    "date": "By Deadline",
+    "custom": "Custom Order",
+    "priority": "By Priority"
+  },
+  "section": {
+    "expired": "Expired",
+    "today": "Today",
+    "tomorrow": "Tomorrow",
+    "week": "Within a Week",
+    "later": "Later"
+  },
+  "time": {
+    "minutesAgo": "{{count}} minutes ago",
+    "hoursAgo": "{{count}} hours ago",
+    "daysAgo": "{{count}} days ago",
+    "remainingMinutes": "{{count}} minutes left",
+    "remainingHours": "{{count}} hours left",
+    "remainingDays": "{{count}} days left"
+  },
+  "draft_list": {
+    "title": "Draft List",
+    "no_drafts": "No drafts available",
+    "delete_confirm_title": "Delete Confirmation",
+    "delete_confirm_message": "Are you sure you want to delete this draft?"
   }
-  
+}

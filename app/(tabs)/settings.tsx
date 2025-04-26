@@ -1,24 +1,21 @@
 // app/(tabs)/settings.tsx
-import React from 'react'
+
+import React, { useContext } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-} from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
-import { useAppTheme, ThemeChoice } from '@/hooks/ThemeContext'
-
-// テーマ選択肢
-const THEME_OPTIONS: { label: string; value: ThemeChoice }[] = [
-  { label: 'システムに合わせる', value: 'system' },
-  { label: 'ライトモード', value: 'light' },
-  { label: 'ダークモード', value: 'dark' },
-]
-
-// カラー選択肢
-const COLOR_OPTIONS = ['#2196F3', '#4CAF50', '#FF9800', '#9C27B0', '#E91E63']
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAppTheme, ThemeChoice } from '@/hooks/ThemeContext';
+import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
+import i18n from '@/lib/i18n';
+import Slider from '@react-native-community/slider';
+import { FontSizeContext, FontSizeKey } from '@/context/FontSizeContext';
+import { fontSizes } from '@/constants/fontSizes';
 
 export default function SettingsScreen() {
   const {
@@ -27,23 +24,55 @@ export default function SettingsScreen() {
     colorScheme,
     subColor,
     setSubColor,
-  } = useAppTheme()
+  } = useAppTheme();
+  const { fontSizeKey, setFontSizeKey } = useContext(FontSizeContext);
+  const { t } = useTranslation();
+  const router = useRouter();
+  const isDark = colorScheme === 'dark';
+  const styles = createStyles(isDark, subColor);
 
-  const isDark = colorScheme === 'dark'
-  const styles = createStyles(isDark, subColor)
+  const THEME_OPTIONS: { label: string; value: ThemeChoice }[] = [
+    { label: t('settings.theme_system'), value: 'system' },
+    { label: t('settings.theme_light'), value: 'light' },
+    { label: t('settings.theme_dark'), value: 'dark' },
+  ];
+
+  const COLOR_OPTIONS = [
+    '#2196F3',
+    '#4CAF50',
+    '#FF9800',
+    '#9C27B0',
+    '#E91E63',
+  ];
+
+  const FONT_KEYS: FontSizeKey[] = ['small', 'normal', 'medium', 'large'];
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* AppBar */}
       <View style={styles.appBar}>
-        <Text style={styles.appBarTitle}>設定</Text>
+        <Text style={styles.appBarTitle}>{t('settings.title')}</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
-        {/* 表示モード選択 */}
+        {/* 言語設定 */}
         <View style={styles.card}>
-          <Text style={styles.label}>表示モード</Text>
-          {THEME_OPTIONS.map(opt => (
+          <Text style={styles.label}>{t('settings.language')}</Text>
+          <TouchableOpacity
+            style={styles.optionRow}
+            onPress={() => router.push('/language')}
+          >
+            <Text style={styles.optionLabel}>
+              {i18n.language.startsWith('ja')
+                ? `${t('settings.language_ja')} (${t('settings.current')})`
+                : `${t('settings.language_en')} (${t('settings.current')})`}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* 表示モード */}
+        <View style={styles.card}>
+          <Text style={styles.label}>{t('settings.display_mode')}</Text>
+          {THEME_OPTIONS.map((opt) => (
             <TouchableOpacity
               key={opt.value}
               style={styles.optionRow}
@@ -60,11 +89,11 @@ export default function SettingsScreen() {
           ))}
         </View>
 
-        {/* サブカラー選択 */}
+        {/* サブカラー */}
         <View style={styles.card}>
-          <Text style={styles.label}>サブカラーを選択</Text>
+          <Text style={styles.label}>{t('settings.sub_color')}</Text>
           <View style={styles.colorRow}>
-            {COLOR_OPTIONS.map(color => (
+            {COLOR_OPTIONS.map((color) => (
               <TouchableOpacity
                 key={color}
                 onPress={() => setSubColor(color)}
@@ -80,31 +109,53 @@ export default function SettingsScreen() {
             ))}
           </View>
         </View>
+
+        {/* 文字サイズ */}
+        <View style={styles.card}>
+          <Text style={styles.label}>{t('settings.font_size')}</Text>
+          <Slider
+            minimumValue={0}
+            maximumValue={3}
+            step={1}
+            value={FONT_KEYS.indexOf(fontSizeKey)}
+            onSlidingComplete={(v: number) =>
+              setFontSizeKey(FONT_KEYS[Math.round(v)])
+            }
+            minimumTrackTintColor={subColor}
+            maximumTrackTintColor="#ccc"
+          />
+          <View style={styles.fontLabelRow}>
+            {FONT_KEYS.map((key) => (
+              <Text
+                key={key}
+                style={[
+                  styles.fontLabel,
+                  fontSizeKey === key && { color: subColor },
+                ]}
+              >
+                {t(`settings.font_size_${key}`)}
+              </Text>
+            ))}
+          </View>
+        </View>
       </ScrollView>
     </SafeAreaView>
-  )
+  );
 }
 
-// スタイルの定義
 const createStyles = (isDark: boolean, subColor: string) =>
   StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: isDark ? '#121212' : '#ffffff',
-    },
-    scroll: {
-      padding: 20,
-    },
+    container: { flex: 1, backgroundColor: isDark ? '#121212' : '#ffffff' },
+    scroll: { padding: 20 },
     appBar: {
       height: 56,
       paddingHorizontal: 16,
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
       backgroundColor: isDark ? '#121212' : '#ffffff',
     },
     appBarTitle: {
-      fontSize: 25,
+      fontSize: fontSizes.large,
       fontWeight: 'bold',
       color: isDark ? '#fff' : '#000',
     },
@@ -115,7 +166,7 @@ const createStyles = (isDark: boolean, subColor: string) =>
       marginBottom: 20,
     },
     label: {
-      fontSize: 18,
+      fontSize: fontSizes.medium,
       fontWeight: '600',
       color: subColor,
       marginBottom: 12,
@@ -138,7 +189,7 @@ const createStyles = (isDark: boolean, subColor: string) =>
       borderColor: subColor,
     },
     optionLabel: {
-      fontSize: 16,
+      fontSize: fontSizes.normal,
       color: isDark ? '#fff' : '#000',
     },
     colorRow: {
@@ -151,4 +202,13 @@ const createStyles = (isDark: boolean, subColor: string) =>
       height: 36,
       borderRadius: 18,
     },
-  })
+    fontLabelRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginTop: 12,
+    },
+    fontLabel: {
+      fontSize: fontSizes.normal,
+      color: isDark ? '#fff' : '#000',
+    },
+  });

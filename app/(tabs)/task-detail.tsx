@@ -1,187 +1,209 @@
-import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router'
-import React, { useState, useCallback } from 'react'
+// app/(tabs)/task-detail.tsx
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
-  Image,
-  StyleSheet,
   TouchableOpacity,
+  StyleSheet,
   ScrollView,
+  Image,
   Alert,
-  Dimensions,
-  useColorScheme,
-  StatusBar,
-} from 'react-native'
-import AsyncStorage from '@react-native-async-storage/async-storage'
-import dayjs from 'dayjs'
-import { Ionicons } from '@expo/vector-icons'
-import ImageViewing from 'react-native-image-viewing'
-import { SafeAreaView } from 'react-native-safe-area-context'
-import { useTranslation } from 'react-i18next'
+  ViewStyle,
+  TextStyle,
+  ImageStyle,
+} from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAppTheme } from '@/hooks/ThemeContext';
+import { useTranslation } from 'react-i18next';
 
-const STORAGE_KEY = 'TASKS'
-const screenWidth = Dimensions.get('window').width
+const STORAGE_KEY = 'TASKS';
 
-export default function TaskDetailScreen() {
-  const { id } = useLocalSearchParams()
-  const router = useRouter()
-  const [task, setTask] = useState<any>(null)
-  const [imageViewerVisible, setImageViewerVisible] = useState(false)
-  const [viewerIndex, setViewerIndex] = useState(0)
+type Task = {
+  id: string;
+  title: string;
+  memo: string;
+  deadline: string;
+  imageUris: string[];
+  notifyEnabled: boolean;
+  customUnit: 'minutes' | 'hours' | 'days';
+  customAmount: number;
+};
 
-  const colorScheme = useColorScheme()
-  const isDark = colorScheme === 'dark'
-  const styles = createStyles(isDark)
-  const { t } = useTranslation()
+type TaskDetailStyles = {
+  container: ViewStyle;
+  appBar: ViewStyle;
+  appBarTitle: TextStyle;
+  backButton: ViewStyle;
+  title: TextStyle;
+  label: TextStyle;
+  memo: TextStyle;
+  field: TextStyle;
+  image: ImageStyle;
+  deleteButton: ViewStyle;
+  deleteButtonText: TextStyle;
+};
 
-  const loadTask = async () => {
-    const raw = await AsyncStorage.getItem(STORAGE_KEY)
-    if (raw) {
-      const list = JSON.parse(raw)
-      const target = list.find((t: any) => t.id === id)
-      setTask(target)
-    }
-  }
-
-  useFocusEffect(
-    useCallback(() => {
-      loadTask()
-    }, [id])
-  )
-
-  const deleteTask = async () => {
-    Alert.alert(
-      t('task_detail.delete_confirm_title', '削除確認'),
-      t('task_detail.delete_confirm'),
-      [
-        { text: t('common.cancel', 'キャンセル') },
-        {
-          text: t('common.delete', '削除'),
-          style: 'destructive',
-          onPress: async () => {
-            const raw = await AsyncStorage.getItem(STORAGE_KEY)
-            if (raw) {
-              const list = JSON.parse(raw)
-              const filtered = list.filter((t: any) => t.id !== id)
-              await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(filtered))
-              router.replace('/(tabs)/tasks')
-            }
-          },
-        },
-      ]
-    )
-  }
-
-  if (!task) return <Text style={styles.loading}>{t('common.loading', '読み込み中...')}</Text>
-
-  return (
-    <SafeAreaView style={styles.wrapper} edges={['top', 'bottom']}>
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.replace('/(tabs)/tasks')}>
-          <Ionicons name="arrow-back" size={24} color="#007aff" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>{t('task_detail.title')}</Text>
-        <View style={styles.headerActions}>
-          <TouchableOpacity onPress={() => router.push({ pathname: '/(tabs)/edit-task', params: { id: task.id } })}>
-            <Ionicons name="create-outline" size={24} color="#007aff" />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={deleteTask} style={{ marginLeft: 16 }}>
-            <Ionicons name="trash-outline" size={24} color="#ff3b30" />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>{task.title}</Text>
-        <Text style={styles.subject}>{task.subject}</Text>
-        <Text style={styles.label}>{t('task_detail.deadline')}: {dayjs(task.deadline).format('YYYY/MM/DD HH:mm')}</Text>
-        <Text style={styles.label}>{t('task_detail.memo')}:</Text>
-        <Text style={styles.memo}>{task.memo}</Text>
-
-        {task.imageUris?.length > 0 && (
-          <View style={styles.imageList}>
-            {task.imageUris.map((uri: string, index: number) => (
-              <TouchableOpacity key={index} onPress={() => { setViewerIndex(index); setImageViewerVisible(true) }}>
-                <Image source={{ uri }} style={styles.image} resizeMode="contain" />
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-      </ScrollView>
-
-      <ImageViewing
-        images={(task.imageUris || []).map((uri: string) => ({ uri }))}
-        imageIndex={viewerIndex}
-        visible={imageViewerVisible}
-        onRequestClose={() => setImageViewerVisible(false)}
-      />
-    </SafeAreaView>
-  )
-}
-
-const createStyles = (isDark: boolean) =>
-  StyleSheet.create({
-    wrapper: {
-      flex: 1,
-      backgroundColor: isDark ? '#121212' : '#fff',
-    },
-    loading: {
-      padding: 20,
-      color: isDark ? '#fff' : '#000',
-    },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 16,
-      height: 56,
-      backgroundColor: isDark ? '#121212' : '#fff',
-    },
-    headerTitle: {
-      fontSize: 18,
-      fontWeight: 'bold',
-      color: isDark ? '#fff' : '#333',
-    },
-    headerActions: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
+const createStyles = (isDark: boolean, subColor: string) =>
+  StyleSheet.create<TaskDetailStyles>({
     container: {
-      paddingHorizontal: 20,
-      paddingBottom: 40,
+      flex: 1,
+      backgroundColor: isDark ? '#121212' : '#ffffff',
+    },
+    appBar: {
+      height: 56,
+      paddingHorizontal: 16,
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: isDark ? '#121212' : '#ffffff',
+    },
+    appBarTitle: {
+      fontSize: 25,
+      fontWeight: 'bold',
+      color: isDark ? '#fff' : '#000',
+      marginLeft: 16,
+    },
+    backButton: {
+      padding: 8,
     },
     title: {
-      fontSize: 20,
+      fontSize: 24,
       fontWeight: 'bold',
-      marginTop: 12,
-      color: isDark ? '#ededed' : '#000',
-    },
-    subject: {
-      fontSize: 16,
-      color: isDark ? '#ededed' : '#555',
-      marginBottom: 16,
+      marginBottom: 12,
+      color: isDark ? '#fff' : '#000',
     },
     label: {
-      fontSize: 14,
-      fontWeight: 'bold',
-      marginTop: 12,
-      color: isDark ? '#ededed' : '#000',
+      fontSize: 18,
+      fontWeight: '600',
+      marginTop: 16,
+      marginBottom: 4,
+      color: subColor,
     },
     memo: {
-      fontSize: 14,
-      color: isDark ? '#ededed' : '#333',
-      marginTop: 4,
+      fontSize: 16,
+      color: isDark ? '#ccc' : '#333',
     },
-    imageList: {
-      marginTop: 16,
-      gap: 16,
+    field: {
+      fontSize: 16,
+      color: isDark ? '#ccc' : '#333',
     },
     image: {
-      width: screenWidth - 40,
-      height: 260,
-      borderRadius: 8,
-      marginBottom: 12,
-      backgroundColor: '#eee',
+      width: '100%',
+      height: 200,
+      borderRadius: 10,
+      marginTop: 10,
     },
-  })
+    deleteButton: {
+      backgroundColor: 'red',
+      marginTop: 30,
+      paddingVertical: 12,
+      borderRadius: 10,
+      alignItems: 'center',
+    },
+    deleteButtonText: {
+      color: '#fff',
+      fontSize: 18,
+      fontWeight: 'bold',
+    },
+  });
+  export default function TaskDetailScreen() {
+    const { id } = useLocalSearchParams<{ id: string }>();
+    const router = useRouter();
+    const { colorScheme, subColor } = useAppTheme();
+    const isDark = colorScheme === 'dark';
+    const styles = createStyles(isDark, subColor);
+    const { t } = useTranslation();
+  
+    const [task, setTask] = useState<Task | null>(null);
+  
+    useEffect(() => {
+      (async () => {
+        const raw = await AsyncStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const list = JSON.parse(raw);
+        const found = list.find((t: Task) => t.id === id);
+        if (found) setTask(found);
+      })();
+    }, [id]);
+  
+    const handleDelete = async () => {
+      Alert.alert(
+        t('task_detail.delete_confirm_title'),
+        t('task_detail.delete_confirm'),
+        [
+          { text: t('common.cancel'), style: 'cancel' },
+          {
+            text: t('common.delete'),
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                const raw = await AsyncStorage.getItem(STORAGE_KEY);
+                if (!raw) return;
+                const list = JSON.parse(raw);
+                const updated = list.filter((t: Task) => t.id !== id);
+                await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+                router.replace('/(tabs)/tasks');
+              } catch (error) {
+                console.error('Failed to delete task', error);
+              }
+            },
+          },
+        ]
+      );
+    };
+  
+    if (!task) {
+      return (
+        <SafeAreaView style={styles.container}>
+          <View style={styles.appBar}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+              <Ionicons name="arrow-back" size={24} color={subColor} />
+            </TouchableOpacity>
+            <Text style={styles.appBarTitle}>{t('task_detail.title')}</Text>
+          </View>
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <Text style={styles.memo}>{t('common.loading')}</Text>
+          </View>
+        </SafeAreaView>
+      );
+    }
+  
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.appBar}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={24} color={subColor} />
+          </TouchableOpacity>
+          <Text style={styles.appBarTitle}>{t('task_detail.title')}</Text>
+        </View>
+  
+        <ScrollView contentContainerStyle={{ padding: 20 }}>
+          <Text style={styles.title}>{task.title}</Text>
+  
+          <Text style={styles.label}>{t('task_detail.memo')}</Text>
+          <Text style={styles.memo}>{task.memo || '-'}</Text>
+  
+          <Text style={styles.label}>{t('task_detail.deadline')}</Text>
+          <Text style={styles.field}>
+            {new Date(task.deadline).toLocaleDateString()} {new Date(task.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </Text>
+  
+          {task.imageUris.length > 0 && (
+            <>
+              <Text style={styles.label}>{t('task_detail.photo')}</Text>
+              {task.imageUris.map((uri) => (
+                <Image key={uri} source={{ uri }} style={styles.image} />
+              ))}
+            </>
+          )}
+  
+          <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
+            <Text style={styles.deleteButtonText}>{t('common.delete')}</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+  
