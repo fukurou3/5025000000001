@@ -29,7 +29,7 @@ export default function SettingsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const isDark = colorScheme === 'dark';
-  const styles = createStyles(isDark, subColor);
+  const styles = createStyles(isDark, subColor, fontSizeKey);
 
   const THEME_OPTIONS: { label: string; value: ThemeChoice }[] = [
     { label: t('settings.theme_system'), value: 'system' },
@@ -143,7 +143,11 @@ export default function SettingsScreen() {
   );
 }
 
-const createStyles = (isDark: boolean, subColor: string) =>
+const createStyles = (
+  isDark: boolean,
+  subColor: string,
+  fsKey: keyof typeof fontSizes
+) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: isDark ? '#121212' : '#ffffff' },
     scroll: { padding: 20 },
@@ -155,7 +159,7 @@ const createStyles = (isDark: boolean, subColor: string) =>
       backgroundColor: isDark ? '#121212' : '#ffffff',
     },
     appBarTitle: {
-      fontSize: fontSizes.large,
+      fontSize: fontSizes[fsKey] + 4,
       fontWeight: 'bold',
       color: isDark ? '#fff' : '#000',
     },
@@ -166,7 +170,7 @@ const createStyles = (isDark: boolean, subColor: string) =>
       marginBottom: 20,
     },
     label: {
-      fontSize: fontSizes.medium,
+      fontSize: fontSizes[fsKey],
       fontWeight: '600',
       color: subColor,
       marginBottom: 12,
@@ -189,7 +193,7 @@ const createStyles = (isDark: boolean, subColor: string) =>
       borderColor: subColor,
     },
     optionLabel: {
-      fontSize: fontSizes.normal,
+      fontSize: fontSizes[fsKey],
       color: isDark ? '#fff' : '#000',
     },
     colorRow: {
@@ -208,7 +212,7 @@ const createStyles = (isDark: boolean, subColor: string) =>
       marginTop: 12,
     },
     fontLabel: {
-      fontSize: fontSizes.normal,
+      fontSize: fontSizes[fsKey],
       color: isDark ? '#fff' : '#000',
     },
   });

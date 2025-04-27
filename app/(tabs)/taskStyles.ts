@@ -1,0 +1,146 @@
+// app/(tabs)/taskStyles.ts
+
+import { StyleSheet } from 'react-native';
+import { fontSizes } from '@/constants/fontSizes';
+
+export const createStyles = (
+  isDark: boolean,
+  subColor: string,
+  fsKey: keyof typeof fontSizes
+) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: isDark ? '#121212' : '#ffffff' },
+    appBar: { height: 56, justifyContent: 'center', alignItems: 'center' },
+    title: {
+      fontSize: fontSizes[fsKey] + 6,
+      fontWeight: 'bold',
+      color: isDark ? '#fff' : '#000',
+    },
+    topRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginTop: 16,
+      paddingHorizontal: 16,
+      zIndex: 2,
+    },
+    tabs: { flexDirection: 'row' },
+    tabButton: {
+      paddingVertical: 6,
+      paddingHorizontal: 14,
+      height: 36,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: '#aaa',
+      marginRight: 8,
+      backgroundColor: '#eee',
+      justifyContent: 'center',
+    },
+    tabSelected: { backgroundColor: subColor, borderColor: subColor },
+    tabText: {
+      fontSize: fontSizes[fsKey],
+      fontWeight: 'bold',
+      color: '#333',
+      textAlign: 'center',
+    },
+    tabSelectedText: { color: '#fff' },
+    sortIconButton: { padding: 6 },
+    sortLabel: {
+      fontSize: fontSizes[fsKey] + 2,
+      color: isDark ? '#fff' : '#000',
+      marginLeft: 4,
+    },
+    loader: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    emptyContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: 32,
+    },
+    emptyText: {
+      fontSize: fontSizes[fsKey],
+      color: '#aaa',
+      fontStyle: 'italic',
+      textAlign: 'center',
+    },
+    sectionHeader: {
+      fontSize: fontSizes[fsKey] + 2,
+      fontWeight: 'bold',
+      color: subColor,
+      marginTop: 24,
+      marginBottom: 8,
+      paddingHorizontal: 16,
+    },
+    taskItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: isDark ? '#1e1e1e' : '#f4f4f4',
+      marginHorizontal: 16,
+      marginVertical: 8,
+      borderRadius: 12,
+      padding: 16,
+      elevation: 3,
+    },
+    checkboxContainer: { marginRight: 12 },
+    taskCenter: { flex: 1 },
+    taskTitle: {
+      fontSize: fontSizes[fsKey] + 2,
+      fontWeight: 'bold',
+      color: isDark ? '#fff' : '#000',
+    },
+    taskMemo: {
+      fontSize: fontSizes[fsKey],
+      color: isDark ? '#ccc' : '#555',
+      marginTop: 2,
+    },
+    taskRight: { alignItems: 'flex-end', marginLeft: 8 },
+    taskTime: {
+      fontSize: fontSizes[fsKey] + 2,
+      fontWeight: 'bold',
+    },
+    taskDateText: {
+      fontSize: fontSizes[fsKey] - 2,
+      color: '#888',
+      marginTop: 2,
+    },
+    fab: {
+      position: 'absolute',
+      right: 20,
+      bottom: 30,
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      backgroundColor: subColor,
+      justifyContent: 'center',
+      alignItems: 'center',
+      elevation: 5,
+    },
+    modalContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    modalBlur: { ...StyleSheet.absoluteFillObject },
+    modalContent: {
+      backgroundColor: '#fff',
+      borderRadius: 12,
+      paddingVertical: 24,
+      paddingHorizontal: 32,
+      alignItems: 'stretch',
+      width: '80%',
+    },
+    modalOption: {
+      fontSize: fontSizes[fsKey] + 2,
+      marginVertical: 10,
+      textAlign: 'center',
+    },
+    reorderToggle: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+    },
+    reorderToggleText: {
+      marginLeft: 8,
+      fontSize: fontSizes[fsKey],
+      color: subColor,
+    },
+    reorderItem: { opacity: 0.8 },
+    activeReorderItem: { opacity: 1.0 },
+  });

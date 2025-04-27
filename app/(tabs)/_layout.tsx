@@ -52,7 +52,7 @@ export default function Layout() {
         }}
       />
       <Tabs.Screen
-        name="tasks"
+        name="TasksScreen"
         options={{
           title: 'タスク一覧',
           tabBarIcon: ({ color, size }) => (
@@ -81,6 +81,7 @@ export default function Layout() {
 
       {/* 非表示にするページたち */}
       {[
+        "tasks",
         "add",
         "drafts",
         "index",
