@@ -43,6 +43,7 @@ export default function SettingsScreen() {
     '#FF9800',
     '#9C27B0',
     '#E91E63',
+    '#121212',
   ];
 
   const FONT_KEYS: FontSizeKey[] = ['small', 'normal', 'medium', 'large'];

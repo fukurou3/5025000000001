@@ -1,4 +1,4 @@
-// app/(tabs)/taskStyles.ts
+// lib/tasks/taskStyles.ts
 
 import { StyleSheet } from 'react-native';
 import { fontSizes } from '@/constants/fontSizes';
@@ -9,8 +9,15 @@ export const createStyles = (
   fsKey: keyof typeof fontSizes
 ) =>
   StyleSheet.create({
-    container: { flex: 1, backgroundColor: isDark ? '#121212' : '#ffffff' },
-    appBar: { height: 56, justifyContent: 'center', alignItems: 'center' },
+    container: {
+      flex: 1,
+      backgroundColor: isDark ? '#121212' : '#f2f2f2',
+    },
+    appBar: {
+      height: 56,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
     title: {
       fontSize: fontSizes[fsKey] + 6,
       fontWeight: 'bold',
@@ -48,7 +55,7 @@ export const createStyles = (
     sortLabel: {
       fontSize: fontSizes[fsKey] + 2,
       color: isDark ? '#fff' : '#000',
-      marginLeft: 4,
+      marginRight: 4,
     },
     loader: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     emptyContainer: {
@@ -64,24 +71,32 @@ export const createStyles = (
       textAlign: 'center',
     },
     sectionHeader: {
-      fontSize: fontSizes[fsKey] + 2,
+      fontSize: fontSizes[fsKey],
       fontWeight: 'bold',
       color: subColor,
-      marginTop: 24,
-      marginBottom: 8,
+      backgroundColor: isDark ? '#333' : '#eee',
+      paddingVertical: 4,
       paddingHorizontal: 16,
+      borderRadius: 8,
+      marginTop: 8,
+      marginBottom: 4,
+      alignSelf: 'flex-start',
     },
+
+    // ↓ タスク行（TaskItem）レイアウト ↓
     taskItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: isDark ? '#1e1e1e' : '#f4f4f4',
-      marginHorizontal: 16,
-      marginVertical: 8,
-      borderRadius: 12,
-      padding: 16,
-      elevation: 3,
+      backgroundColor: 'transparent',
+      marginHorizontal: 8,    // 横余白を狭めて横幅を確保
+      marginVertical: 4,
+      paddingVertical: 8,
+      paddingHorizontal: 0,
     },
-    checkboxContainer: { marginRight: 12 },
+    checkboxContainer: {
+      marginLeft: 4,          // チェックボックス左余白を縮小
+      marginRight: 8,         // チェックボックス右余白を縮小
+    },
     taskCenter: { flex: 1 },
     taskTitle: {
       fontSize: fontSizes[fsKey] + 2,
@@ -93,54 +108,80 @@ export const createStyles = (
       color: isDark ? '#ccc' : '#555',
       marginTop: 2,
     },
-    taskRight: { alignItems: 'flex-end', marginLeft: 8 },
+    taskRight: {
+      alignItems: 'flex-end',
+      marginLeft: 4,          // 時間表示の左余白を縮小
+    },
     taskTime: {
-      fontSize: fontSizes[fsKey] + 2,
+      fontSize: fontSizes[fsKey],
       fontWeight: 'bold',
     },
-    taskDateText: {
-      fontSize: fontSizes[fsKey] - 2,
-      color: '#888',
-      marginTop: 2,
-    },
+
     fab: {
       position: 'absolute',
-      right: 20,
-      bottom: 30,
-      width: 64,
-      height: 64,
-      borderRadius: 32,
+      bottom: 32,
+      right: 24,
+      width: 56,
+      height: 56,
+      borderRadius: 28,
       backgroundColor: subColor,
       justifyContent: 'center',
       alignItems: 'center',
       elevation: 5,
     },
+    modalBlur: { flex: 1 },
     modalContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    modalBlur: { ...StyleSheet.absoluteFillObject },
     modalContent: {
-      backgroundColor: '#fff',
-      borderRadius: 12,
-      paddingVertical: 24,
-      paddingHorizontal: 32,
-      alignItems: 'stretch',
+      backgroundColor: isDark ? '#1e1e1e' : '#ffffff',
       width: '80%',
+      borderRadius: 12,
+      padding: 16,
     },
     modalOption: {
       fontSize: fontSizes[fsKey] + 2,
-      marginVertical: 10,
-      textAlign: 'center',
-    },
-    reorderToggle: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: 16,
       paddingVertical: 8,
     },
-    reorderToggleText: {
+    folderContainer: {
+      backgroundColor: isDark ? '#2e2e2e' : '#ffffff',
+      borderRadius: 12,
+      marginHorizontal: 16,
+      marginVertical: 8,
+      padding: 12,
+      elevation: 2,
+    },
+    folderHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 8,
+    },
+    folderTitleRow: { flexDirection: 'row', alignItems: 'center' },
+    folderTitleText: {
+      fontSize: fontSizes[fsKey] + 2,
+      fontWeight: 'bold',
       marginLeft: 8,
-      fontSize: fontSizes[fsKey],
       color: subColor,
     },
-    reorderItem: { opacity: 0.8 },
-    activeReorderItem: { opacity: 1.0 },
+
+    // ↓ 選択モード用タブバー（BottomTabと同じデザイン） ↓
+    selectionBar: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      height: 56,
+      flexDirection: 'row',
+      justifyContent: 'space-around',
+      alignItems: 'center',
+      backgroundColor: isDark ? '#121212' : '#fff',
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: isDark ? '#333' : '#ccc',
+      paddingTop: 6,
+      zIndex: 10,
+    },
+    selectionAction: {
+      fontSize: fontSizes[fsKey],
+      color: isDark ? '#888' : '#888',
+      textAlign: 'center',
+    },
   });

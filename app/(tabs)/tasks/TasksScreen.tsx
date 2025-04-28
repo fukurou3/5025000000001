@@ -1,33 +1,33 @@
-// app/(tabs)/TasksScreen.tsx
+// /app/(tabs)/tasks/TasksScreen.tsx
 
 import React, { useEffect, useState, useCallback, useContext } from 'react';
 import {
   View,
   Text,
-  SectionList,
   TouchableOpacity,
+  ScrollView,
   ActivityIndicator,
   Modal,
+  Animated,
+  Dimensions,
 } from 'react-native';
-import { BlurView } from 'expo-blur';
-import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { BlurView } from 'expo-blur';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAppTheme } from '@/hooks/ThemeContext';
-import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
-import { fontSizes } from '@/constants/fontSizes';
-import { FontSizeContext } from '@/context/FontSizeContext';
-import { createStyles } from '../../lib/tasks/taskStyles';
-import { Task } from '../../lib/tasks/taskTypes';
-import { getTimeText, getTimeColor } from '../../lib/tasks/taskUtils';
-
 import relativeTime from 'dayjs/plugin/relativeTime';
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
-import 'dayjs/locale/ja';
+import { useAppTheme } from '@/hooks/ThemeContext';
+import { useSelection } from '../SelectionContext';
+import { useTranslation } from 'react-i18next';
+import { FontSizeContext } from '@/context/FontSizeContext';
+import { fontSizes } from '@/constants/fontSizes';
+import { createStyles } from '../../lib/tasks/taskStyles';
+import { Task, FolderOrder, SelectableItem } from '../../lib/tasks/taskTypes';
+import { TaskFolder } from './TaskFolder';
 
 dayjs.locale('ja');
 dayjs.extend(relativeTime);
@@ -35,6 +35,8 @@ dayjs.extend(localizedFormat);
 dayjs.extend(isSameOrBefore);
 
 const STORAGE_KEY = 'TASKS';
+const FOLDER_ORDER_KEY = 'FOLDER_ORDER';
+const TAB_HEIGHT = 56;
 
 export default function TasksScreen() {
   const router = useRouter();
@@ -43,22 +45,29 @@ export default function TasksScreen() {
   const { t } = useTranslation();
   const { fontSizeKey } = useContext(FontSizeContext);
   const styles = createStyles(isDark, subColor, fontSizeKey);
+  const { isSelecting, setIsSelecting } = useSelection();
 
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [folderOrder, setFolderOrder] = useState<FolderOrder>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<'incomplete' | 'completed'>('incomplete');
   const [sortMode, setSortMode] = useState<'deadline' | 'custom' | 'priority'>('deadline');
   const [sortModalVisible, setSortModalVisible] = useState(false);
+  const [collapsedFolders, setCollapsedFolders] = useState<Record<string, boolean>>({});
+  const [selectedItems, setSelectedItems] = useState<SelectableItem[]>([]);
   const [isReordering, setIsReordering] = useState(false);
+  const [draggingFolder, setDraggingFolder] = useState<string | null>(null);
+  const selectionAnim = useState(new Animated.Value(Dimensions.get('window').height))[0];
 
   const loadTasks = useCallback(async () => {
     setLoading(true);
     try {
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
-      const parsed = raw ? JSON.parse(raw) : [];
-      setTasks(parsed);
-    } catch (err) {
-      console.error('読み込み失敗:', err);
+      setTasks(raw ? JSON.parse(raw) : []);
+      const orderRaw = await AsyncStorage.getItem(FOLDER_ORDER_KEY);
+      setFolderOrder(orderRaw ? JSON.parse(orderRaw) : []);
+    } catch (e) {
+      console.error('読み込み失敗:', e);
     } finally {
       setLoading(false);
     }
@@ -66,11 +75,21 @@ export default function TasksScreen() {
 
   useEffect(() => {
     loadTasks();
-  }, [loadTasks, tab, sortMode, fontSizeKey]);
+  }, [tab, sortMode, fontSizeKey]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadTasks();
+    }, [loadTasks])
+  );
 
   const saveTasks = async (newTasks: Task[]) => {
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newTasks));
     setTasks(newTasks);
+  };
+  const saveFolderOrder = async (order: FolderOrder) => {
+    await AsyncStorage.setItem(FOLDER_ORDER_KEY, JSON.stringify(order));
+    setFolderOrder(order);
   };
 
   const toggleTaskDone = (id: string) => {
@@ -86,94 +105,109 @@ export default function TasksScreen() {
     saveTasks(updated);
   };
 
-  const navigateToAdd = () => router.push('/add_edit/add');
+  const toggleFolder = (name: string) => {
+    setCollapsedFolders((prev) => ({ ...prev, [name]: !prev[name] }));
+  };
+
+  const moveFolder = (folderName: string, direction: 'up' | 'down') => {
+    setFolderOrder((prev) => {
+      const idx = prev.indexOf(folderName);
+      if (idx < 0) return prev;
+      const swap = direction === 'up' ? idx - 1 : idx + 1;
+      if (swap < 0 || swap >= prev.length) return prev;
+      const arr = [...prev];
+      [arr[idx], arr[swap]] = [arr[swap], arr[idx]];
+      saveFolderOrder(arr);
+      return arr;
+    });
+  };
+
+  const onLongPressSelect = (type: 'task' | 'folder', id: string) => {
+    if (!isSelecting) {
+      setIsSelecting(true);
+      Animated.timing(selectionAnim, {
+        toValue: Dimensions.get('window').height - TAB_HEIGHT,
+        duration: 300,
+        useNativeDriver: false,
+      }).start();
+    }
+    setSelectedItems((prev) =>
+      prev.some((it) => it.id === id && it.type === type)
+        ? prev.filter((it) => !(it.id === id && it.type === type))
+        : [...prev, { id, type }]
+    );
+  };
+
+  const cancelSelecting = () => {
+    Animated.timing(selectionAnim, {
+      toValue: Dimensions.get('window').height,
+      duration: 300,
+      useNativeDriver: false,
+    }).start(() => {
+      setSelectedItems([]);
+      setIsSelecting(false);
+    });
+  };
+
+  const handleSelectAll = () => {
+    const visible = tasks.filter((t) => (tab === 'completed' ? t.done : !t.done));
+    const taskItems = visible.map((t) => ({ id: t.id, type: 'task' } as SelectableItem));
+    const folderNames = Array.from(new Set(visible.map((t) => t.folder ?? '')));
+    const folderItems = folderNames.map((f) => ({ id: f, type: 'folder' } as SelectableItem));
+    setSelectedItems([...taskItems, ...folderItems]);
+  };
+
+  const handleDeleteSelected = async () => {
+    const updated = tasks.filter((task) => {
+      const byTask = selectedItems.some((it) => it.type === 'task' && it.id === task.id);
+      const byFolder = selectedItems.some(
+        (it) => it.type === 'folder' && (task.folder ?? '') === it.id
+      );
+      return !byTask && !byFolder;
+    });
+    await saveTasks(updated);
+    cancelSelecting();
+  };
 
   const filtered = tasks.filter((t) => (tab === 'completed' ? t.done : !t.done));
-  const sections =
-    sortMode !== 'custom'
-      ? [
-          {
-            title: t('section.expired'),
-            data: filtered.filter((t) => dayjs(t.deadline).isBefore(dayjs())),
-          },
-          {
-            title: t('section.today'),
-            data: filtered.filter((t) => dayjs(t.deadline).isSame(dayjs(), 'day')),
-          },
-          {
-            title: t('section.tomorrow'),
-            data: filtered.filter((t) =>
-              dayjs(t.deadline).isSame(dayjs().add(1, 'day'), 'day')
-            ),
-          },
-          {
-            title: t('section.week'),
-            data: filtered.filter(
-              (t) =>
-                dayjs(t.deadline).isAfter(dayjs().add(1, 'day')) &&
-                dayjs(t.deadline).isBefore(dayjs().add(7, 'day'))
-            ),
-          },
-          {
-            title: t('section.later'),
-            data: filtered.filter((t) =>
-              dayjs(t.deadline).isAfter(dayjs().add(7, 'day'))
-            ),
-          },
-        ].filter((sec) => sec.data.length > 0)
-      : [];
-  const customData = sortMode === 'custom' ? filtered : [];
+  const allFolders = Array.from(new Set(filtered.map((t) => t.folder ?? '')));
+  const sortedFolders = folderOrder.length
+    ? folderOrder.filter((n) => allFolders.includes(n)).concat(allFolders.filter((n) => !folderOrder.includes(n)))
+    : allFolders;
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* ヘッダー */}
       <View style={styles.appBar}>
         <Text style={styles.title}>{t('task_list.title')}</Text>
       </View>
 
+      {/* タブ切り替え ＋ 並べ替え */}
       <View style={styles.topRow}>
         <View style={styles.tabs}>
           <TouchableOpacity
-            style={[
-              styles.tabButton,
-              tab === 'incomplete' && styles.tabSelected,
-            ]}
-            onPress={() => {
-              setTab('incomplete');
-              setIsReordering(false);
-            }}
+            style={[styles.tabButton, tab === 'incomplete' && styles.tabSelected]}
+            onPress={() => setTab('incomplete')}
           >
-            <Text
-              style={[
-                styles.tabText,
-                tab === 'incomplete' && styles.tabSelectedText,
-              ]}
-            >
+            <Text style={[styles.tabText, tab === 'incomplete' && styles.tabSelectedText]}>
               {t('tab.incomplete')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[
-              styles.tabButton,
-              tab === 'completed' && styles.tabSelected,
-            ]}
-            onPress={() => {
-              setTab('completed');
-              setIsReordering(false);
-            }}
+            style={[styles.tabButton, tab === 'completed' && styles.tabSelected]}
+            onPress={() => setTab('completed')}
           >
-            <Text
-              style={[
-                styles.tabText,
-                tab === 'completed' && styles.tabSelectedText,
-              ]}
-            >
+            <Text style={[styles.tabText, tab === 'completed' && styles.tabSelectedText]}>
               {t('tab.completed')}
             </Text>
           </TouchableOpacity>
         </View>
 
-        {tab !== 'completed' && (
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        {!isSelecting && tab !== 'completed' && (
+          <TouchableOpacity
+            style={{ flexDirection: 'row', alignItems: 'center' }}
+            onPress={() => setSortModalVisible(true)}
+          >
             <Text style={styles.sortLabel}>
               {sortMode === 'deadline'
                 ? t('sort.date')
@@ -181,164 +215,76 @@ export default function TasksScreen() {
                 ? t('sort.custom')
                 : t('sort.priority')}
             </Text>
-            <TouchableOpacity
-              style={styles.sortIconButton}
-              onPress={() => setSortModalVisible(true)}
-            >
-              <Ionicons
-                name="swap-vertical-outline"
-                size={24}
-                color={subColor}
-              />
-            </TouchableOpacity>
-          </View>
+            <Ionicons name="swap-vertical-outline" size={24} color={subColor} />
+          </TouchableOpacity>
         )}
       </View>
 
-      {sortMode === 'custom' && tab !== 'completed' && (
-        <TouchableOpacity
-          style={styles.reorderToggle}
-          onPress={() => setIsReordering((prev) => !prev)}
-        >
-          <Ionicons
-            name={
-              isReordering
-                ? 'checkmark-done-outline'
-                : 'swap-vertical-outline'
-            }
-            size={24}
-            color={subColor}
-          />
-          <Text style={styles.reorderToggleText}>
-            {isReordering ? t('common.save') : t('label.sorting')}
-          </Text>
+      {/* リスト表示 */}
+      {loading ? (
+        <ActivityIndicator style={styles.loader} size="large" />
+      ) : (
+        <ScrollView contentContainerStyle={{ paddingBottom: 120, paddingTop: 20 }}>
+          {sortedFolders.map((folder) => {
+            const folderTasks = filtered
+              .filter((t) => (t.folder ?? '') === folder)
+              .sort((a, b) => {
+                if (sortMode === 'deadline') return dayjs(a.deadline).unix() - dayjs(b.deadline).unix();
+                if (sortMode === 'custom') return (a.customOrder ?? 0) - (b.customOrder ?? 0);
+                return (b.priority ?? 0) - (a.priority ?? 0);
+              });
+            if (!folderTasks.length) return null;
+            return (
+              <TaskFolder
+                key={folder || 'none'}
+                folderName={folder}
+                tasks={folderTasks}
+                isCollapsed={collapsedFolders[folder]}
+                toggleFolder={toggleFolder}
+                onToggleTaskDone={toggleTaskDone}
+                sortMode={sortMode}
+                onRefreshTasks={loadTasks}
+                isReordering={isReordering}
+                setDraggingFolder={setDraggingFolder}
+                draggingFolder={draggingFolder}
+                moveFolder={moveFolder}
+                stopReordering={() => {
+                  setIsReordering(false);
+                  setDraggingFolder(null);
+                }}
+                isSelecting={isSelecting}
+                selectedIds={selectedItems.map((it) => it.id)}
+                onLongPressSelect={onLongPressSelect}
+              />
+            );
+          })}
+        </ScrollView>
+      )}
+
+      {/* FAB */}
+      {!isSelecting && (
+        <TouchableOpacity style={styles.fab} onPress={() => router.push('/add_edit/add')}>
+          <Ionicons name="add" size={32} color="#fff" />
         </TouchableOpacity>
       )}
 
-      {loading ? (
-        <ActivityIndicator style={styles.loader} size="large" />
-      ) : sortMode === 'custom' && tab !== 'completed' ? (
-        <DraggableFlatList
-          data={customData}
-          keyExtractor={(item) => item.id}
-          onDragEnd={({ data }) => {
-            saveTasks(data);
-            setIsReordering(false);
-          }}
-          activationDistance={isReordering ? 10 : 1000}
-          renderItem={({ item, drag, isActive }: RenderItemParams<Task>) => (
-            <TouchableOpacity
-              onLongPress={isReordering ? drag : undefined}
-              disabled={!isReordering}
-              style={[
-                styles.taskItem,
-                isReordering && styles.reorderItem,
-                isActive && styles.activeReorderItem,
-              ]}
-            >
-              <TouchableOpacity
-                onPress={() => toggleTaskDone(item.id)}
-                style={styles.checkboxContainer}
-              >
-                <Ionicons
-                  name={item.done ? 'checkbox' : 'square-outline'}
-                  size={24}
-                  color={subColor}
-                />
-              </TouchableOpacity>
-              <View style={styles.taskCenter}>
-                <Text style={styles.taskTitle} numberOfLines={1}>
-                  {item.title}
-                </Text>
-                {item.memo && (
-                  <Text style={styles.taskMemo} numberOfLines={2}>
-                    {item.memo}
-                  </Text>
-                )}
-              </View>
-              <View style={styles.taskRight}>
-                <Text
-                  style={[styles.taskTime, { color: getTimeColor(item.deadline, isDark) }]}
-                >
-                  {getTimeText(item.deadline, t)}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          )}
-          contentContainerStyle={{ paddingBottom: 120, paddingTop: 20 }}
-        />
-      ) : (
-        <SectionList
-          sections={sections}
-          keyExtractor={(item) => item.id}
-          renderSectionHeader={({ section: { title } }) =>
-            title ? <Text style={styles.sectionHeader}>── {title} ──</Text> : null
-          }
-          renderItem={({ item }) => (
-            <View style={styles.taskItem}>
-              <TouchableOpacity
-                onPress={() => toggleTaskDone(item.id)}
-                style={styles.checkboxContainer}
-              >
-                <Ionicons
-                  name={item.done ? 'checkbox' : 'square-outline'}
-                  size={24}
-                  color={subColor}
-                />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.taskCenter}
-                onPress={() =>
-                  router.push({ pathname: '/task-detail/task-detail', params: { id: item.id } })
-                }
-              >
-                <Text style={styles.taskTitle} numberOfLines={1}>
-                  {item.title}
-                </Text>
-                {item.memo && (
-                  <Text style={styles.taskMemo} numberOfLines={2}>
-                    {item.memo}
-                  </Text>
-                )}
-                {tab === 'completed' && (
-                  <>
-                    <Text style={styles.taskDateText}>
-                      {t('label.deadline')}: {dayjs(item.deadline).format('YYYY/MM/DD')}
-                    </Text>
-                    <Text style={styles.taskDateText}>
-                      {t('label.completed')}: {dayjs(item.completedAt).format('YYYY/MM/DD HH:mm')}
-                    </Text>
-                  </>
-                )}
-              </TouchableOpacity>
-              {tab === 'incomplete' && (
-                <View style={styles.taskRight}>
-                  <Text
-                    style={[styles.taskTime, { color: getTimeColor(item.deadline, isDark) }]}
-                  >
-                    {getTimeText(item.deadline, t)}
-                  </Text>
-                </View>
-              )}
-            </View>
-          )}
-          contentContainerStyle={{
-            paddingTop: tab === 'completed' ? 32 : 20,
-            paddingBottom: 120,
-          }}
-        />
+      {/* 選択モードタブバー */}
+      {isSelecting && (
+        <Animated.View style={[styles.selectionBar, { top: selectionAnim }]}>
+          <TouchableOpacity onPress={handleSelectAll}>
+            <Text style={styles.selectionAction}>{t('common.select_all')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleDeleteSelected}>
+            <Text style={styles.selectionAction}>{t('common.delete')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={cancelSelecting}>
+            <Text style={styles.selectionAction}>{t('common.cancel')}</Text>
+          </TouchableOpacity>
+        </Animated.View>
       )}
 
-      <TouchableOpacity style={styles.fab} onPress={navigateToAdd}>
-        <Ionicons name="add" size={32} color="#fff" />
-      </TouchableOpacity>
-
-      <Modal
-        visible={sortModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setSortModalVisible(false)}
-      >
+      {/* 並べ替えモーダル */}
+      <Modal transparent visible={sortModalVisible} animationType="fade" onRequestClose={() => setSortModalVisible(false)}>
         <BlurView intensity={80} style={styles.modalBlur}>
           <View style={styles.modalContainer}>
             <View style={styles.modalContent}>
@@ -366,10 +312,7 @@ export default function TasksScreen() {
               >
                 <Text style={styles.modalOption}>{t('sort.priority')}</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setSortModalVisible(false)}
-                style={{ marginTop: 16 }}
-              >
+              <TouchableOpacity onPress={() => setSortModalVisible(false)} style={{ marginTop: 16 }}>
                 <Text style={styles.modalOption}>{t('common.cancel')}</Text>
               </TouchableOpacity>
             </View>

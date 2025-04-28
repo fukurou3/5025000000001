@@ -29,7 +29,9 @@
   "common": {
     "loading": "Loading...",
     "cancel": "Cancel",
-    "delete": "Delete"
+    "delete": "Delete",
+    "save": "Save",
+    "select_all": "Select All"
   },
   "add_task": {
     "title": "Add Task",
@@ -46,7 +48,7 @@
     "minutes_before": "minutes before",
     "hours_before": "hours before",
     "days_before": "days before",
-    "add_task_button": "Add to Task",
+    "add_task_button": "Add to Tasks",
     "save_draft_button": "Save as Draft",
     "alert_no_title": "Title is required",
     "alert_discard_changes_title": "Discard Changes?",
@@ -92,7 +94,7 @@
     "save_draft_button": "Save Draft",
     "convert_to_task_button": "Convert to Task",
     "save_success": "Draft saved successfully",
-    "convert_success": "Converted to task successfully",
+    "convert_success": "Converted to task",
     "alert_no_title": "Title is required",
     "alert_discard_changes_title": "Discard Changes?",
     "alert_discard_changes_message": "Unsaved changes will be lost.",
@@ -100,11 +102,15 @@
   },
   "task_list": {
     "title": "Task List",
-    "sort_date": "By Date",
-    "sort_custom": "Custom Order",
+    "no_tasks": "No tasks available",
+    "empty": "Add tasks using the + button below",
+    "delete_confirm_title": "Delete Confirmation",
+    "delete_confirm_message": "Do you want to delete the selected items?",
+    "sort_date": "Sort by Date",
+    "sort_custom": "Sort by Custom Order",
     "sorting_label": "Sorting",
     "deadline_label": "Deadline",
-    "completed_label": "Completed At",
+    "completed_label": "Completed Date",
     "section_expired": "Expired",
     "section_today": "Today",
     "section_tomorrow": "Tomorrow",
@@ -113,9 +119,24 @@
     "minutes_ago": "{{count}} minutes ago",
     "hours_ago": "{{count}} hours ago",
     "days_ago": "{{count}} days ago",
-    "remaining_minutes": "{{count}} minutes left",
-    "remaining_hours": "{{count}} hours left",
-    "remaining_days": "{{count}} days left"
+    "remaining_minutes": "{{count}} minutes remaining",
+    "remaining_hours": "{{count}} hours remaining",
+    "remaining_days": "{{count}} days remaining",
+    "no_folder": "No Folder",
+    "delete_folder_title": "Delete Folder",
+    "delete_folder_message": "Delete all tasks in this folder?",
+    "rename_folder_title": "Edit Folder Name",
+    "rename_folder_message": "Enter a new folder name",
+    "delete_folder_action": "Delete Folder",
+    "rename_folder_action": "Rename",
+    "reorder_folder_action": "Reorder",
+    "delete_folder_confirm_title": "Delete Folder?",
+    "delete_folder_confirm_message": "All tasks in this folder will also be deleted. Are you sure?",
+    "rename_folder_placeholder": "Enter a new folder name",
+    "select_delete_mode": "Select delete method",
+    "delete_folder_and_tasks": "Delete folder and all tasks",
+    "delete_folder_only": "Delete folder only (keep tasks)",
+    "select_mode_title": "Selection Mode"
   },
   "tab": {
     "incomplete": "Incomplete",
@@ -130,29 +151,41 @@
     "completed": "Completed"
   },
   "sort": {
-    "date": "By Deadline",
+    "date": "Deadline Order",
     "custom": "Custom Order",
-    "priority": "By Priority"
+    "priority": "Priority Order"
   },
   "section": {
     "expired": "Expired",
     "today": "Today",
     "tomorrow": "Tomorrow",
-    "week": "Within a Week",
+    "week": "This Week",
     "later": "Later"
   },
   "time": {
     "minutesAgo": "{{count}} minutes ago",
     "hoursAgo": "{{count}} hours ago",
     "daysAgo": "{{count}} days ago",
-    "remainingMinutes": "{{count}} minutes left",
-    "remainingHours": "{{count}} hours left",
-    "remainingDays": "{{count}} days left"
+    "remainingMinutes": "{{count}} minutes remaining",
+    "remainingHours": "{{count}} hours remaining",
+    "remainingDays": "{{count}} days remaining"
   },
   "draft_list": {
     "title": "Draft List",
     "no_drafts": "No drafts available",
     "delete_confirm_title": "Delete Confirmation",
     "delete_confirm_message": "Are you sure you want to delete this draft?"
+  },
+  "countdown": {
+    "after_weeks": "{{count}} weeks",
+    "after_days": "{{count}} days",
+    "after_hours": "{{count}} hours",
+    "after_minutes": "{{count}} minutes",
+    "passed_minutes": "{{count}} minutes ago",
+    "passed_hours": "{{count}} hours ago",
+    "passed_days": "{{count}} days ago",
+    "passed_weeks": "{{count}} weeks ago",
+    "after_days_later": "{{count}} days later",
+    "passed_days_later": "{{count}} days ago"
   }
 }

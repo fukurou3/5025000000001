@@ -1,11 +1,6 @@
-// app/(tabs)/add.tsx
+// app/(tabs)/add_edit/add.tsx
 
-import React, {
-  useState,
-  useEffect,
-  useCallback,
-  useContext,
-} from 'react';
+import React, { useState, useEffect, useCallback, useContext } from 'react';
 import {
   View,
   Text,
@@ -148,7 +143,7 @@ const createStyles = (
       padding: 13,
       borderRadius: 8,
       marginBottom: 16,
-      fontSize: fontSizes[fsKey],           // ← ユーザー入力文字も大きく
+      fontSize: fontSizes[fsKey],
     },
     pickerButton: {
       backgroundColor: isDark ? DARK_INPUT_BG : LIGHT_INPUT_BG,
@@ -327,6 +322,7 @@ export default function AddTaskScreen() {
     'minutes' | 'hours' | 'days'
   >('hours');
   const [customAmount, setCustomAmount] = useState(1);
+  const [folder, setFolder] = useState<string>(''); // フォルダ選択用
 
   const clearForm = useCallback(() => {
     setCurrentDraftId(null);
@@ -338,6 +334,7 @@ export default function AddTaskScreen() {
     setNotifyEnabled(true);
     setCustomUnit('hours');
     setCustomAmount(1);
+    setFolder(''); // リセット
     resetUnsaved();
   }, [resetUnsaved]);
 
@@ -447,6 +444,7 @@ export default function AddTaskScreen() {
       notifyEnabled,
       customUnit,
       customAmount,
+      folder,
     };
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
     const tasks = raw ? JSON.parse(raw) : [];
@@ -465,6 +463,7 @@ export default function AddTaskScreen() {
     notifyEnabled,
     customUnit,
     customAmount,
+    folder,
     clearForm,
     router,
     t,
@@ -485,6 +484,7 @@ export default function AddTaskScreen() {
       notifyEnabled,
       customUnit,
       customAmount,
+      folder,
     };
     const raw = await AsyncStorage.getItem(DRAFTS_KEY);
     const drafts = raw ? JSON.parse(raw) : [];
@@ -509,6 +509,7 @@ export default function AddTaskScreen() {
     notifyEnabled,
     customUnit,
     customAmount,
+    folder,
     currentDraftId,
     clearForm,
     router,
@@ -518,9 +519,7 @@ export default function AddTaskScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.appBar}>
-        <Text style={styles.appBarTitle}>
-          {t('add_task.title')}
-        </Text>
+        <Text style={styles.appBarTitle}>{t('add_task.title')}</Text>
         <TouchableOpacity
           style={styles.draftsButton}
           onPress={() => router.push('/(tabs)/drafts')}
@@ -536,9 +535,7 @@ export default function AddTaskScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView
-        contentContainerStyle={{ padding: 20 }}
-      >
+      <ScrollView contentContainerStyle={{ padding: 20 }}>
         {/* タイトル入力 */}
         <Text style={[styles.label, { color: subColor }]}>
           {t('add_task.input_title')}
@@ -547,9 +544,7 @@ export default function AddTaskScreen() {
           value={title}
           onChangeText={setTitle}
           placeholder={t('add_task.input_title_placeholder')}
-          placeholderTextColor={
-            isDark ? DARK_PLACEHOLDER : LIGHT_PLACEHOLDER
-          }
+          placeholderTextColor={isDark ? DARK_PLACEHOLDER : LIGHT_PLACEHOLDER}
           multiline
           style={[styles.input, { minHeight: 40 }]}
         />
@@ -562,17 +557,12 @@ export default function AddTaskScreen() {
           value={memo}
           onChangeText={setMemo}
           placeholder={t('add_task.memo_placeholder')}
-          placeholderTextColor={
-            isDark ? DARK_PLACEHOLDER : LIGHT_PLACEHOLDER
-          }
+          placeholderTextColor={isDark ? DARK_PLACEHOLDER : LIGHT_PLACEHOLDER}
           multiline
           onContentSizeChange={(
             e: NativeSyntheticEvent<TextInputContentSizeChangeEventData>
           ) => setMemoHeight(e.nativeEvent.contentSize.height)}
-          style={[
-            styles.input,
-            { height: Math.max(40, memoHeight) },
-          ]}
+          style={[styles.input, { height: Math.max(40, memoHeight) }]}
         />
 
         {/* 写真 */}
@@ -603,14 +593,8 @@ export default function AddTaskScreen() {
               showsHorizontalScrollIndicator={false}
             >
               {imageUris.map((uri) => (
-                <View
-                  key={uri}
-                  style={styles.previewWrapper}
-                >
-                  <Image
-                    source={{ uri }}
-                    style={styles.previewImage}
-                  />
+                <View key={uri} style={styles.previewWrapper}>
+                  <Image source={{ uri }} style={styles.previewImage} />
                   <TouchableOpacity
                     style={styles.removeIcon}
                     onPress={() => handleRemoveImage(uri)}
@@ -626,6 +610,20 @@ export default function AddTaskScreen() {
             </ScrollView>
           </View>
         )}
+
+        {/* フォルダ選択 */}
+        <Text style={[styles.label, { color: subColor }]}>フォルダ</Text>
+        <View style={styles.fieldWrapper}>
+          <Picker
+            selectedValue={folder}
+            onValueChange={(v) => setFolder(v)}
+            style={styles.slotPicker}
+          >
+            <Picker.Item label="フォルダなし" value="" />
+            <Picker.Item label="仕事用" value="仕事用" />
+            <Picker.Item label="プライベート" value="プライベート" />
+          </Picker>
+        </View>
 
         {/* 期限＋通知 */}
         <View style={styles.notifyContainer}>
@@ -656,11 +654,8 @@ export default function AddTaskScreen() {
             </View>
           )}
 
-          {/* 通知設定 */}
           <View style={styles.notifyHeader}>
-            <Text
-              style={[styles.notifyLabel, { color: subColor }]}
-            >
+            <Text style={[styles.notifyLabel, { color: subColor }]}>
               {t('add_task.notification')}
             </Text>
             <TouchableOpacity
@@ -674,9 +669,7 @@ export default function AddTaskScreen() {
                         : LIGHT_INPUT_BG,
                     },
               ]}
-              onPress={() =>
-                setNotifyEnabled((v) => !v)
-              }
+              onPress={() => setNotifyEnabled((v) => !v)}
             >
               <View
                 style={[
@@ -689,48 +682,31 @@ export default function AddTaskScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* 通知オフセット設定 */}
           {notifyEnabled && (
             <View style={styles.slotPickerRow}>
               <View
-                style={[
-                  styles.fieldWrapper,
-                  styles.slotPickerWrapper,
-                ]}
+                style={[styles.fieldWrapper, styles.slotPickerWrapper]}
               >
                 <Picker
                   mode={
-                    Platform.OS === 'android'
-                      ? 'dropdown'
-                      : 'dialog'
+                    Platform.OS === 'android' ? 'dropdown' : 'dialog'
                   }
                   selectedValue={customAmount}
                   onValueChange={setCustomAmount}
                   style={styles.slotPicker}
-                  dropdownIconColor={
-                    isDark ? '#fff' : '#000'
-                  }
+                  dropdownIconColor={isDark ? '#fff' : '#000'}
                 >
                   {getRange(customUnit).map((n) => (
-                    <Picker.Item
-                      key={n}
-                      label={`${n}`}
-                      value={n}
-                    />
+                    <Picker.Item key={n} label={`${n}`} value={n} />
                   ))}
                 </Picker>
               </View>
               <View
-                style={[
-                  styles.fieldWrapper,
-                  styles.slotPickerWrapper,
-                ]}
+                style={[styles.fieldWrapper, styles.slotPickerWrapper]}
               >
                 <Picker
                   mode={
-                    Platform.OS === 'android'
-                      ? 'dropdown'
-                      : 'dialog'
+                    Platform.OS === 'android' ? 'dropdown' : 'dialog'
                   }
                   selectedValue={customUnit}
                   onValueChange={(v) => {
@@ -738,9 +714,7 @@ export default function AddTaskScreen() {
                     setCustomAmount(1);
                   }}
                   style={styles.slotPicker}
-                  dropdownIconColor={
-                    isDark ? '#fff' : '#000'
-                  }
+                  dropdownIconColor={isDark ? '#fff' : '#000'}
                 >
                   <Picker.Item
                     label={t('add_task.minutes_before')}
@@ -760,7 +734,6 @@ export default function AddTaskScreen() {
           )}
         </View>
 
-        {/* 保存ボタン */}
         <View style={styles.buttonRow}>
           <TouchableOpacity
             style={styles.saveButton}

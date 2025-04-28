@@ -20,7 +20,7 @@ function InnerLayout() {
   const { colorScheme } = useAppTheme();
 
   return (
-    <NavThemeProvider value={ colorScheme === 'dark' ? DarkTheme : DefaultTheme }>
+    <NavThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" />
