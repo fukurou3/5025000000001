@@ -20,9 +20,10 @@ import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
 import { fontSizes } from '@/constants/fontSizes';
 import { FontSizeContext } from '@/context/FontSizeContext';
-import { createStyles } from './taskStyles';
-import { Task } from './taskTypes';
-import { getTimeText, getTimeColor } from './taskUtils';
+import { createStyles } from '../../lib/tasks/taskStyles';
+import { Task } from '../../lib/tasks/taskTypes';
+import { getTimeText, getTimeColor } from '../../lib/tasks/taskUtils';
+
 import relativeTime from 'dayjs/plugin/relativeTime';
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
@@ -85,7 +86,7 @@ export default function TasksScreen() {
     saveTasks(updated);
   };
 
-  const navigateToAdd = () => router.push('/add');
+  const navigateToAdd = () => router.push('/add_edit/add');
 
   const filtered = tasks.filter((t) => (tab === 'completed' ? t.done : !t.done));
   const sections =
@@ -288,7 +289,7 @@ export default function TasksScreen() {
               <TouchableOpacity
                 style={styles.taskCenter}
                 onPress={() =>
-                  router.push({ pathname: '/task-detail', params: { id: item.id } })
+                  router.push({ pathname: '/task-detail/task-detail', params: { id: item.id } })
                 }
               >
                 <Text style={styles.taskTitle} numberOfLines={1}>

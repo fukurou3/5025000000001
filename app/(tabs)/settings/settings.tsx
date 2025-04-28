@@ -59,7 +59,7 @@ export default function SettingsScreen() {
           <Text style={styles.label}>{t('settings.language')}</Text>
           <TouchableOpacity
             style={styles.optionRow}
-            onPress={() => router.push('/language')}
+            onPress={() => router.push('/settings/language')}
           >
             <Text style={styles.optionLabel}>
               {i18n.language.startsWith('ja')

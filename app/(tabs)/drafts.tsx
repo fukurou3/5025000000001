@@ -137,7 +137,7 @@ const createStyles = (isDark: boolean, subColor: string) =>
     const renderItem = ({ item }: { item: Draft }) => (
       <TouchableOpacity
         style={styles.draftItem}
-        onPress={() => router.push({ pathname: '/edit-draft', params: { draftId: item.id } })}
+        onPress={() => router.push({ pathname: '/add_edit/edit-draft', params: { draftId: item.id } })}
         onLongPress={() => deleteDraft(item.id)}
       >
         <Text style={styles.draftTitle}>{item.title}</Text>

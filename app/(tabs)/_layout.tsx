@@ -43,7 +43,7 @@ export default function Layout() {
       }}
     >
       <Tabs.Screen
-        name="calendar"
+        name="calendar/calendar"
         options={{
           title: 'カレンダー',
           tabBarIcon: ({ color, size }) => (
@@ -52,7 +52,7 @@ export default function Layout() {
         }}
       />
       <Tabs.Screen
-        name="TasksScreen"
+        name="tasks/TasksScreen"
         options={{
           title: 'タスク一覧',
           tabBarIcon: ({ color, size }) => (
@@ -61,7 +61,7 @@ export default function Layout() {
         }}
       />
       <Tabs.Screen
-        name="settings"
+        name="settings/settings"
         options={{
           title: '設定',
           tabBarIcon: ({ color, size }) => (
@@ -69,27 +69,21 @@ export default function Layout() {
           ),
         }}
       />
-      <Tabs.Screen
-        name="test"
-        options={{
-          title: 'テスト画面',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="flask-outline" size={size} color={color} />
-          ),
-        }}
-      />
 
       {/* 非表示にするページたち */}
       {[
-        "tasks",
-        "add",
+        "add_edit/add",
+        "add_edit/edit-draft",
+        "add_edit/edit-task",
+
+        "settings/language",
+
+        "task-detail/task-detail",
+
+        "tasks/tasks",
         "drafts",
         "index",
-        "edit-draft",
-        "edit-task",
         "explore",
-        "task-detail",
-        "language",
       ].map((name) => (
         <Tabs.Screen
           key={name}

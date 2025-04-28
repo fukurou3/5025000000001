@@ -144,7 +144,7 @@ const createStyles = (isDark: boolean, subColor: string) =>
                 const list = JSON.parse(raw);
                 const updated = list.filter((t: Task) => t.id !== id);
                 await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-                router.replace('/(tabs)/tasks');
+                router.replace('/(tabs)/tasks/tasks');
               } catch (error) {
                 console.error('Failed to delete task', error);
               }

@@ -19,7 +19,7 @@ export default function CalendarScreen() {
       friction: 3,
       useNativeDriver: true,
     }).start(() => {
-      router.replace('/(tabs)/tasks') // タスク一覧に遷移
+      router.replace('/(tabs)/tasks/tasks') // タスク一覧に遷移
     })
   }
 
@@ -27,7 +27,7 @@ export default function CalendarScreen() {
     <View style={styles.container}>
       <Pressable onPressIn={onPressIn} onPressOut={onPressOut}>
         <Animated.Image
-          source={require('../../assets/images/k_AIOl40_400x400.jpg')} 
+          source={require('../../../assets/images/k_AIOl40_400x400.jpg')} 
           style={[styles.image, { transform: [{ scale: scaleAnim }] }]}
         />
       </Pressable>

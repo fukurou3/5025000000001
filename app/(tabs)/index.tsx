@@ -20,7 +20,6 @@ export default function HomeScreen() {
         <HelloWave />
       </ThemedView>
 
-      {/* ✅ ここにテストボタンを追加 */}
       <View style={{ paddingHorizontal: 16, marginBottom: 16 }}>
         <TouchableOpacity
           onPress={() => {
