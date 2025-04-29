@@ -1,4 +1,5 @@
 // /app/(tabs)/tasks/TaskFolder.tsx
+
 import React, { useContext } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -64,6 +65,7 @@ export function TaskFolder({
     week: [],
     later: [],
   };
+
   const now = dayjs();
   tasks.forEach((task) => {
     const deadline = dayjs(task.deadline);
@@ -103,7 +105,11 @@ export function TaskFolder({
         },
       ]}
     >
-      <TouchableOpacity onPress={handleFolderPress} style={styles.folderHeader}>
+      <TouchableOpacity
+        onPress={handleFolderPress}
+        onLongPress={() => onLongPressSelect('folder', folderName)}
+        style={styles.folderHeader}
+      >
         <View style={styles.folderTitleRow}>
           {isSelecting && (
             <Ionicons
@@ -116,8 +122,23 @@ export function TaskFolder({
           <Ionicons name="folder-outline" size={24} color={subColor} />
           <Text style={styles.folderTitleText}>{folderLabel}</Text>
         </View>
+
         {!isSelecting && hasWarn && (
           <Ionicons name="warning-outline" size={22} color={subColor} />
+        )}
+
+        {isReordering && (
+          <View style={{ flexDirection: 'row' }}>
+            <TouchableOpacity onPress={() => moveFolder(folderName, 'up')}>
+              <Ionicons name="arrow-up-outline" size={20} color={subColor} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => moveFolder(folderName, 'down')}>
+              <Ionicons name="arrow-down-outline" size={20} color={subColor} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={stopReordering}>
+              <Ionicons name="checkmark-outline" size={20} color={subColor} />
+            </TouchableOpacity>
+          </View>
         )}
       </TouchableOpacity>
 
@@ -136,10 +157,8 @@ export function TaskFolder({
                       task={item}
                       onToggle={onToggleTaskDone}
                       isSelecting={isSelecting}
-                      selectedTaskIds={selectedIds}
-                      onLongPressSelect={(id) =>
-                        onLongPressSelect('task', id)
-                      }
+                      selectedIds={selectedIds}
+                      onLongPressSelect={(id) => onLongPressSelect('task', id)}
                     />
                   ))}
                 </View>

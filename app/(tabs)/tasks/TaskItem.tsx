@@ -1,4 +1,5 @@
 // /app/(tabs)/tasks/TaskItem.tsx
+
 import React, { useContext, useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,17 +14,17 @@ import dayjs from 'dayjs';
 type Props = {
   task: Task;
   onToggle: (id: string) => void;
-  onLongPressSelect?: (taskId: string) => void;
-  isSelecting?: boolean;
-  selectedTaskIds?: string[];
+  isSelecting: boolean;
+  selectedIds: string[];
+  onLongPressSelect: (id: string) => void;
 };
 
 export function TaskItem({
   task,
   onToggle,
-  onLongPressSelect,
   isSelecting,
-  selectedTaskIds = [],
+  selectedIds,
+  onLongPressSelect,
 }: Props) {
   const { colorScheme, subColor } = useAppTheme();
   const isDark = colorScheme === 'dark';
@@ -50,15 +51,9 @@ export function TaskItem({
       const hours = deadline.diff(now, 'hour');
       const minutes = deadline.diff(now, 'minute');
 
-      if (weeks >= 1) {
-        return t('countdown.after_weeks', { count: weeks });
-      }
-      if (days >= 1) {
-        return t('countdown.after_days', { count: days });
-      }
-      if (hours >= 1) {
-        return t('countdown.after_hours', { count: hours });
-      }
+      if (weeks >= 1) return t('countdown.after_weeks', { count: weeks });
+      if (days >= 1) return t('countdown.after_days', { count: days });
+      if (hours >= 1) return t('countdown.after_hours', { count: hours });
       return t('countdown.after_minutes', { count: minutes });
     } else {
       const weeksPassed = now.diff(deadline, 'week');
@@ -66,33 +61,27 @@ export function TaskItem({
       const hoursPassed = now.diff(deadline, 'hour');
       const minutesPassed = now.diff(deadline, 'minute');
 
-      if (weeksPassed >= 1) {
-        return t('countdown.passed_weeks', { count: weeksPassed });
-      }
-      if (daysPassed >= 1) {
-        return t('countdown.passed_days', { count: daysPassed });
-      }
-      if (hoursPassed >= 1) {
-        return t('countdown.passed_hours', { count: hoursPassed });
-      }
+      if (weeksPassed >= 1) return t('countdown.passed_weeks', { count: weeksPassed });
+      if (daysPassed >= 1) return t('countdown.passed_days', { count: daysPassed });
+      if (hoursPassed >= 1) return t('countdown.passed_hours', { count: hoursPassed });
       return t('countdown.passed_minutes', { count: minutesPassed });
     }
   };
 
   const handlePress = () => {
-    if (isSelecting && onLongPressSelect) {
+    if (isSelecting) {
       onLongPressSelect(task.id);
     } else {
       router.push(`/task-detail/${task.id}`);
     }
   };
 
-  const isSelected = selectedTaskIds.includes(task.id);
+  const isSelected = selectedIds.includes(task.id);
 
   return (
     <TouchableOpacity
       onPress={handlePress}
-      onLongPress={() => onLongPressSelect && onLongPressSelect(task.id)}
+      onLongPress={() => onLongPressSelect(task.id)}
     >
       <View style={styles.taskItem}>
         {!isSelecting && (
