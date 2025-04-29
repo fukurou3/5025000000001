@@ -184,4 +184,19 @@ export const createStyles = (
       color: isDark ? '#888' : '#888',
       textAlign: 'center',
     },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+    },
+    right: {
+      marginLeft: 8,
+      justifyContent: 'center',
+      alignItems: 'flex-end',
+    },
+    deadline: {
+      fontSize: 12,
+      fontWeight: 'bold',
+    },    
   });

@@ -1,5 +1,4 @@
 // /app/(tabs)/tasks/RenameFolderModal.tsx
-
 import React, { useState } from 'react';
 import { Modal, View, Text, TextInput, TouchableOpacity } from 'react-native';
 import { useAppTheme } from '@/hooks/ThemeContext';

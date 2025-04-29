@@ -1,5 +1,4 @@
 // /app/(tabs)/tasks/TaskItem.tsx
-
 import React, { useContext, useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -34,7 +33,6 @@ export function TaskItem({
   const router = useRouter();
   const [now, setNow] = useState(dayjs());
 
-  // 定期的にnowを更新
   useEffect(() => {
     const diffMinutes = Math.abs(dayjs(task.deadline).diff(dayjs(), 'minute'));
     const intervalMs = diffMinutes <= 120 ? 60000 : 600000;
@@ -42,7 +40,6 @@ export function TaskItem({
     return () => clearInterval(id);
   }, [task.deadline]);
 
-  // 時間表示ロジック
   const getTimeLabel = () => {
     const deadline = dayjs(task.deadline);
     const diffMs = deadline.diff(now);

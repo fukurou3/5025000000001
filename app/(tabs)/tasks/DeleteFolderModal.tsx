@@ -1,5 +1,4 @@
 // /app/(tabs)/tasks/DeleteFolderModal.tsx
-
 import React from 'react';
 import { Modal, View, Text, TouchableOpacity } from 'react-native';
 import { useAppTheme } from '@/hooks/ThemeContext';

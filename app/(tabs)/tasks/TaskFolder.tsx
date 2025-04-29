@@ -1,5 +1,4 @@
 // /app/(tabs)/tasks/TaskFolder.tsx
-
 import React, { useContext } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -58,7 +57,6 @@ export function TaskFolder({
   );
   const isSelected = selectedIds.includes(folderName);
 
-  // セクション別にタスクを振り分け
   const sections: Record<string, Task[]> = {
     expired: [],
     today: [],

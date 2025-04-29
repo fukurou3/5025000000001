@@ -1,5 +1,4 @@
-// app/(tabs)/SelectionContext.tsx
-
+// /app/(tabs)/SelectionContext.tsx
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 
 type SelectionContextType = {
