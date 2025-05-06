@@ -323,6 +323,10 @@ export default function AddTaskScreen() {
   >('hours');
   const [customAmount, setCustomAmount] = useState(1);
   const [folder, setFolder] = useState<string>(''); // フォルダ選択用
+  const [existingFolders, setExistingFolders] = useState<string[]>([]);
+  const [showFolderInput, setShowFolderInput] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+
 
   const clearForm = useCallback(() => {
     setCurrentDraftId(null);
@@ -337,6 +341,18 @@ export default function AddTaskScreen() {
     setFolder(''); // リセット
     resetUnsaved();
   }, [resetUnsaved]);
+  useEffect(() => {
+    const loadFolders = async () => {
+      const raw = await AsyncStorage.getItem(STORAGE_KEY);
+      const tasks = raw ? JSON.parse(raw) : [];
+      const folders = Array.from(
+        new Set(tasks.map((t: any) => t.folder ?? '').filter((f: string) => f))
+      );
+      setExistingFolders(folders as string[]);
+    };
+    loadFolders();
+  }, []);
+
 
   useEffect(() => {
     const unsub = navigation.addListener(
@@ -612,18 +628,40 @@ export default function AddTaskScreen() {
         )}
 
         {/* フォルダ選択 */}
-        <Text style={[styles.label, { color: subColor }]}>フォルダ</Text>
+        <Text style={[styles.label, { color: subColor }]}>{t('add_task.folder')}</Text>
         <View style={styles.fieldWrapper}>
           <Picker
-            selectedValue={folder}
-            onValueChange={(v) => setFolder(v)}
+            selectedValue={showFolderInput ? '__new__' : folder}
+            onValueChange={(value) => {
+              if (value === '__new__') {
+                setShowFolderInput(true);
+                setFolder('');
+              } else {
+                setShowFolderInput(false);
+                setFolder(value);
+              }
+            }}
             style={styles.slotPicker}
           >
-            <Picker.Item label="フォルダなし" value="" />
-            <Picker.Item label="仕事用" value="仕事用" />
-            <Picker.Item label="プライベート" value="プライベート" />
+            <Picker.Item label={t('add_task.no_folder')} value="" />
+            {existingFolders.map((name) => (
+              <Picker.Item key={name} label={name} value={name} />
+            ))}
+            <Picker.Item label={t('add_task.create_new_folder')} value="__new__" />
           </Picker>
         </View>
+        {showFolderInput && (
+          <TextInput
+            value={newFolderName}
+            onChangeText={(text) => {
+              setNewFolderName(text);
+              setFolder(text);
+            }}
+            placeholder={t('add_task.new_folder_placeholder')}
+            placeholderTextColor={isDark ? DARK_PLACEHOLDER : LIGHT_PLACEHOLDER}
+            style={styles.input}
+          />
+        )}
 
         {/* 期限＋通知 */}
         <View style={styles.notifyContainer}>
