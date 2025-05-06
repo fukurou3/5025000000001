@@ -312,7 +312,7 @@ export default function TasksScreen() {
         </ScrollView>
       )}
       {!isSelecting && (
-        <TouchableOpacity style={styles.fab} onPress={() => router.push('/add_edit/add')}>
+        <TouchableOpacity style={styles.fab} onPress={() => router.push('/add')}>
           <Ionicons name="add" size={32} color="#fff" />
         </TouchableOpacity>
       )}

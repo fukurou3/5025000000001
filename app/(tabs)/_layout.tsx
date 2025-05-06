@@ -84,7 +84,7 @@ function InnerTabs() {
       <Tabs.Screen name="tasks/TasksScreen" />
       <Tabs.Screen name="settings/settings" />
       {[
-        'add_edit/add',
+        'add/index',
         'add_edit/edit-draft',
         'add_edit/edit-task',
         'settings/language',
