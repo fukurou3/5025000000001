@@ -52,7 +52,10 @@
     "alert_no_title": "タイトルは必須です",
     "alert_discard_changes_title": "変更を破棄しますか？",
     "alert_discard_changes_message": "保存されていない内容は失われます。",
-    "alert_discard": "破棄"
+    "alert_discard": "破棄",
+    "folder": "フォルダー選択",
+    "no_folder": "フォルダーなし",
+    "create_new_folder": "フォルダーを作成"
   },
   "edit_task": {
     "title": "編集",
@@ -125,7 +128,7 @@
     "reorder_folder_action": "並べ替え",
     "delete_folder_confirm_title": "フォルダを削除しますか？",
     "delete_folder_confirm_message": "このフォルダ内のすべてのタスクも削除されます。本当によろしいですか？",
-    "rename_folder_placeholder": "新しいフォルダ名を入力してください",
+    "rename_folder_placeholder": "フォルダ名を入力",
     "select_delete_mode": "削除方法を選択してください",
     "delete_folder_and_tasks": "フォルダと中のタスクを削除",
     "delete_folder_only": "フォルダのみ削除してタスクを残す",
@@ -179,4 +182,5 @@
     "passed_days": "{{count}}日経過",
     "passed_weeks": "{{count}}週間経過"
   }
+  
 }

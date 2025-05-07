@@ -1,4 +1,4 @@
-import { ViewStyle, TextStyle, ImageStyle } from 'react-native';
+import { ViewStyle, TextStyle, ImageStyle, StyleProp } from 'react-native';
 
 export interface Task {
   id: string;
@@ -15,6 +15,7 @@ export interface Task {
 export type Draft = Task;
 
 export type AddTaskStyles = {
+  folderInput: ViewStyle; 
   container: ViewStyle;
   appBar: ViewStyle;
   appBarTitle: TextStyle;
@@ -57,6 +58,6 @@ export interface FieldProps {
   onChangeText: (text: string) => void;
   placeholder: string;
   placeholderTextColor: string;
-  labelStyle?: TextStyle;
-  inputStyle?: TextStyle;
+  labelStyle?: StyleProp<TextStyle>;
+  inputStyle?: StyleProp<TextStyle>;
 }

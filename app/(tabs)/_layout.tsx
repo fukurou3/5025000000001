@@ -3,7 +3,7 @@ import React, { useContext } from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { SelectionProvider, useSelection } from './SelectionContext';
+import { SelectionProvider, useSelection } from './_SelectionContext';
 import { useAppTheme } from '@/hooks/ThemeContext';
 import { FontSizeContext } from '@/context/FontSizeContext';
 import { Text } from 'react-native';

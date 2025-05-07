@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { Task } from '../types';
-import { STORAGE_KEY } from '../constants';
+import type { Task } from '../_types';
+import { STORAGE_KEY } from '../_constants';
 
 export const useFolders = (): string[] => {
   const [folders, setFolders] = useState<string[]>([]);

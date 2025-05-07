@@ -21,13 +21,13 @@ import relativeTime from 'dayjs/plugin/relativeTime';
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 import { useAppTheme } from '@/hooks/ThemeContext';
-import { useSelection } from '../SelectionContext';
+import { useSelection } from '../_SelectionContext';
 import { useTranslation } from 'react-i18next';
 import { FontSizeContext } from '@/context/FontSizeContext';
-import { createStyles } from '../../lib/tasks/taskStyles';
-import { Task, FolderOrder, SelectableItem } from '../../lib/tasks/taskTypes';
-import { TaskFolder } from './TaskFolder';
-import { RenameFolderModal } from './RenameFolderModal';
+import { createStyles } from '../../lib/_tasks/_taskStyles';
+import { Task, FolderOrder, SelectableItem } from '../../lib/_tasks/_taskTypes';
+import { TaskFolder } from './_TaskFolder';
+import { RenameFolderModal } from './_RenameFolderModal';
 
 dayjs.locale('ja');
 dayjs.extend(relativeTime);
@@ -312,7 +312,7 @@ export default function TasksScreen() {
         </ScrollView>
       )}
       {!isSelecting && (
-        <TouchableOpacity style={styles.fab} onPress={() => router.push('/add')}>
+        <TouchableOpacity style={styles.fab} onPress={() => router.push('../add')}>
           <Ionicons name="add" size={32} color="#fff" />
         </TouchableOpacity>
       )}

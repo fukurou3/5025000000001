@@ -3,8 +3,8 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Task } from '../../lib/tasks/taskTypes';
-import { createStyles } from '../../lib/tasks/taskStyles';
+import { Task } from '../../lib/_tasks/_taskTypes';
+import { createStyles } from '../../lib/_tasks/_taskStyles';
 import { useAppTheme } from '@/hooks/ThemeContext';
 import { useTranslation } from 'react-i18next';
 import { FontSizeContext } from '@/context/FontSizeContext';

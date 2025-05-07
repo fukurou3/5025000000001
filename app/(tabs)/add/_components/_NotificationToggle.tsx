@@ -1,7 +1,7 @@
 import React from 'react';
 import { TouchableOpacity, View } from 'react-native';
-import type { AddTaskStyles } from '../types';
-import { LIGHT_INPUT_BG, DARK_INPUT_BG } from '../constants';
+import type { AddTaskStyles } from '../_types';
+import { LIGHT_INPUT_BG, DARK_INPUT_BG } from '../_constants';
 
 interface NotificationToggleProps {
   notifyEnabled: boolean;

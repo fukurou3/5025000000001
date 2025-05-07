@@ -53,7 +53,10 @@
     "alert_no_title": "Title is required",
     "alert_discard_changes_title": "Discard Changes?",
     "alert_discard_changes_message": "Unsaved changes will be lost.",
-    "alert_discard": "Discard"
+    "alert_discard": "Discard",
+    "folder": "Select Folder",
+    "no_folder": "No Folder",
+    "create_new_folder": "Create New Folder"
   },
   "edit_task": {
     "title": "Edit Task",
@@ -132,7 +135,7 @@
     "reorder_folder_action": "Reorder",
     "delete_folder_confirm_title": "Delete Folder?",
     "delete_folder_confirm_message": "All tasks in this folder will also be deleted. Are you sure?",
-    "rename_folder_placeholder": "Enter a new folder name",
+    "rename_folder_placeholder": "Folder name is required",
     "select_delete_mode": "Select delete method",
     "delete_folder_and_tasks": "Delete folder and all tasks",
     "delete_folder_only": "Delete folder only (keep tasks)",

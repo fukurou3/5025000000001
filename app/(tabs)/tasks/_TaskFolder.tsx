@@ -3,11 +3,11 @@
 import React, { useContext } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { createStyles } from '../../lib/tasks/taskStyles';
+import { createStyles } from '../../lib/_tasks/_taskStyles';
 import { useAppTheme } from '@/hooks/ThemeContext';
 import { FontSizeContext } from '@/context/FontSizeContext';
-import { Task } from '../../lib/tasks/taskTypes';
-import { TaskItem } from './TaskItem';
+import { Task } from '../../lib/_tasks/_taskTypes';
+import { TaskItem } from './_TaskItem';
 import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
 

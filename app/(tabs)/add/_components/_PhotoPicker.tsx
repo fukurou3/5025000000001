@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { fontSizes } from '@/constants/fontSizes';
-import type { AddTaskStyles } from '../types';
+import type { AddTaskStyles } from '../_types';
 import { FontSizeKey } from '@/context/FontSizeContext';
 
 interface PhotoPickerProps {

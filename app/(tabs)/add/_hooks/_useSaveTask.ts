@@ -4,8 +4,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import uuid from 'react-native-uuid';
 import Toast from 'react-native-toast-message';
 import { useRouter } from 'expo-router';
-import type { Task, Draft } from '../types';
-import { STORAGE_KEY, DRAFTS_KEY } from '../constants';
+import type { Task, Draft } from '../_types';
+import { STORAGE_KEY, DRAFTS_KEY } from '../_constants';
 
 interface SaveTaskParams {
   title: string;
