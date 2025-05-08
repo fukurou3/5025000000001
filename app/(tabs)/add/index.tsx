@@ -1,19 +1,8 @@
-import React, {
-  useState,
-  useEffect,
-  useCallback,
-  useContext,
-} from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
-  Platform,
-} from 'react-native';
+// app/(tabs)/add/index.tsx
+
+import React, { useState, useEffect, useCallback, useContext } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Picker } from '@react-native-picker/picker';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -38,6 +27,7 @@ import { DeadlinePicker } from './_components/_DeadlinePicker';
 import { NotificationToggle } from './_components/_NotificationToggle';
 import { ActionButtons } from './_components/_ActionButtons';
 import { FolderSelectorModal } from './_components/FolderSelectorModal';
+import { WheelPickerModal } from './_components/WheelPickerModal';
 import {
   LIGHT_PLACEHOLDER,
   DARK_PLACEHOLDER,
@@ -63,8 +53,9 @@ export default function AddTaskScreen() {
   const { reset: resetUnsaved } = useUnsavedStore();
   const styles = createStyles(isDark, subColor, fsKey);
 
-  const [currentDraftId, setCurrentDraftId] =
-    useState<string | null>(draftId ?? null);
+  const [currentDraftId, setCurrentDraftId] = useState<string | null>(
+    draftId ?? null,
+  );
   const [title, setTitle] = useState('');
   const [memo, setMemo] = useState('');
   const [memoHeight, setMemoHeight] = useState(40);
@@ -73,9 +64,10 @@ export default function AddTaskScreen() {
     'minutes' | 'hours' | 'days'
   >('hours');
   const [customAmount, setCustomAmount] = useState(1);
-  const [folder, setFolder] = useState('');
   const [showFolderModal, setShowFolderModal] = useState(false);
   const [folders, setFolders] = useState<string[]>([]);
+  const [folder, setFolder] = useState('');
+  const [showWheelModal, setShowWheelModal] = useState(false);
 
   const { imageUris, pickImages, removeImage } = useImagePicker();
   const {
@@ -114,13 +106,12 @@ export default function AddTaskScreen() {
               style: 'destructive',
               onPress: () => {
                 clearForm();
-                if (e.data?.action)
-                  navigation.dispatch(e.data.action);
+                if (e.data?.action) navigation.dispatch(e.data.action);
               },
             },
-          ]
+          ],
         );
-      }
+      },
     );
     return unsub;
   }, [navigation, title, memo, imageUris, clearForm, t]);
@@ -128,17 +119,13 @@ export default function AddTaskScreen() {
   const getRange = useCallback(
     (unit: 'minutes' | 'hours' | 'days') => {
       const max =
-        unit === 'minutes'
-          ? 60
-          : unit === 'hours'
-          ? 48
-          : 31;
+        unit === 'minutes' ? 60 : unit === 'hours' ? 48 : 31;
       return Array.from({ length: max }, (_, i) => i + 1);
     },
-    []
+    [],
   );
 
-  const existingFolders = useFolders();
+  const existingFolders = useFolders(showFolderModal);
   useEffect(() => {
     if (showFolderModal) {
       setFolders(existingFolders);
@@ -197,7 +184,7 @@ export default function AddTaskScreen() {
           placeholderTextColor={
             isDark ? DARK_PLACEHOLDER : LIGHT_PLACEHOLDER
           }
-          onContentSizeChange={e =>
+          onContentSizeChange={(e) =>
             setMemoHeight(e.nativeEvent.contentSize.height)
           }
           height={memoHeight}
@@ -237,7 +224,7 @@ export default function AddTaskScreen() {
         <FolderSelectorModal
           visible={showFolderModal}
           onClose={() => setShowFolderModal(false)}
-          onSubmit={name => {
+          onSubmit={(name) => {
             setFolder(name);
           }}
           folders={folders}
@@ -253,88 +240,39 @@ export default function AddTaskScreen() {
             styles={styles}
           />
           <View style={styles.notifyHeader}>
-            <Text
-              style={[styles.notifyLabel, { color: subColor }]}
-            >
+            <Text style={[styles.notifyLabel, { color: subColor }]}>
               {t('add_task.notification')}
             </Text>
             <NotificationToggle
               notifyEnabled={notifyEnabled}
-              onToggle={() =>
-                setNotifyEnabled(v => !v)
-              }
+              onToggle={() => setNotifyEnabled((v) => !v)}
               isDark={isDark}
               subColor={subColor}
               styles={styles}
             />
           </View>
           {notifyEnabled && (
-            <View style={styles.slotPickerRow}>
-              <View
-                style={[
-                  styles.fieldWrapper,
-                  styles.slotPickerWrapper,
-                ]}
+            <>
+              <TouchableOpacity
+                style={[styles.fieldWrapper, styles.slotPickerWrapper]}
+                onPress={() => setShowWheelModal(true)}
               >
-                <Picker
-                  mode={
-                    Platform.OS === 'android'
-                      ? 'dropdown'
-                      : 'dialog'
-                  }
-                  selectedValue={customAmount}
-                  onValueChange={setCustomAmount}
-                  style={styles.slotPicker}
-                  dropdownIconColor={
-                    isDark ? '#fff' : '#000'
-                  }
-                >
-                  {getRange(customUnit).map(n => (
-                    <Picker.Item
-                      key={n}
-                      label={`${n}`}
-                      value={n}
-                    />
-                  ))}
-                </Picker>
-              </View>
-              <View
-                style={[
-                  styles.fieldWrapper,
-                  styles.slotPickerWrapper,
-                ]}
-              >
-                <Picker
-                  mode={
-                    Platform.OS === 'android'
-                      ? 'dropdown'
-                      : 'dialog'
-                  }
-                  selectedValue={customUnit}
-                  onValueChange={v => {
-                    setCustomUnit(v);
-                    setCustomAmount(1);
-                  }}
-                  style={styles.slotPicker}
-                  dropdownIconColor={
-                    isDark ? '#fff' : '#000'
-                  }
-                >
-                  <Picker.Item
-                    label={t('add_task.minutes_before')}
-                    value="minutes"
-                  />
-                  <Picker.Item
-                    label={t('add_task.hours_before')}
-                    value="hours"
-                  />
-                  <Picker.Item
-                    label={t('add_task.days_before')}
-                    value="days"
-                  />
-                </Picker>
-              </View>
-            </View>
+                <Text style={[styles.label, { color: subColor }]}>
+                  {customAmount} {t(`add_task.${customUnit}_before`)}
+                </Text>
+              </TouchableOpacity>
+              <WheelPickerModal
+                visible={showWheelModal}
+                initialAmount={customAmount}
+                initialUnit={customUnit}
+                onConfirm={(amount, unit) => {
+                  setCustomAmount(amount);
+                  setCustomUnit(unit);
+                  setShowWheelModal(false);
+                }}
+                onCancel={() => setShowWheelModal(false)}
+              />
+            </>
           )}
         </View>
         <ActionButtons

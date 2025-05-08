@@ -1,39 +1,51 @@
+// app/(tabs)/add/_components/_NotificationToggle.tsx
+
 import React from 'react';
 import { TouchableOpacity, View } from 'react-native';
 import type { AddTaskStyles } from '../_types';
-import { LIGHT_INPUT_BG, DARK_INPUT_BG } from '../_constants';
 
-interface NotificationToggleProps {
+/** NotificationToggle に渡す props の型定義 */
+export interface NotificationToggleProps {
+  /** 通知オン／オフの状態 */
   notifyEnabled: boolean;
+  /** トグルボタンが押されたときのハンドラ */
   onToggle: () => void;
-  styles: AddTaskStyles;
-  subColor: string;
+  /** ダークモードかどうか */
   isDark: boolean;
+  /** サブカラー（オン時の背景色） */
+  subColor: string;
+  /** AddTaskScreen 側で作成したスタイルオブジェクト */
+  styles: AddTaskStyles;
 }
 
+/**
+ * 通知のオン／オフを切り替えるトグルスイッチコンポーネント
+ */
 export const NotificationToggle: React.FC<NotificationToggleProps> = ({
   notifyEnabled,
   onToggle,
-  styles,
-  subColor,
   isDark,
-}) => (
-  <TouchableOpacity
-    style={[
-      styles.toggleContainer,
-      notifyEnabled
-        ? { backgroundColor: subColor }
-        : { backgroundColor: isDark ? DARK_INPUT_BG : LIGHT_INPUT_BG },
-    ]}
-    onPress={onToggle}
-  >
-    <View
-      style={[
-        styles.toggleCircle,
-        notifyEnabled
-          ? { alignSelf: 'flex-end' }
-          : { alignSelf: 'flex-start' },
-      ]}
-    />
-  </TouchableOpacity>
-);
+  subColor,
+  styles,
+}) => {
+  return (
+    <TouchableOpacity onPress={onToggle}>
+      <View
+        style={[
+          styles.toggleContainer,
+          {
+            flexDirection: 'row',
+            justifyContent: notifyEnabled ? 'flex-end' : 'flex-start',
+            backgroundColor: notifyEnabled
+              ? subColor
+              : isDark
+                ? '#555'
+                : '#ccc',
+          },
+        ]}
+      >
+        <View style={styles.toggleCircle} />
+      </View>
+    </TouchableOpacity>
+  );
+};

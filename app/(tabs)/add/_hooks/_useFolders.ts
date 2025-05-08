@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Task } from '../_types';
 import { STORAGE_KEY } from '../_constants';
 
-export const useFolders = (): string[] => {
+export const useFolders = (trigger?: unknown): string[] => {
   const [folders, setFolders] = useState<string[]>([]);
 
   useEffect(() => {
@@ -21,7 +21,7 @@ export const useFolders = (): string[] => {
       setFolders(unique);
     };
     load();
-  }, []);
+  }, [trigger]);
 
   return folders;
 };
