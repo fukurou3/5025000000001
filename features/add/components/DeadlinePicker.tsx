@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, TouchableOpacity, Text, Platform } from 'react-native';
-import type { AddTaskStyles } from '../_types';
+import type { AddTaskStyles } from '../types';
 
 interface DeadlinePickerProps {
   deadline: Date;

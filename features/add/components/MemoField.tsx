@@ -6,7 +6,7 @@ import {
   NativeSyntheticEvent,
   TextInputContentSizeChangeEventData,
 } from 'react-native';
-import type { FieldProps } from '../_types';
+import type { FieldProps } from '../types';
 
 interface MemoFieldProps extends FieldProps {
   onContentSizeChange: (

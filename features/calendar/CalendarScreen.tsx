@@ -1,6 +1,7 @@
 import React, { useRef } from 'react'
 import { View, Pressable, Animated, StyleSheet, Image } from 'react-native'
 import { useRouter } from 'expo-router'
+import testImage from '@/assets/images/k_AIOl40_400x400.jpg'
 
 export default function CalendarScreen() {
   const router = useRouter()
@@ -8,7 +9,7 @@ export default function CalendarScreen() {
 
   const onPressIn = () => {
     Animated.spring(scaleAnim, {
-      toValue: 0.9, // 押されたとき少し小さく
+      toValue: 0.9,
       useNativeDriver: true,
     }).start()
   }
@@ -19,7 +20,7 @@ export default function CalendarScreen() {
       friction: 3,
       useNativeDriver: true,
     }).start(() => {
-      router.replace('/(tabs)/tasks/tasks') // タスク一覧に遷移
+      router.replace('/tasks') // ✅ 修正後
     })
   }
 
@@ -27,7 +28,7 @@ export default function CalendarScreen() {
     <View style={styles.container}>
       <Pressable onPressIn={onPressIn} onPressOut={onPressOut}>
         <Animated.Image
-          source={require('../../../assets/images/k_AIOl40_400x400.jpg')} 
+          source={testImage} // ✅ 修正後
           style={[styles.image, { transform: [{ scale: scaleAnim }] }]}
         />
       </Pressable>
@@ -38,8 +39,8 @@ export default function CalendarScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center', // 垂直中央
-    alignItems: 'center',     // 水平中央
+    justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: '#fff',
   },
   image: {

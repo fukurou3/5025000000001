@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native';
-import type { AddTaskStyles } from './_types';
+import type { AddTaskStyles } from './types';
 import { fontSizes } from '@/constants/fontSizes';
 import type { FontSizeKey } from '@/context/FontSizeContext';
 import {
@@ -13,7 +13,7 @@ import {
   DARK_REMOVE_BG,
   LIGHT_DRAFTS_BG,
   DARK_DRAFTS_BG,
-} from './_constants';
+} from './constants';
 
 export function createStyles(
   isDark: boolean,

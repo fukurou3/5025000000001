@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, TouchableOpacity, Text } from 'react-native';
-import type { AddTaskStyles } from '../_types';
+import type { AddTaskStyles } from '../types';
 
 interface ActionButtonsProps {
   onSave: () => void;

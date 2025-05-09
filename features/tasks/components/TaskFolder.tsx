@@ -1,13 +1,11 @@
-// /app/(tabs)/tasks/TaskFolder.tsx
-
 import React, { useContext } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { createStyles } from '../../lib/_tasks/_taskStyles';
+import { createStyles } from '@/features/tasks/styles';
 import { useAppTheme } from '@/hooks/ThemeContext';
 import { FontSizeContext } from '@/context/FontSizeContext';
-import { Task } from '../../lib/_tasks/_taskTypes';
-import { TaskItem } from './_TaskItem';
+import { Task } from '@/features/tasks/types';
+import { TaskItem } from '@/features/tasks/components/TaskItem';
 import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
 

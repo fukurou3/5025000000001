@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, TextInput } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import type { AddTaskStyles } from '../_types';
+import type { AddTaskStyles } from '../types';
 
 interface FolderSelectorProps {
   existingFolders: string[];

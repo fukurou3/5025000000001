@@ -1,7 +1,7 @@
 // /app/(tabs)/SelectionContext.tsx
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { Task, SelectableItem } from '../lib/_tasks/_taskTypes';
+import { Task, SelectableItem } from '@/features/tasks/types';
 
 type SelectionContextType = {
   isSelecting: boolean;

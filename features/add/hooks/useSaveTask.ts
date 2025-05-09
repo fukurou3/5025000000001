@@ -4,8 +4,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import uuid from 'react-native-uuid';
 import Toast from 'react-native-toast-message';
 import { useRouter } from 'expo-router';
-import type { Task, Draft } from '../_types';
-import { STORAGE_KEY, DRAFTS_KEY } from '../_constants';
+import type { Task, Draft } from '../types';
+import { STORAGE_KEY, DRAFTS_KEY } from '../constants';
 
 interface SaveTaskParams {
   title: string;
@@ -35,7 +35,7 @@ export const useSaveTask = ({
   t,
 }: SaveTaskParams) => {
   const router = useRouter();
-
+  
   const saveTask = useCallback(async () => {
     if (!title.trim()) {
       Alert.alert(t('add_task.alert_no_title'));
@@ -60,7 +60,7 @@ export const useSaveTask = ({
     );
     Toast.show({ type: 'success', text1: t('add_task.add_task_button') });
     clearForm();
-    router.replace('/(tabs)/tasks/tasks');
+    router.replace('/tasks');
   }, [
     title,
     memo,

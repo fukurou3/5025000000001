@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { TouchableOpacity, View } from 'react-native';
-import type { AddTaskStyles } from '../_types';
+import type { AddTaskStyles } from '../types';
 
 /** NotificationToggle に渡す props の型定義 */
 export interface NotificationToggleProps {

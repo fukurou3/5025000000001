@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TextInput } from 'react-native';
-import type { FieldProps } from '../_types';
+import type { FieldProps } from '../types';
 
 export const TitleField: React.FC<FieldProps> = ({
   label,

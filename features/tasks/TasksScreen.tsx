@@ -1,5 +1,3 @@
-// /app/(tabs)/tasks/TasksScreen.tsx
-
 import React, { useEffect, useState, useCallback, useContext } from 'react';
 import {
   View,
@@ -21,13 +19,13 @@ import relativeTime from 'dayjs/plugin/relativeTime';
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 import { useAppTheme } from '@/hooks/ThemeContext';
-import { useSelection } from '../_SelectionContext';
+import { useSelection } from '@/features/tasks/context';
 import { useTranslation } from 'react-i18next';
 import { FontSizeContext } from '@/context/FontSizeContext';
-import { createStyles } from '../../lib/_tasks/_taskStyles';
-import { Task, FolderOrder, SelectableItem } from '../../lib/_tasks/_taskTypes';
-import { TaskFolder } from './_TaskFolder';
-import { RenameFolderModal } from './_RenameFolderModal';
+import { createStyles } from '@/features/tasks/styles';
+import { Task, FolderOrder, SelectableItem } from '@/features/tasks/types';
+import { TaskFolder } from '@/features/tasks/components/TaskFolder';
+import { RenameFolderModal } from '@/features/tasks/components/RenameFolderModal';
 
 dayjs.locale('ja');
 dayjs.extend(relativeTime);

@@ -1,9 +1,8 @@
-// /app/(tabs)/_layout.tsx
 import React, { useContext } from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { SelectionProvider, useSelection } from './_SelectionContext';
+import { SelectionProvider, useSelection } from '../../features/tasks/context';
 import { useAppTheme } from '@/hooks/ThemeContext';
 import { FontSizeContext } from '@/context/FontSizeContext';
 import { Text } from 'react-native';
@@ -27,72 +26,77 @@ function InnerTabs() {
 
   return (
     <Tabs
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarStyle: {
-          height: isSelecting ? 0 : TAB_HEIGHT,
-          paddingBottom: isSelecting ? 0 : insets.bottom > 0 ? insets.bottom : 0,
-          paddingTop: isSelecting ? 0 : 0,
-          backgroundColor: isDark ? '#121212' : '#FFFFFF',
-          borderTopWidth: 1,
-          borderColor: isDark ? '#555' : '#CCC',
-          overflow: 'hidden',
-        },
-        tabBarLabelPosition: 'below-icon',
-        tabBarIcon: ({ focused }) => {
-          let iconName: keyof typeof Ionicons.glyphMap = 'ellipse-outline';
-          if (route.name === 'calendar/calendar') {
-            iconName = 'calendar-outline';
-          } else if (route.name === 'tasks/TasksScreen') {
-            iconName = 'list-outline';
-          } else if (route.name === 'settings/settings') {
-            iconName = 'settings-outline';
-          }
-          return (
-            <Ionicons
-              name={iconName}
-              size={26}
-              color={focused ? subColor : inactiveColor}
-            />
-          );
-        },
-        tabBarLabel: ({ focused }) => {
-          let label = '';
-          if (route.name === 'calendar/calendar') {
-            label = 'カレンダー';
-          } else if (route.name === 'tasks/TasksScreen') {
-            label = 'タスク一覧';
-          } else if (route.name === 'settings/settings') {
-            label = '設定';
-          }
-          return (
-            <Text
-              style={{
-                fontSize: fontSizeMap[fontSizeKey] ?? 12,
-                color: focused ? subColor : inactiveColor,
-                textAlign: 'center',
-                marginTop: 2,
-              }}
-            >
-              {label}
-            </Text>
-          );
-        },
-      })}
+      screenOptions={({ route }) => {
+        return {
+          headerShown: false,
+          tabBarStyle: {
+            height: isSelecting ? 0 : TAB_HEIGHT,
+            paddingBottom: isSelecting ? 0 : insets.bottom > 0 ? insets.bottom : 0,
+            paddingTop: isSelecting ? 0 : 0,
+            backgroundColor: isDark ? '#121212' : '#FFFFFF',
+            borderTopWidth: 1,
+            borderColor: isDark ? '#555' : '#CCC',
+            overflow: 'hidden',
+          },
+          tabBarLabelPosition: 'below-icon',
+          tabBarIcon: ({ focused }) => {
+            let iconName: keyof typeof Ionicons.glyphMap = 'ellipse-outline';
+            if (route.name === 'calendar/index') {
+              iconName = 'calendar-outline';
+            } else if (route.name === 'tasks/index') {
+              iconName = 'list-outline';
+            } else if (route.name === 'settings/index') {
+              iconName = 'settings-outline';
+            }
+            return (
+              <Ionicons
+                name={iconName}
+                size={26}
+                color={focused ? subColor : inactiveColor}
+              />
+            );
+          },
+          tabBarLabel: ({ focused }) => {
+            let label = '';
+            if (route.name === 'calendar/index') {
+              label = 'カレンダー';
+            } else if (route.name === 'tasks/index') {
+              label = 'タスク一覧';
+            } else if (route.name === 'settings/index') {
+              label = '設定';
+            }
+            return (
+              <Text
+                style={{
+                  fontSize: fontSizeMap[fontSizeKey] ?? 12,
+                  color: focused ? subColor : inactiveColor,
+                  textAlign: 'center',
+                  marginTop: 2,
+                }}
+              >
+                {label}
+              </Text>
+            );
+          },
+        };
+      }}
     >
-      <Tabs.Screen name="calendar/calendar" />
-      <Tabs.Screen name="tasks/TasksScreen" />
-      <Tabs.Screen name="settings/settings" />
+      {/* ✅ 表示するメインタブ3つ */}
+      <Tabs.Screen name="calendar/index" />
+      <Tabs.Screen name="tasks/index" />
+      <Tabs.Screen name="settings/index" />
+
+      {/* ✅ 非表示にしたいルートたち */}
       {[
         'add/index',
+        'add_edit/index',
         'add_edit/edit-draft',
         'add_edit/edit-task',
         'settings/language',
         'task-detail/[id]',
-        'tasks/tasks',
         'drafts',
-        'index',
         'explore',
+        'index',
       ].map((name) => (
         <Tabs.Screen key={name} name={name} options={{ href: null }} />
       ))}
