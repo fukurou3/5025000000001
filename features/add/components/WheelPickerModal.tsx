@@ -6,13 +6,14 @@ import { useAppTheme } from '@/hooks/ThemeContext';
 import { FontSizeContext } from '@/context/FontSizeContext';
 import { fontSizes } from '@/constants/fontSizes';
 import WheelPickerExpo from 'react-native-wheel-picker-expo';
+import { useTranslation } from 'react-i18next'
 
 type Unit = 'minutes' | 'hours' | 'days';
 
 const unitLabels: Record<Unit, string> = {
-  minutes: '分',
-  hours: '時間',
-  days: '日',
+  minutes: '分前',
+  hours: '時間前',
+  days: '日前',
 };
 
 const unitKeys: Unit[] = ['minutes', 'hours', 'days'];
@@ -36,15 +37,23 @@ export const WheelPickerModal: React.FC<WheelPickerModalProps> = ({
   const isDark = colorScheme === 'dark';
   const { fontSizeKey: fsKey } = useContext(FontSizeContext);
 
+  const { t } = useTranslation()
+
   const [selectedAmount, setSelectedAmount] = useState(initialAmount);
   const [selectedUnit, setSelectedUnit] = useState<Unit>(initialUnit);
 
+  const unitLabels: Record<Unit, string> = {
+    minutes: t('add_task.minutes_before'),
+    hours: t('add_task.hours_before'),
+    days: t('add_task.days_before'),
+  }
+
   useEffect(() => {
     if (visible) {
-      setSelectedAmount(initialAmount);
-      setSelectedUnit(initialUnit);
+      setSelectedAmount(initialAmount)
+      setSelectedUnit(initialUnit)
     }
-  }, [visible, initialAmount, initialUnit]);
+  }, [visible, initialAmount, initialUnit])
 
   return (
     <Modal visible={visible} transparent animationType="slide">
@@ -54,9 +63,13 @@ export const WheelPickerModal: React.FC<WheelPickerModalProps> = ({
             <TouchableOpacity onPress={onCancel}>
               <Ionicons name="close" size={24} color={subColor} />
             </TouchableOpacity>
-            <Text style={[styles.title, { color: subColor, fontSize: fontSizes[fsKey] + 2 }]}>通知までの時間を設定</Text>
+            <Text style={[styles.title, { color: subColor, fontSize: fontSizes[fsKey] + 2 }]}>
+              {t('add_task.notification')}
+            </Text>
             <TouchableOpacity onPress={() => onConfirm(selectedAmount, selectedUnit)}>
-              <Text style={[styles.confirm, { color: subColor, fontSize: fontSizes[fsKey] + 2 }]}>OK</Text>
+              <Text style={[styles.confirm, { color: subColor, fontSize: fontSizes[fsKey] + 2 }]}>
+                OK
+              </Text>
             </TouchableOpacity>
           </View>
           <View style={styles.pickerRow}>
@@ -98,8 +111,8 @@ export const WheelPickerModal: React.FC<WheelPickerModalProps> = ({
         </View>
       </SafeAreaView>
     </Modal>
-  );
-};
+  )
+}
 
 const styles = StyleSheet.create({
   overlay: {

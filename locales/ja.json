@@ -12,7 +12,7 @@
     "language": "言語設定",
     "select_language": "言語を選択してください",
     "language_ja": "日本語",
-    "language_en": "英語",
+    "language_en": "English",
     "display_mode": "表示モード",
     "sub_color": "サブカラーを選択",
     "theme_system": "システムに従う",
@@ -21,8 +21,8 @@
     "theme_dark": "ダークモード",
     "font_size": "文字サイズ",
     "font_size_small": "小",
-    "font_size_normal": "標準",
-    "font_size_medium": "中",
+    "font_size_normal": "中",
+    "font_size_medium": "普通",
     "font_size_large": "大"
   },
   "common": {
@@ -55,7 +55,9 @@
     "alert_discard": "破棄",
     "folder": "フォルダー選択",
     "no_folder": "フォルダーなし",
-    "create_new_folder": "フォルダーを作成"
+    "no_deadline": "期限未設定",
+    "create_new_folder": "フォルダーを作成",
+    "no_notification": "通知なし"
   },
   "edit_task": {
     "title": "編集",

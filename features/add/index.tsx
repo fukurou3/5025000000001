@@ -41,6 +41,7 @@ type TabParamList = {
 };
 
 export default function AddTaskScreen() {
+  const [deadlineEnabled, setDeadlineEnabled] = useState(true);
   const { colorScheme, subColor } = useAppTheme();
   const isDark = colorScheme === 'dark';
   const { fontSizeKey } = useContext(FontSizeContext);
@@ -69,6 +70,7 @@ export default function AddTaskScreen() {
   const [folder, setFolder] = useState('');
   const [showWheelModal, setShowWheelModal] = useState(false);
 
+  
   const { imageUris, pickImages, removeImage, setImageUris } = useImagePicker();
   const {
     deadline,
@@ -151,143 +153,174 @@ export default function AddTaskScreen() {
   });
   
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.appBar}>
-        <Text style={styles.appBarTitle}>{t('add_task.title')}</Text>
-        <TouchableOpacity
-          style={styles.draftsButton}
-          onPress={() => router.push('/(tabs)/drafts')}
-        >
-          <Ionicons
-            name="document-text-outline"
-            size={fontSizes[fsKey]}
-            color={subColor}
-          />
-          <Text style={styles.draftsButtonText}>
-            {t('add_task.drafts')}
-          </Text>
-        </TouchableOpacity>
-      </View>
-      <ScrollView contentContainerStyle={{ padding: 20 }}>
-        <TitleField
-          label={t('add_task.input_title')}
-          value={title}
-          onChangeText={setTitle}
-          placeholder={t('add_task.input_title_placeholder')}
-          placeholderTextColor={
-            isDark ? DARK_PLACEHOLDER : LIGHT_PLACEHOLDER
-          }
-          labelStyle={[styles.label, { color: subColor }]}
-          inputStyle={[styles.input, { minHeight: 40 }]}
+return (
+  <SafeAreaView style={styles.container}>
+    <View style={styles.appBar}>
+      <Text style={styles.appBarTitle}>{t('add_task.title')}</Text>
+      <TouchableOpacity
+        style={styles.draftsButton}
+        onPress={() => router.push('/(tabs)/drafts')}
+      >
+        <Ionicons
+          name="document-text-outline"
+          size={fontSizes[fsKey]}
+          color={subColor}
         />
-        <MemoField
-          label={t('add_task.memo')}
-          value={memo}
-          onChangeText={setMemo}
-          placeholder={t('add_task.memo_placeholder')}
-          placeholderTextColor={
-            isDark ? DARK_PLACEHOLDER : LIGHT_PLACEHOLDER
-          }
-          onContentSizeChange={(e) =>
-            setMemoHeight(e.nativeEvent.contentSize.height)
-          }
-          height={memoHeight}
-          labelStyle={[styles.label, { color: subColor }]}
-          inputStyle={[
-            styles.input,
-            { height: Math.max(40, memoHeight) },
-          ]}
-        />
-        <PhotoPicker
-          imageUris={imageUris}
-          onPick={pickImages}
-          onRemove={removeImage}
-          selectText={t('add_task.select_photo')}
-          addText={t('add_task.add_photo')}
-          isDark={isDark}
-          subColor={subColor}
-          fontSizeKey={fsKey}
-          styles={styles}
-        />
-        <Text style={[styles.label, { color: subColor }]}>
-          {t('add_task.folder')}
+        <Text style={styles.draftsButtonText}>
+          {t('add_task.drafts')}
         </Text>
-        <TouchableOpacity
-          onPress={() => setShowFolderModal(true)}
-          style={styles.folderInput}
-        >
-          <Text
-            style={{
-              color: isDark ? '#fff' : '#000',
-              fontSize: fontSizes[fsKey],
-            }}
-          >
-            {folder || t('add_task.no_folder')}
-          </Text>
-        </TouchableOpacity>
-        <FolderSelectorModal
-          visible={showFolderModal}
-          onClose={() => setShowFolderModal(false)}
-          onSubmit={(name) => {
-            setFolder(name);
+      </TouchableOpacity>
+    </View>
+    <ScrollView contentContainerStyle={{ padding: 20 }}>
+      <TitleField
+        label={t('add_task.input_title')}
+        value={title}
+        onChangeText={setTitle}
+        placeholder={t('add_task.input_title_placeholder')}
+        placeholderTextColor={isDark ? DARK_PLACEHOLDER : LIGHT_PLACEHOLDER}
+        labelStyle={[styles.label, { color: subColor }]}
+        inputStyle={[styles.input, { minHeight: 40 }]}
+      />
+      <MemoField
+        label={t('add_task.memo')}
+        value={memo}
+        onChangeText={setMemo}
+        placeholder={t('add_task.memo_placeholder')}
+        placeholderTextColor={isDark ? DARK_PLACEHOLDER : LIGHT_PLACEHOLDER}
+        onContentSizeChange={(e) =>
+          setMemoHeight(e.nativeEvent.contentSize.height)
+        }
+        height={memoHeight}
+        labelStyle={[styles.label, { color: subColor }]}
+        inputStyle={[styles.input, { height: Math.max(40, memoHeight) }]}
+      />
+      <PhotoPicker
+        imageUris={imageUris}
+        onPick={pickImages}
+        onRemove={removeImage}
+        selectText={t('add_task.select_photo')}
+        addText={t('add_task.add_photo')}
+        isDark={isDark}
+        subColor={subColor}
+        fontSizeKey={fsKey}
+        styles={styles}
+      />
+      <Text style={[styles.label, { color: subColor }]}>
+        {t('add_task.folder')}
+      </Text>
+      <TouchableOpacity
+        onPress={() => setShowFolderModal(true)}
+        style={styles.folderInput}
+      >
+        <Text
+          style={{
+            color: isDark ? '#fff' : '#000',
+            fontSize: fontSizes[fsKey],
           }}
-          folders={folders}
-        />
-        <View style={styles.notifyContainer}>
-          <Text style={[styles.label, { color: subColor }]}>
+        >
+          {folder || t('add_task.no_folder')}
+        </Text>
+      </TouchableOpacity>
+      <FolderSelectorModal
+        visible={showFolderModal}
+        onClose={() => setShowFolderModal(false)}
+        onSubmit={(name) => setFolder(name)}
+        folders={folders}
+      />
+
+      {/* 🔽 期限設定トグル付きセクション */}
+      <View style={styles.notifyContainer}>
+        <View style={styles.notifyHeader}>
+          <Text style={[styles.notifyLabel, { color: subColor }]}>
             {t('add_task.deadline')}
           </Text>
-          <DeadlinePicker
-            deadline={deadline}
-            showDatePicker={showDatePicker}
-            showTimePicker={showTimePicker}
+          <NotificationToggle
+            notifyEnabled={deadlineEnabled}
+            onToggle={() => setDeadlineEnabled((v) => !v)}
+            isDark={isDark}
+            subColor={subColor}
             styles={styles}
           />
-          <View style={styles.notifyHeader}>
-            <Text style={[styles.notifyLabel, { color: subColor }]}>
-              {t('add_task.notification')}
-            </Text>
-            <NotificationToggle
-              notifyEnabled={notifyEnabled}
-              onToggle={() => setNotifyEnabled((v) => !v)}
-              isDark={isDark}
-              subColor={subColor}
-              styles={styles}
-            />
-          </View>
-          {notifyEnabled && (
-            <>
-              <TouchableOpacity
-                style={[styles.fieldWrapper, styles.slotPickerWrapper]}
-                onPress={() => setShowWheelModal(true)}
-              >
-                <Text style={[styles.label, { color: subColor }]}>
-                  {customAmount} {t(`add_task.${customUnit}_before`)}
-                </Text>
-              </TouchableOpacity>
-              <WheelPickerModal
-                visible={showWheelModal}
-                initialAmount={customAmount}
-                initialUnit={customUnit}
-                onConfirm={(amount, unit) => {
-                  setCustomAmount(amount);
-                  setCustomUnit(unit);
-                  setShowWheelModal(false);
-                }}
-                onCancel={() => setShowWheelModal(false)}
-              />
-            </>
-          )}
         </View>
-        <ActionButtons
-          onSave={saveTask}
-          onSaveDraft={saveDraft}
-          saveText={t('add_task.add_task_button')}
-          draftText={t('add_task.save_draft_button')}
-          styles={styles}
+
+        <TouchableOpacity
+          style={[styles.fieldWrapper, styles.slotPickerWrapper]}
+          onPress={() => deadlineEnabled && showDatePicker()}
+          activeOpacity={deadlineEnabled ? 0.7 : 1}
+        >
+          <Text
+            style={[
+              styles.label,
+              deadlineEnabled
+                ? { color: subColor }
+                : {
+                    color: isDark ? '#AAA' : '#888',
+                    fontWeight: '300',
+                  },
+            ]}
+          >
+            {deadlineEnabled
+              ? `${deadline.toLocaleDateString()} ${deadline.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+              : t('add_task.no_deadline')}
+          </Text>
+        </TouchableOpacity>
+
+        {/* 🔽 通知設定セクション */}
+        <View style={styles.notifyHeader}>
+          <Text style={[styles.notifyLabel, { color: subColor }]}>
+            {t('add_task.notification')}
+          </Text>
+          <NotificationToggle
+            notifyEnabled={notifyEnabled}
+            onToggle={() => setNotifyEnabled((v) => !v)}
+            isDark={isDark}
+            subColor={subColor}
+            styles={styles}
+          />
+        </View>
+
+        <TouchableOpacity
+          style={[styles.fieldWrapper, styles.slotPickerWrapper]}
+          onPress={() => notifyEnabled && setShowWheelModal(true)}
+          activeOpacity={notifyEnabled ? 0.7 : 1}
+        >
+          <Text
+            style={[
+              styles.label,
+              notifyEnabled
+                ? { color: subColor }
+                : {
+                    color: isDark ? '#AAA' : '#888',
+                    fontWeight: '300',
+                  },
+            ]}
+          >
+            {notifyEnabled
+              ? `${customAmount} ${t(`add_task.${customUnit}_before`)}`
+              : t('add_task.no_notification')}
+          </Text>
+        </TouchableOpacity>
+
+        <WheelPickerModal
+          visible={showWheelModal}
+          initialAmount={customAmount}
+          initialUnit={customUnit}
+          onConfirm={(amount, unit) => {
+            setCustomAmount(amount);
+            setCustomUnit(unit);
+            setShowWheelModal(false);
+          }}
+          onCancel={() => setShowWheelModal(false)}
         />
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
+      </View>
+
+      <ActionButtons
+        onSave={saveTask}
+        onSaveDraft={saveDraft}
+        saveText={t('add_task.add_task_button')}
+        draftText={t('add_task.save_draft_button')}
+        styles={styles}
+      />
+    </ScrollView>
+  </SafeAreaView>
+)};
