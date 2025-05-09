@@ -1,27 +1,29 @@
-// components/_components/WheelPickerModal.tsx
 import React, { useContext, useState, useEffect } from 'react';
-import {
-  Modal,
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Platform,
-} from 'react-native';
+import { Modal, View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Picker } from '@react-native-picker/picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppTheme } from '@/hooks/ThemeContext';
 import { FontSizeContext } from '@/context/FontSizeContext';
 import { fontSizes } from '@/constants/fontSizes';
+import WheelPickerExpo from 'react-native-wheel-picker-expo';
 
-type WheelPickerModalProps = {
+type Unit = 'minutes' | 'hours' | 'days';
+
+const unitLabels: Record<Unit, string> = {
+  minutes: '分',
+  hours: '時間',
+  days: '日',
+};
+
+const unitKeys: Unit[] = ['minutes', 'hours', 'days'];
+
+interface WheelPickerModalProps {
   visible: boolean;
   initialAmount: number;
-  initialUnit: 'minutes' | 'hours' | 'days';
-  onConfirm: (amount: number, unit: 'minutes' | 'hours' | 'days') => void;
+  initialUnit: Unit;
+  onConfirm: (amount: number, unit: Unit) => void;
   onCancel: () => void;
-};
+}
 
 export const WheelPickerModal: React.FC<WheelPickerModalProps> = ({
   visible,
@@ -35,9 +37,8 @@ export const WheelPickerModal: React.FC<WheelPickerModalProps> = ({
   const { fontSizeKey: fsKey } = useContext(FontSizeContext);
 
   const [selectedAmount, setSelectedAmount] = useState(initialAmount);
-  const [selectedUnit, setSelectedUnit] = useState(initialUnit);
+  const [selectedUnit, setSelectedUnit] = useState<Unit>(initialUnit);
 
-  // モーダルを開くたびに初期値をセット
   useEffect(() => {
     if (visible) {
       setSelectedAmount(initialAmount);
@@ -48,50 +49,50 @@ export const WheelPickerModal: React.FC<WheelPickerModalProps> = ({
   return (
     <Modal visible={visible} transparent animationType="slide">
       <SafeAreaView style={styles.overlay}>
-        <View style={[styles.container, { backgroundColor: isDark ? '#222' : '#fff' }]}>
+        <View style={[styles.container, { backgroundColor: isDark ? '#222222' : '#FFFFFF' }]}>  
           <View style={styles.header}>
             <TouchableOpacity onPress={onCancel}>
               <Ionicons name="close" size={24} color={subColor} />
             </TouchableOpacity>
-            <Text style={[styles.title, { color: subColor, fontSize: fontSizes[fsKey] }]}>
-              {`通知までの時間を設定`}
-            </Text>
-            <TouchableOpacity
-              onPress={() => onConfirm(selectedAmount, selectedUnit)}
-            >
-              <Text style={[styles.confirm, { color: subColor, fontSize: fontSizes[fsKey] }]}>
-                OK
-              </Text>
+            <Text style={[styles.title, { color: subColor, fontSize: fontSizes[fsKey] + 2 }]}>通知までの時間を設定</Text>
+            <TouchableOpacity onPress={() => onConfirm(selectedAmount, selectedUnit)}>
+              <Text style={[styles.confirm, { color: subColor, fontSize: fontSizes[fsKey] + 2 }]}>OK</Text>
             </TouchableOpacity>
           </View>
           <View style={styles.pickerRow}>
-            {/* 数値ホイール */}
             <View style={styles.pickerWrapper}>
-              <Picker
-                selectedValue={selectedAmount}
-                onValueChange={(v) => setSelectedAmount(Number(v))}
-                style={styles.picker}
-                itemStyle={styles.itemStyle}
-                mode="dialog" // iOS はホイール、Android はダイアログ
-              >
-                {Array.from({ length: 60 }, (_, i) => i + 1).map((n) => (
-                  <Picker.Item key={n} label={`${n}`} value={n} />
-                ))}
-              </Picker>
+              <WheelPickerExpo
+                height={200}
+                width={150}
+                initialSelectedIndex={selectedAmount - 1}
+                items={Array.from({ length: 60 }, (_, i) => ({ label: `${i + 1}`, value: i + 1 }))}
+                onChange={({ item }) => setSelectedAmount(item.value)}
+                backgroundColor={isDark ? '#333333' : '#F5F5F5'}
+                renderItem={(item) => (
+                  <Text style={{
+                    fontSize: fontSizes[fsKey],
+                    color: isDark ? '#FFFFFF' : '#000000',
+                    textAlign: 'center',
+                  }}>{item.label}</Text>
+                )}
+              />
             </View>
-            {/* 単位ホイール */}
             <View style={styles.pickerWrapper}>
-              <Picker
-                selectedValue={selectedUnit}
-                onValueChange={(v) => setSelectedUnit(v as any)}
-                style={styles.picker}
-                itemStyle={styles.itemStyle}
-                mode="dialog"
-              >
-                <Picker.Item label="分" value="minutes" />
-                <Picker.Item label="時間" value="hours" />
-                <Picker.Item label="日" value="days" />
-              </Picker>
+              <WheelPickerExpo
+                height={200}
+                width={150}
+                initialSelectedIndex={unitKeys.indexOf(selectedUnit)}
+                items={unitKeys.map((k) => ({ label: unitLabels[k], value: k }))}
+                onChange={({ item }) => setSelectedUnit(item.value as Unit)}
+                backgroundColor={isDark ? '#333333' : '#F5F5F5'}
+                renderItem={(item) => (
+                  <Text style={{
+                    fontSize: fontSizes[fsKey],
+                    color: isDark ? '#FFFFFF' : '#000000',
+                    textAlign: 'center',
+                  }}>{item.label}</Text>
+                )}
+              />
             </View>
           </View>
         </View>
@@ -106,29 +107,27 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   container: {
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
+    paddingTop: 12,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
     paddingBottom: Platform.OS === 'ios' ? 20 : 0,
+    paddingHorizontal: 16,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingBottom: 8,
   },
-  title: {},
-  confirm: { fontWeight: '600' },
+  title: { fontWeight: '600' },
+  confirm: { fontWeight: '700' },
   pickerRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    height: 200,
+    marginBottom: 16,
   },
   pickerWrapper: {
-    flex: 1,
-  },
-  picker: { flex: 1 },
-  itemStyle: {
-    height: 200,
+    marginHorizontal: 6,
+    alignItems: 'center',
   },
 });
