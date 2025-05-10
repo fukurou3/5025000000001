@@ -1,21 +1,20 @@
-// app/(tabs)/settings.tsx
-
-import React, { useContext } from 'react';
+import React, { useContext } from 'react'
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useAppTheme, ThemeChoice } from '@/hooks/ThemeContext';
-import { useRouter } from 'expo-router';
-import { useTranslation } from 'react-i18next';
-import i18n from '@/lib/i18n';
-import Slider from '@react-native-community/slider';
-import { FontSizeContext, FontSizeKey } from '@/context/FontSizeContext';
-import { fontSizes } from '@/constants/fontSizes';
+  useWindowDimensions,
+} from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import { useAppTheme, ThemeChoice } from '@/hooks/ThemeContext'
+import { useRouter } from 'expo-router'
+import { useTranslation } from 'react-i18next'
+import i18n from '@/lib/i18n'
+import Slider from '@react-native-community/slider'
+import { FontSizeContext, FontSizeKey } from '@/context/FontSizeContext'
+import { fontSizes } from '@/constants/fontSizes'
 
 export default function SettingsScreen() {
   const {
@@ -24,18 +23,20 @@ export default function SettingsScreen() {
     colorScheme,
     subColor,
     setSubColor,
-  } = useAppTheme();
-  const { fontSizeKey, setFontSizeKey } = useContext(FontSizeContext);
-  const { t } = useTranslation();
-  const router = useRouter();
-  const isDark = colorScheme === 'dark';
-  const styles = createStyles(isDark, subColor, fontSizeKey);
+  } = useAppTheme()
+  const { fontSizeKey, setFontSizeKey } = useContext(FontSizeContext)
+  const { t } = useTranslation()
+  const router = useRouter()
+  const isDark = colorScheme === 'dark'
+  const { width } = useWindowDimensions()
+  const isTablet = width >= 768
+  const styles = createStyles(isDark, subColor, fontSizeKey, isTablet)
 
   const THEME_OPTIONS: { label: string; value: ThemeChoice }[] = [
     { label: t('settings.theme_system'), value: 'system' },
     { label: t('settings.theme_light'), value: 'light' },
     { label: t('settings.theme_dark'), value: 'dark' },
-  ];
+  ]
 
   const COLOR_OPTIONS = [
     '#2196F3',
@@ -44,9 +45,9 @@ export default function SettingsScreen() {
     '#9C27B0',
     '#E91E63',
     '#121212',
-  ];
+  ]
 
-  const FONT_KEYS: FontSizeKey[] = ['small', 'normal', 'medium', 'large'];
+  const FONT_KEYS: FontSizeKey[] = ['small', 'normal', 'medium', 'large']
 
   return (
     <SafeAreaView style={styles.container}>
@@ -141,17 +142,22 @@ export default function SettingsScreen() {
         </View>
       </ScrollView>
     </SafeAreaView>
-  );
+  )
 }
 
 const createStyles = (
   isDark: boolean,
   subColor: string,
-  fsKey: keyof typeof fontSizes
+  fsKey: keyof typeof fontSizes,
+  isTablet: boolean
 ) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: isDark ? '#121212' : '#ffffff' },
-    scroll: { padding: 20 },
+    scroll: {
+      paddingTop: 20,
+      paddingBottom: 20,
+      paddingHorizontal: isTablet ? 0 : 20, // ← ここが肝心！
+    },
     appBar: {
       height: 56,
       paddingHorizontal: 16,
@@ -216,4 +222,4 @@ const createStyles = (
       fontSize: fontSizes[fsKey],
       color: isDark ? '#fff' : '#000',
     },
-  });
+  })
