@@ -1,3 +1,5 @@
+//C:\Users\fukur\task-app\app\app\(tabs)\_layout.tsx
+
 import React, { useContext } from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';

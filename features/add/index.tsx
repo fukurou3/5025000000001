@@ -13,6 +13,8 @@ import { useTranslation } from 'react-i18next';
 import { FontSizeContext } from '@/context/FontSizeContext';
 import { fontSizes } from '@/constants/fontSizes';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Image } from 'react-native';
+import { Modal, Pressable } from 'react-native';
 
 import type { AddTaskStyles } from './types';
 import { createStyles } from './styles';
@@ -69,6 +71,7 @@ export default function AddTaskScreen() {
   const [folders, setFolders] = useState<string[]>([]);
   const [folder, setFolder] = useState('');
   const [showWheelModal, setShowWheelModal] = useState(false);
+  const [previewUri, setPreviewUri] = useState<string | null>(null);
 
   
   const { imageUris, pickImages, removeImage, setImageUris } = useImagePicker();
@@ -166,154 +169,231 @@ return (
           size={fontSizes[fsKey]}
           color={subColor}
         />
-        <Text style={styles.draftsButtonText}>
-          {t('add_task.drafts')}
-        </Text>
+        <Text style={styles.draftsButtonText}>{t('add_task.drafts')}</Text>
       </TouchableOpacity>
     </View>
+
     <ScrollView contentContainerStyle={{ padding: 20 }}>
-      <TitleField
-        label={t('add_task.input_title')}
-        value={title}
-        onChangeText={setTitle}
-        placeholder={t('add_task.input_title_placeholder')}
-        placeholderTextColor={isDark ? DARK_PLACEHOLDER : LIGHT_PLACEHOLDER}
-        labelStyle={[styles.label, { color: subColor }]}
-        inputStyle={[styles.input, { minHeight: 40 }]}
-      />
-      <MemoField
-        label={t('add_task.memo')}
-        value={memo}
-        onChangeText={setMemo}
-        placeholder={t('add_task.memo_placeholder')}
-        placeholderTextColor={isDark ? DARK_PLACEHOLDER : LIGHT_PLACEHOLDER}
-        onContentSizeChange={(e) =>
-          setMemoHeight(e.nativeEvent.contentSize.height)
-        }
-        height={memoHeight}
-        labelStyle={[styles.label, { color: subColor }]}
-        inputStyle={[styles.input, { height: Math.max(40, memoHeight) }]}
-      />
-      <PhotoPicker
-        imageUris={imageUris}
-        onPick={pickImages}
-        onRemove={removeImage}
-        selectText={t('add_task.select_photo')}
-        addText={t('add_task.add_photo')}
-        isDark={isDark}
-        subColor={subColor}
-        fontSizeKey={fsKey}
-        styles={styles}
-      />
-      <Text style={[styles.label, { color: subColor }]}>
-        {t('add_task.folder')}
-      </Text>
-      <TouchableOpacity
-        onPress={() => setShowFolderModal(true)}
-        style={styles.folderInput}
+      <View
+        style={{
+          backgroundColor: isDark ? '#222' : '#F5F5F5',
+          borderRadius: 12,
+          overflow: 'hidden',
+          marginBottom: 24,
+        }}
       >
-        <Text
+        {/* タイトル */}
+        <View style={{ padding: 16 }}>
+          <TitleField
+            label={t('add_task.input_title')}
+            value={title}
+            onChangeText={setTitle}
+            placeholder={t('add_task.input_title_placeholder')}
+            placeholderTextColor={isDark ? DARK_PLACEHOLDER : LIGHT_PLACEHOLDER}
+            labelStyle={[styles.label, { color: subColor }]}
+            inputStyle={[styles.input, { minHeight: 40 }]}
+          />
+        </View>
+
+        <View style={{ height: 1, backgroundColor: isDark ? '#444' : '#DDD' }} />
+
+        {/* メモ */}
+        <View style={{ padding: 16 }}>
+          <MemoField
+            label={t('add_task.memo')}
+            value={memo}
+            onChangeText={setMemo}
+            placeholder={t('add_task.memo_placeholder')}
+            placeholderTextColor={isDark ? DARK_PLACEHOLDER : LIGHT_PLACEHOLDER}
+            onContentSizeChange={(e) =>
+              setMemoHeight(e.nativeEvent.contentSize.height)
+            }
+            height={memoHeight}
+            labelStyle={[styles.label, { color: subColor }]}
+            inputStyle={[styles.input, { height: Math.max(40, memoHeight) }]}
+          />
+        </View>
+
+        <View style={{ height: 1, backgroundColor: isDark ? '#444' : '#DDD' }} />
+
+        {/* 写真 */}
+        <TouchableOpacity onPress={pickImages} style={{ padding: 16 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={[styles.label, { color: subColor }]}>
+              {t('add_task.photo')}
+            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={{
+                color: isDark ? '#FFF' : '#000',
+                fontSize: fontSizes[fsKey],
+                fontWeight: '400',
+              }}>
+                {imageUris.length > 0
+                  ? t('add_task.photo_selected', { count: imageUris.length })
+                  : t('add_task.select_photo')}
+              </Text>
+              <Ionicons name="chevron-forward" size={fontSizes[fsKey]} color={subColor} />
+            </View>
+          </View>
+        </TouchableOpacity>
+
+{/* 写真プレビュー */}
+{imageUris.length > 0 && (
+  <ScrollView
+    horizontal
+    style={{ paddingHorizontal: 16, marginBottom: 12 }}
+    contentContainerStyle={{ gap: 8 }}
+    showsHorizontalScrollIndicator={false}
+  >
+    {imageUris.map((uri, index) => (
+      <View key={index} style={{ position: 'relative' }}>
+        {/* 拡大表示用Touchable */}
+        <Pressable onPress={() => setPreviewUri(uri)}>
+          <Image
+            source={{ uri }}
+            style={{ width: 80, height: 80, borderRadius: 8 }}
+          />
+        </Pressable>
+        {/* 削除ボタン */}
+        <TouchableOpacity
+          onPress={() => removeImage(uri)}
           style={{
-            color: isDark ? '#fff' : '#000',
-            fontSize: fontSizes[fsKey],
+            position: 'absolute',
+            top: -6,
+            right: -6,
+            backgroundColor: '#FFF',
+            borderRadius: 12,
           }}
         >
-          {folder || t('add_task.no_folder')}
-        </Text>
-      </TouchableOpacity>
+          <Ionicons name="close-circle" size={24} color="#999" />
+        </TouchableOpacity>
+
+      </View>
+    ))}
+  </ScrollView>
+)}
+
+
+        <View style={{ height: 1, backgroundColor: isDark ? '#444' : '#DDD' }} />
+
+        {/* フォルダー */}
+        <TouchableOpacity onPress={() => setShowFolderModal(true)} style={{ padding: 16 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={[styles.label, { color: subColor }]}>
+              {t('add_task.folder')}
+            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={{
+                color: isDark ? '#FFF' : '#000',
+                fontSize: fontSizes[fsKey],
+                fontWeight: '400',
+              }}>
+                {folder || t('add_task.no_folder')}
+              </Text>
+              <Ionicons name="chevron-forward" size={fontSizes[fsKey]} color={subColor} />
+            </View>
+          </View>
+        </TouchableOpacity>
+
+        <View style={{ height: 1, backgroundColor: isDark ? '#444' : '#DDD' }} />
+
+        {/* 期限 */}
+        <TouchableOpacity
+          onPress={() => deadlineEnabled && showDatePicker()}
+          style={{ padding: 16 }}
+          activeOpacity={deadlineEnabled ? 0.7 : 1}
+        >
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={[styles.label, { color: subColor }]}>
+              {t('add_task.deadline')}
+            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={{
+                color: deadlineEnabled ? (isDark ? '#FFF' : '#000') : (isDark ? '#AAA' : '#888'),
+                fontSize: fontSizes[fsKey],
+                fontWeight: '400',
+              }}>
+                {deadlineEnabled
+                  ? `${deadline.toLocaleDateString()} ${deadline.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                  : t('add_task.no_deadline')}
+              </Text>
+              <Ionicons name="chevron-forward" size={fontSizes[fsKey]} color={subColor} />
+            </View>
+          </View>
+        </TouchableOpacity>
+
+        <View style={{ height: 1, backgroundColor: isDark ? '#444' : '#DDD' }} />
+
+        {/* 通知 */}
+        <TouchableOpacity
+          onPress={() => notifyEnabled && setShowWheelModal(true)}
+          style={{ padding: 16 }}
+          activeOpacity={notifyEnabled ? 0.7 : 1}
+        >
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={[styles.label, { color: subColor }]}>
+              {t('add_task.notification')}
+            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={{
+                color: notifyEnabled ? (isDark ? '#FFF' : '#000') : (isDark ? '#AAA' : '#888'),
+                fontSize: fontSizes[fsKey],
+                fontWeight: '400',
+              }}>
+                {notifyEnabled
+                  ? `${customAmount} ${t(`add_task.${customUnit}_before`)}`
+                  : t('add_task.no_notification')}
+              </Text>
+              <Ionicons name="chevron-forward" size={fontSizes[fsKey]} color={subColor} />
+            </View>
+          </View>
+        </TouchableOpacity>
+      </View>
+
+      {/* モーダル */}
       <FolderSelectorModal
         visible={showFolderModal}
         onClose={() => setShowFolderModal(false)}
         onSubmit={(name) => setFolder(name)}
         folders={folders}
       />
+      <WheelPickerModal
+        visible={showWheelModal}
+        initialAmount={customAmount}
+        initialUnit={customUnit}
+        onConfirm={(amount, unit) => {
+          setCustomAmount(amount);
+          setCustomUnit(unit);
+          setShowWheelModal(false);
+        }}
+        onCancel={() => setShowWheelModal(false)}
+      />
+      <Modal visible={!!previewUri} transparent={true} animationType="fade">
+  <Pressable
+    style={{
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.8)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    }}
+    onPress={() => setPreviewUri(null)}
+  >
+    {previewUri && (
+      <Image
+        source={{ uri: previewUri }}
+        style={{
+          width: '90%',
+          height: '70%',
+          resizeMode: 'contain',
+          borderRadius: 8,
+        }}
+      />
+    )}
+  </Pressable>
+</Modal>
 
-      {/* 🔽 期限設定トグル付きセクション */}
-      <View style={styles.notifyContainer}>
-        <View style={styles.notifyHeader}>
-          <Text style={[styles.notifyLabel, { color: subColor }]}>
-            {t('add_task.deadline')}
-          </Text>
-          <NotificationToggle
-            notifyEnabled={deadlineEnabled}
-            onToggle={() => setDeadlineEnabled((v) => !v)}
-            isDark={isDark}
-            subColor={subColor}
-            styles={styles}
-          />
-        </View>
 
-        <TouchableOpacity
-          style={[styles.fieldWrapper, styles.slotPickerWrapper]}
-          onPress={() => deadlineEnabled && showDatePicker()}
-          activeOpacity={deadlineEnabled ? 0.7 : 1}
-        >
-          <Text
-            style={[
-              styles.label,
-              deadlineEnabled
-                ? { color: subColor }
-                : {
-                    color: isDark ? '#AAA' : '#888',
-                    fontWeight: '300',
-                  },
-            ]}
-          >
-            {deadlineEnabled
-              ? `${deadline.toLocaleDateString()} ${deadline.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-              : t('add_task.no_deadline')}
-          </Text>
-        </TouchableOpacity>
-
-        {/* 🔽 通知設定セクション */}
-        <View style={styles.notifyHeader}>
-          <Text style={[styles.notifyLabel, { color: subColor }]}>
-            {t('add_task.notification')}
-          </Text>
-          <NotificationToggle
-            notifyEnabled={notifyEnabled}
-            onToggle={() => setNotifyEnabled((v) => !v)}
-            isDark={isDark}
-            subColor={subColor}
-            styles={styles}
-          />
-        </View>
-
-        <TouchableOpacity
-          style={[styles.fieldWrapper, styles.slotPickerWrapper]}
-          onPress={() => notifyEnabled && setShowWheelModal(true)}
-          activeOpacity={notifyEnabled ? 0.7 : 1}
-        >
-          <Text
-            style={[
-              styles.label,
-              notifyEnabled
-                ? { color: subColor }
-                : {
-                    color: isDark ? '#AAA' : '#888',
-                    fontWeight: '300',
-                  },
-            ]}
-          >
-            {notifyEnabled
-              ? `${customAmount} ${t(`add_task.${customUnit}_before`)}`
-              : t('add_task.no_notification')}
-          </Text>
-        </TouchableOpacity>
-
-        <WheelPickerModal
-          visible={showWheelModal}
-          initialAmount={customAmount}
-          initialUnit={customUnit}
-          onConfirm={(amount, unit) => {
-            setCustomAmount(amount);
-            setCustomUnit(unit);
-            setShowWheelModal(false);
-          }}
-          onCancel={() => setShowWheelModal(false)}
-        />
-      </View>
-
+      {/* ボタン */}
       <ActionButtons
         onSave={saveTask}
         onSaveDraft={saveDraft}

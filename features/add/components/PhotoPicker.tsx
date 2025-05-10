@@ -1,3 +1,5 @@
+//"C:\Users\fukur\task-app\app\features\add\components\PhotoPicker.tsx"
+
 import React from 'react';
 import {
   View,

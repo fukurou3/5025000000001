@@ -1,3 +1,5 @@
+//"C:\Users\fukur\task-app\app\app\(tabs)\index.tsx"
+
 import { Image, StyleSheet, Platform, TouchableOpacity, Text, View } from 'react-native'
 import { HelloWave } from '@/components/HelloWave'
 import ParallaxScrollView from '@/components/ParallaxScrollView'

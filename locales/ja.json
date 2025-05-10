@@ -54,10 +54,11 @@
     "alert_discard_changes_message": "保存されていない内容は失われます。",
     "alert_discard": "破棄",
     "folder": "フォルダー選択",
-    "no_folder": "フォルダーなし",
+    "no_folder": "なし",
     "no_deadline": "期限未設定",
     "create_new_folder": "フォルダーを作成",
-    "no_notification": "通知なし"
+    "no_notification": "通知なし",
+    "photo_selected": "{{count}}枚選択中"
   },
   "edit_task": {
     "title": "編集",
