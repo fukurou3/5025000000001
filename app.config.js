@@ -2,9 +2,9 @@
 
 export default {
   expo: {
-    name: "app",
+    name: "タスク革命",
     slug: "app",
-    version: "1.0.0",
+    version: "0.1.0",
     icon: "./assets/images/icon.png",
     scheme: "myapp",
     userInterfaceStyle: "automatic",

@@ -14,6 +14,12 @@
     "production": {
       "developmentClient": false,
       "autoIncrement": true
+    },
+      "apk_test": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      }
     }
   },
   "submit": {
