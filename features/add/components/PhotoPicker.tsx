@@ -35,33 +35,38 @@ export const PhotoPicker: React.FC<PhotoPickerProps> = ({
   const [loading, setLoading] = useState(true)
   const [granted, setGranted] = useState(false)
 
-  // 写真ライブラリ許可＋読み込み
-useEffect(() => {
-  if (!visible) return; // モーダルが開いたときだけ実行
+  // 権限確認＋メディア取得（visible時のみ発火）
+  useEffect(() => {
+    if (!visible) return
 
-  (async () => {
-    setLoading(true)
+    ;(async () => {
+      setLoading(true)
 
-    const { status } = await MediaLibrary.requestPermissionsAsync()
-    if (status === 'granted') {
-      setGranted(true)
-      const result = await MediaLibrary.getAssetsAsync({
-        first: 200,
-        mediaType: MediaLibrary.MediaType.photo,
-        sortBy: [MediaLibrary.SortBy.creationTime],
+      // 写真と動画のアクセスを個別にリクエスト（型回避）
+      const { status, canAskAgain } = await (MediaLibrary.requestPermissionsAsync as any)({
+        mediaType: [MediaLibrary.MediaType.photo, MediaLibrary.MediaType.video],
       })
-      setPhotos(result.assets.map(a => ({ id: a.id, uri: a.uri })))
-    } else {
-      setGranted(false)
-    }
 
-    setLoading(false)
-  })()
-}, [visible]) // ← 変更点はここだけ
+      if (status === 'granted') {
+        setGranted(true)
+        const result = await MediaLibrary.getAssetsAsync({
+          first: 200,
+          mediaType: [MediaLibrary.MediaType.photo, MediaLibrary.MediaType.video],
+          sortBy: [MediaLibrary.SortBy.creationTime],
+        })
+        setPhotos(result.assets.map(a => ({ id: a.id, uri: a.uri })))
+      } else {
+        setGranted(false)
+        if (!canAskAgain) {
+          console.warn('ユーザーが「今後表示しない」を選択した可能性があります。')
+        }
+      }
 
-  
+      setLoading(false)
+    })()
+  }, [visible])
 
-  // 開くたびに親の選択を反映
+  // 選択状態を初期化
   useEffect(() => {
     if (visible) setSelected(defaultSelected)
   }, [visible, defaultSelected])
@@ -71,7 +76,7 @@ useEffect(() => {
       prev.includes(uri) ? prev.filter(u => u !== uri) : [...prev, uri]
     )
 
-  // 列数＆サムネイルサイズを縦3列分を下限に動的算出
+  // 動的に列数とサムネイルサイズを計算
   const [portraitW] = useState(Dimensions.get('window').width)
   const baseSize = useMemo(() => portraitW / 3 - 8, [portraitW])
   const cellWithM = baseSize + 8
@@ -100,7 +105,7 @@ useEffect(() => {
           <ActivityIndicator style={localStyles.center} />
         ) : !granted ? (
           <View style={localStyles.center}>
-            <Text>写真へのアクセスが許可されていません</Text>
+            <Text>写真または動画へのアクセスが許可されていません</Text>
           </View>
         ) : (
           <FlatList
