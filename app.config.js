@@ -3,7 +3,7 @@
 export default {
   expo: {
     name: "タスク革命",
-    slug: "taskapp",
+    slug: "app",
     version: "0.1.0",
     icon: "./assets/images/icon.png",
     scheme: "myapp",
@@ -18,7 +18,7 @@ export default {
         foregroundImage: "./assets/images/adaptive-icon.png",
         backgroundColor: "#ffffff"
       },
-      package: "com.fukuroulu.taskapp"
+      package: "com.fukuroulu.app"
     },
     plugins: [
       [
