@@ -1,4 +1,4 @@
-package com.fukuroulu.app;
+package com.fukuroulu.taskapp;
 
 import android.app.Application;
 import android.content.res.Configuration;
