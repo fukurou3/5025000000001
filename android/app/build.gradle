@@ -81,9 +81,9 @@ android {
 
     compileSdkVersion rootProject.ext.compileSdkVersion
 
-    namespace 'com.fukuroulu.taskapp'
+    namespace 'com.fukuroulu.app'
     defaultConfig {
-        applicationId 'com.fukuroulu.taskapp'
+        applicationId 'com.fukuroulu.app'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

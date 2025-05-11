@@ -1,6 +1,6 @@
 // app/features/add/components/PhotoPicker.tsx
 
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'; // useMemo は不要なら削除
 import {
   SafeAreaView,
   View,
@@ -12,17 +12,21 @@ import {
   StyleSheet,
   Dimensions,
   ActivityIndicator,
-} from 'react-native'
-import * as MediaLibrary from 'expo-media-library'
+  Alert,
+  Linking,
+} from 'react-native';
+import * as MediaLibrary from 'expo-media-library';
 
-type Photo = { id: string; uri: string }
+type Photo = { id: string; uri: string };
 
 export interface PhotoPickerProps {
-  visible: boolean
-  defaultSelected: string[]
-  onCancel: () => void
-  onDone: (uris: string[]) => void
+  visible: boolean;
+  defaultSelected: string[];
+  onCancel: () => void;
+  onDone: (uris: string[]) => void;
 }
+
+const ITEMS_PER_PAGE = 30; // 一度に読み込むアイテム数
 
 export const PhotoPicker: React.FC<PhotoPickerProps> = ({
   visible,
@@ -30,98 +34,173 @@ export const PhotoPicker: React.FC<PhotoPickerProps> = ({
   onCancel,
   onDone,
 }) => {
-  const [photos, setPhotos] = useState<Photo[]>([])
-  const [selected, setSelected] = useState<string[]>([])
-  const [loading, setLoading] = useState(true)
-  const [granted, setGranted] = useState(false)
+  const [photos, setPhotos] = useState<Photo[]>([]);
+  const [selected, setSelected] = useState<string[]>([]); // 初期値は空配列
+  const [loadingInitial, setLoadingInitial] = useState(true); // 初回ロード用
+  const [loadingMore, setLoadingMore] = useState(false); // 追加ロード用
+  const [granted, setGranted] = useState(false);
+  const [after, setAfter] = useState<string | undefined>(undefined);
+  const [hasNextPage, setHasNextPage] = useState(true);
 
-  // 権限確認＋メディア取得（visible時のみ発火）
+  // defaultSelected が変更されたら selected にも反映
   useEffect(() => {
-    if (!visible) return
+    if (visible) { // モーダル表示時に初期選択を反映
+        setSelected(defaultSelected || []);
+    }
+  }, [visible, defaultSelected]);
 
-    ;(async () => {
-      setLoading(true)
 
-      // 写真と動画のアクセスを個別にリクエスト（型回避）
-      const { status, canAskAgain } = await (MediaLibrary.requestPermissionsAsync as any)({
+  const loadMedia = useCallback(async (loadMore = false) => {
+    if (!granted) return;
+    if (loadMore && !hasNextPage) return; // 追加ロードで次がない場合は何もしない
+    if (loadMore && loadingMore) return; // すでに追加ロード中の場合は何もしない
+
+    if (loadMore) {
+      setLoadingMore(true);
+    } else {
+      setLoadingInitial(true);
+      setPhotos([]); // 初回ロードの場合はリセット
+      setAfter(undefined); // 初回ロードの場合はカーソルリセット
+      setHasNextPage(true); // 初回ロードの場合はリセット
+    }
+
+    try {
+      const { assets, endCursor, hasNextPage: newHasNextPage } = await MediaLibrary.getAssetsAsync({
+        first: ITEMS_PER_PAGE,
         mediaType: [MediaLibrary.MediaType.photo, MediaLibrary.MediaType.video],
-      })
+        sortBy: [MediaLibrary.SortBy.creationTime],
+        after: loadMore ? after : undefined, // 追加ロード時のみ after を使用
+      });
 
-      if (status === 'granted') {
-        setGranted(true)
-        const result = await MediaLibrary.getAssetsAsync({
-          first: 200,
-          mediaType: [MediaLibrary.MediaType.photo, MediaLibrary.MediaType.video],
-          sortBy: [MediaLibrary.SortBy.creationTime],
-        })
-        setPhotos(result.assets.map(a => ({ id: a.id, uri: a.uri })))
+      const newPhotos = assets.map(asset => ({ id: asset.id, uri: asset.uri }));
+      setPhotos(prevPhotos => loadMore ? [...prevPhotos, ...newPhotos] : newPhotos);
+      setAfter(endCursor);
+      setHasNextPage(newHasNextPage);
+
+    } catch (error) {
+      console.error("Error fetching media:", error);
+      Alert.alert("エラー", "メディアの読み込みに失敗しました。");
+    } finally {
+      if (loadMore) {
+        setLoadingMore(false);
       } else {
-        setGranted(false)
-        if (!canAskAgain) {
-          console.warn('ユーザーが「今後表示しない」を選択した可能性があります。')
+        setLoadingInitial(false);
+      }
+    }
+  }, [granted, after, loadingMore, hasNextPage]); // 依存配列に注意
+
+  // 権限確認と初回メディア取得
+  useEffect(() => {
+    if (!visible) {
+        setPhotos([]); // 非表示になったら写真リストをクリア
+        setGranted(false); // 権限状態もリセット
+        return;
+    }
+
+    (async () => {
+      setLoadingInitial(true); // 初回ロード開始
+
+      const initialPermissions = await MediaLibrary.getPermissionsAsync(false);
+      console.log('Initial MediaLibrary permissions:', JSON.stringify(initialPermissions, null, 2));
+
+      if (initialPermissions.status === 'granted') {
+        setGranted(true);
+        await loadMedia(); // 初回メディアロード
+      } else {
+        const { status, canAskAgain } = await MediaLibrary.requestPermissionsAsync(false);
+        console.log('Requested MediaLibrary permissions status:', status, 'Can ask again:', canAskAgain);
+
+        if (status === 'granted') {
+          setGranted(true);
+          await loadMedia(); // 初回メディアロード
+        } else {
+          Alert.alert(
+            '権限が必要です',
+            '写真や動画にアクセスするためには許可が必要です。設定画面から許可してください。',
+            [
+              { text: 'キャンセル', onPress: () => { setLoadingInitial(false); onCancel(); }, style: 'cancel' },
+              { text: '設定を開く', onPress: () => Linking.openSettings().finally(() => { setLoadingInitial(false); onCancel(); }) }
+            ]
+          );
+          setGranted(false);
+          setLoadingInitial(false);
         }
       }
+    })();
+  }, [visible, onCancel, loadMedia]); // loadMedia を依存配列に追加
 
-      setLoading(false)
-    })()
-  }, [visible])
 
-  // 選択状態を初期化
-  useEffect(() => {
-    if (visible) setSelected(defaultSelected)
-  }, [visible, defaultSelected])
-
-  const toggle = (uri: string) =>
+  const handleSelect = (uri: string) => {
     setSelected(prev =>
-      prev.includes(uri) ? prev.filter(u => u !== uri) : [...prev, uri]
-    )
+      prev.includes(uri) ? prev.filter(item => item !== uri) : [...prev, uri]
+    );
+  };
 
-  // 動的に列数とサムネイルサイズを計算
-  const [portraitW] = useState(Dimensions.get('window').width)
-  const baseSize = useMemo(() => portraitW / 3 - 8, [portraitW])
-  const cellWithM = baseSize + 8
-  const screenW = Dimensions.get('window').width
-  const numCols = Math.max(Math.floor(screenW / cellWithM), 3)
-  const thumbSize = screenW / numCols - 8
+  const handleDone = () => {
+    onDone(selected);
+  };
+
+  const renderHeader = () => (
+    <View style={localStyles.headerBar}>
+      <TouchableOpacity onPress={() => { onCancel(); }}>
+        <Text style={localStyles.headerBtn}>キャンセル</Text>
+      </TouchableOpacity>
+      <Text style={localStyles.headerTitle}>写真を選択</Text>
+      <TouchableOpacity onPress={handleDone}>
+        <Text style={[localStyles.headerBtn, localStyles.headerDone]}>完了</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderFooter = () => {
+    if (!loadingMore) return null;
+    return <ActivityIndicator style={{ marginVertical: 20 }} />;
+  };
+
+  if (!visible) return null;
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onCancel}>
       <SafeAreaView style={localStyles.container}>
-        {/* ヘッダー */}
-        <View style={localStyles.headerBar}>
-          <TouchableOpacity onPress={onCancel}>
-            <Text style={localStyles.headerBtn}>キャンセル</Text>
-          </TouchableOpacity>
-          <Text style={localStyles.headerTitle}>写真を選択</Text>
-          <TouchableOpacity onPress={() => onDone(selected)}>
-            <Text style={[localStyles.headerBtn, localStyles.headerDone]}>
-              完了 ({selected.length})
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* コンテンツ */}
-        {loading ? (
-          <ActivityIndicator style={localStyles.center} />
-        ) : !granted ? (
+        {renderHeader()}
+        {loadingInitial && photos.length === 0 && (
           <View style={localStyles.center}>
-            <Text>写真または動画へのアクセスが許可されていません</Text>
+            <ActivityIndicator size="large" />
           </View>
-        ) : (
+        )}
+        {!loadingInitial && !granted && (
+          <View style={localStyles.center}>
+            <Text>メディアへのアクセス権限がありません。</Text>
+            <TouchableOpacity onPress={() => Linking.openSettings()} style={{ marginTop: 10 }}>
+              <Text style={{ color: 'blue' }}>設定を開く</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        {granted && !loadingInitial && photos.length === 0 && !hasNextPage && ( // 初回ロード後、写真がない場合
+           <View style={localStyles.center}>
+            <Text>表示できる写真や動画がありません。</Text>
+          </View>
+        )}
+        {granted && photos.length > 0 && (
           <FlatList
             data={photos}
+            numColumns={3}
             keyExtractor={item => item.id}
-            numColumns={numCols}
             renderItem={({ item }) => (
               <TouchableOpacity
-                style={{ margin: 4 }}
-                onPress={() => toggle(item.uri)}
+                style={{
+                  width: Dimensions.get('window').width / 3 - 2,
+                  height: Dimensions.get('window').width / 3 - 2,
+                  margin: 1,
+                }}
+                onPress={() => handleSelect(item.uri)}
               >
                 <Image
                   source={{ uri: item.uri }}
                   style={{
-                    width: thumbSize,
-                    height: thumbSize,
+                    flex: 1,
+                    width: undefined,
+                    height: undefined,
                     borderRadius: 4,
                   }}
                 />
@@ -135,25 +214,35 @@ export const PhotoPicker: React.FC<PhotoPickerProps> = ({
                 )}
               </TouchableOpacity>
             )}
+            onEndReached={() => {
+              if (hasNextPage && !loadingMore) { // 追加ロード中でなければ実行
+                loadMedia(true); // true を渡して追加ロードであることを示す
+              }
+            }}
+            onEndReachedThreshold={0.5} // 画面下部から50%の位置でonEndReachedをトリガー
+            ListFooterComponent={renderFooter} // ローディングインジケーター
           />
         )}
       </SafeAreaView>
     </Modal>
-  )
-}
+  );
+};
 
+// スタイル定義 (既存のものをそのまま or 調整)
 const localStyles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   headerBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    padding: 12,
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderColor: '#ddd',
   },
-  headerBtn: { fontSize: 16, color: '#555' },
-  headerTitle: { fontSize: 18, fontWeight: 'bold' },
-  headerDone: { color: '#4CAF50' },
+  headerBtn: { fontSize: 17, color: '#007AFF' },
+  headerTitle: { fontSize: 17, fontWeight: '600' },
+  headerDone: { fontWeight: '600' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   overlay: {
     ...StyleSheet.absoluteFillObject,
@@ -167,16 +256,17 @@ const localStyles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#fff',
-    borderWidth: 2,
-    borderColor: '#007AFF',
-    alignItems: 'center',
+    backgroundColor: '#007AFF',
     justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#fff'
   },
   checkIcon: {
-    color: '#007AFF',
-    fontSize: 16,
-    fontWeight: 'bold',
-    lineHeight: 16,
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold'
   },
-})
+});
+
+export default PhotoPicker;
