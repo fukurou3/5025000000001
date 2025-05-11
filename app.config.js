@@ -29,7 +29,6 @@ export default {
             targetSdkVersion: 34,
             minSdkVersion: 21,
             buildToolsVersion: "34.0.0",
-            kotlinVersion: "1.9.10"
           }
         }
       ],
