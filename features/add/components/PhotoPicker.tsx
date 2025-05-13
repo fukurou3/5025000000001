@@ -1,6 +1,4 @@
-// app/features/add/components/PhotoPicker.tsx
-
-import React, { useState, useEffect, useCallback } from 'react'; // useMemo は不要なら削除
+import React, { useState, useEffect, useCallback, useRef } from 'react'; // useRef を追加
 import {
   SafeAreaView,
   View,
@@ -26,7 +24,7 @@ export interface PhotoPickerProps {
   onDone: (uris: string[]) => void;
 }
 
-const ITEMS_PER_PAGE = 30; // 一度に読み込むアイテム数
+const ITEMS_PER_PAGE = 30;
 
 export const PhotoPicker: React.FC<PhotoPickerProps> = ({
   visible,
@@ -35,99 +33,137 @@ export const PhotoPicker: React.FC<PhotoPickerProps> = ({
   onDone,
 }) => {
   const [photos, setPhotos] = useState<Photo[]>([]);
-  const [selected, setSelected] = useState<string[]>([]); // 初期値は空配列
-  const [loadingInitial, setLoadingInitial] = useState(true); // 初回ロード用
-  const [loadingMore, setLoadingMore] = useState(false); // 追加ロード用
-  const [granted, setGranted] = useState(false);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [granted, setGranted] = useState<boolean | null>(null);
   const [after, setAfter] = useState<string | undefined>(undefined);
   const [hasNextPage, setHasNextPage] = useState(true);
 
-  // defaultSelected が変更されたら selected にも反映
+  // isMounted のような役割で、アンマウント後の setState を防ぐ (モーダル非表示時)
+  const isComponentMounted = useRef(false);
+
+  // --- 1. モーダル表示/非表示時の初期化 ---
   useEffect(() => {
-    if (visible) { // モーダル表示時に初期選択を反映
-        setSelected(defaultSelected || []);
+    if (visible) {
+      isComponentMounted.current = true;
+      console.log('[EFFECT] Modal visible: Initializing states.');
+      setSelected(defaultSelected || []);
+      setPhotos([]);
+      setAfter(undefined);
+      setHasNextPage(true);
+      setIsLoading(false);
+      setGranted(null); // 権限状態を未確認に戻し、再確認を促す
+    } else {
+      console.log('[EFFECT] Modal hidden: Cleaning up.');
+      isComponentMounted.current = false;
+      // 必要であれば、ここでさらにクリーンアップ処理
     }
+    return () => { // クリーンアップ関数
+      isComponentMounted.current = false;
+    };
   }, [visible, defaultSelected]);
 
+  // --- 2. 権限確認 ---
+  useEffect(() => {
+    if (visible && granted === null && isComponentMounted.current) {
+      console.log('[EFFECT] Visible and permission not determined: Checking permissions.');
+      setIsLoading(true); // 権限確認中もローディング表示
+      (async () => {
+        try {
+          let currentPermissions = await MediaLibrary.getPermissionsAsync(false);
+          console.log('Initial permissions:', currentPermissions.status);
 
-  const loadMedia = useCallback(async (loadMore = false) => {
-    if (!granted) return;
-    if (loadMore && !hasNextPage) return; // 追加ロードで次がない場合は何もしない
-    if (loadMore && loadingMore) return; // すでに追加ロード中の場合は何もしない
+          if (currentPermissions.status !== 'granted') {
+            currentPermissions = await MediaLibrary.requestPermissionsAsync(false);
+            console.log('Requested permissions:', currentPermissions.status);
+          }
 
-    if (loadMore) {
-      setLoadingMore(true);
-    } else {
-      setLoadingInitial(true);
-      setPhotos([]); // 初回ロードの場合はリセット
-      setAfter(undefined); // 初回ロードの場合はカーソルリセット
-      setHasNextPage(true); // 初回ロードの場合はリセット
+          if (isComponentMounted.current) {
+            if (currentPermissions.status === 'granted') {
+              console.log('Permission granted.');
+              setGranted(true);
+            } else {
+              console.log('Permission denied.');
+              setGranted(false);
+              Alert.alert(
+                '権限が必要です',
+                '写真や動画にアクセスするためには許可が必要です。設定画面から許可してください。',
+                [
+                  { text: 'キャンセル', onPress: onCancel, style: 'cancel' },
+                  { text: '設定を開く', onPress: () => Linking.openSettings().finally(onCancel) }
+                ]
+              );
+            }
+          }
+        } catch (error) {
+          console.error("Error during permission check:", error);
+          if (isComponentMounted.current) setGranted(false); // エラー時も拒否扱い
+        } finally {
+          if (isComponentMounted.current) setIsLoading(false); // 権限確認が完了したらローディング解除
+        }
+      })();
+    }
+  }, [visible, granted, onCancel]);
+
+  // --- 3. メディア読み込み関数 ---
+  const loadMedia = useCallback(async (isLoadingMore = false) => {
+    if (!isComponentMounted.current) {
+      console.log('loadMedia: Component not mounted, aborting.');
+      return;
+    }
+    if (isLoading) {
+      console.log('loadMedia: Already loading, aborting.');
+      return;
+    }
+    if (isLoadingMore && !hasNextPage) {
+      console.log('loadMedia: No more pages for loading more, aborting.');
+      return;
+    }
+    if (granted !== true) {
+      console.log('loadMedia: Permission not granted, aborting.');
+      return;
     }
 
+    console.log(`loadMedia: Starting. isLoadingMore: ${isLoadingMore}`);
+    setIsLoading(true);
+
+    // 初回ロードの場合、photos と after はリセットされているはず
+    // (useEffect [visible, defaultSelected] で対応)
+
     try {
+      const currentAfter = isLoadingMore ? after : undefined;
+      console.log(`Workspaceing media with after: ${currentAfter}`);
       const { assets, endCursor, hasNextPage: newHasNextPage } = await MediaLibrary.getAssetsAsync({
         first: ITEMS_PER_PAGE,
         mediaType: [MediaLibrary.MediaType.photo, MediaLibrary.MediaType.video],
         sortBy: [MediaLibrary.SortBy.creationTime],
-        after: loadMore ? after : undefined, // 追加ロード時のみ after を使用
+        after: currentAfter,
       });
+      console.log(`Workspaceed ${assets.length} assets. Has next page: ${newHasNextPage}`);
 
-      const newPhotos = assets.map(asset => ({ id: asset.id, uri: asset.uri }));
-      setPhotos(prevPhotos => loadMore ? [...prevPhotos, ...newPhotos] : newPhotos);
-      setAfter(endCursor);
-      setHasNextPage(newHasNextPage);
-
+      if (isComponentMounted.current) {
+        const newPhotos = assets.map(asset => ({ id: asset.id, uri: asset.uri }));
+        setPhotos(prevPhotos => isLoadingMore ? [...prevPhotos, ...newPhotos] : newPhotos);
+        setAfter(endCursor);
+        setHasNextPage(newHasNextPage);
+      }
     } catch (error) {
       console.error("Error fetching media:", error);
-      Alert.alert("エラー", "メディアの読み込みに失敗しました。");
+      if (isComponentMounted.current) Alert.alert("エラー", "メディアの読み込みに失敗しました。");
     } finally {
-      if (loadMore) {
-        setLoadingMore(false);
-      } else {
-        setLoadingInitial(false);
-      }
+      if (isComponentMounted.current) setIsLoading(false);
+      console.log('loadMedia: Finished.');
     }
-  }, [granted, after, loadingMore, hasNextPage]); // 依存配列に注意
+  }, [granted, after, hasNextPage, isLoading]); // isLoading を依存に含めることで、setIsLoading(false)後に再評価される
 
-  // 権限確認と初回メディア取得
+  // --- 4. 初回ロードのトリガー ---
   useEffect(() => {
-    if (!visible) {
-        setPhotos([]); // 非表示になったら写真リストをクリア
-        setGranted(false); // 権限状態もリセット
-        return;
+    // モーダル表示中、権限許可済み、写真が0枚、次のページがある、かつ現在ロード中でない場合
+    if (visible && granted === true && photos.length === 0 && hasNextPage && !isLoading && isComponentMounted.current) {
+      console.log('[EFFECT] Conditions met for initial load: Calling loadMedia(false).');
+      loadMedia(false);
     }
-
-    (async () => {
-      setLoadingInitial(true); // 初回ロード開始
-
-      const initialPermissions = await MediaLibrary.getPermissionsAsync(false);
-      console.log('Initial MediaLibrary permissions:', JSON.stringify(initialPermissions, null, 2));
-
-      if (initialPermissions.status === 'granted') {
-        setGranted(true);
-        await loadMedia(); // 初回メディアロード
-      } else {
-        const { status, canAskAgain } = await MediaLibrary.requestPermissionsAsync(false);
-        console.log('Requested MediaLibrary permissions status:', status, 'Can ask again:', canAskAgain);
-
-        if (status === 'granted') {
-          setGranted(true);
-          await loadMedia(); // 初回メディアロード
-        } else {
-          Alert.alert(
-            '権限が必要です',
-            '写真や動画にアクセスするためには許可が必要です。設定画面から許可してください。',
-            [
-              { text: 'キャンセル', onPress: () => { setLoadingInitial(false); onCancel(); }, style: 'cancel' },
-              { text: '設定を開く', onPress: () => Linking.openSettings().finally(() => { setLoadingInitial(false); onCancel(); }) }
-            ]
-          );
-          setGranted(false);
-          setLoadingInitial(false);
-        }
-      }
-    })();
-  }, [visible, onCancel, loadMedia]); // loadMedia を依存配列に追加
+  }, [visible, granted, photos.length, hasNextPage, isLoading, loadMedia]);
 
 
   const handleSelect = (uri: string) => {
@@ -142,7 +178,7 @@ export const PhotoPicker: React.FC<PhotoPickerProps> = ({
 
   const renderHeader = () => (
     <View style={localStyles.headerBar}>
-      <TouchableOpacity onPress={() => { onCancel(); }}>
+      <TouchableOpacity onPress={onCancel}>
         <Text style={localStyles.headerBtn}>キャンセル</Text>
       </TouchableOpacity>
       <Text style={localStyles.headerTitle}>写真を選択</Text>
@@ -153,82 +189,89 @@ export const PhotoPicker: React.FC<PhotoPickerProps> = ({
   );
 
   const renderFooter = () => {
-    if (!loadingMore) return null;
-    return <ActivityIndicator style={{ marginVertical: 20 }} />;
+    // 追加ロード中のみフッターのインジケータを表示
+    if (isLoading && photos.length > 0) {
+      return <ActivityIndicator style={{ marginVertical: 20 }} />;
+    }
+    return null;
   };
 
   if (!visible) return null;
+
+  let content;
+  if (granted === null || (isLoading && photos.length === 0)) { // 権限未確認 または 初回ロード中
+    content = (
+      <View style={localStyles.center}>
+        <ActivityIndicator size="large" />
+        <Text>読み込み中...</Text>
+      </View>
+    );
+  } else if (granted === false) {
+    content = (
+      <View style={localStyles.center}>
+        <Text>メディアへのアクセス権限がありません。</Text>
+        <TouchableOpacity onPress={() => Linking.openSettings()} style={{ marginTop: 10 }}>
+          <Text style={{ color: 'blue' }}>設定を開く</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  } else if (photos.length === 0 && !hasNextPage) {
+    content = (
+      <View style={localStyles.center}>
+        <Text>表示できる写真や動画がありません。</Text>
+      </View>
+    );
+  } else {
+    content = (
+      <FlatList
+        data={photos}
+        numColumns={3}
+        keyExtractor={item => item.id}
+        renderItem={({ item }) => (
+          <TouchableOpacity
+            style={{
+              width: Dimensions.get('window').width / 3 - 2,
+              height: Dimensions.get('window').width / 3 - 2,
+              margin: 1,
+            }}
+            onPress={() => handleSelect(item.uri)}
+          >
+            <Image
+              source={{ uri: item.uri }}
+              style={{ flex: 1, width: undefined, height: undefined, borderRadius: 4 }}
+            />
+            {selected.includes(item.uri) && (
+              <>
+                <View style={localStyles.overlay} />
+                <View style={localStyles.checkCircle}>
+                  <Text style={localStyles.checkIcon}>✓</Text>
+                </View>
+              </>
+            )}
+          </TouchableOpacity>
+        )}
+        onEndReached={() => {
+          if (granted === true && hasNextPage && !isLoading) {
+            console.log('onEndReached: Calling loadMedia(true).');
+            loadMedia(true);
+          }
+        }}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={renderFooter}
+      />
+    );
+  }
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onCancel}>
       <SafeAreaView style={localStyles.container}>
         {renderHeader()}
-        {loadingInitial && photos.length === 0 && (
-          <View style={localStyles.center}>
-            <ActivityIndicator size="large" />
-          </View>
-        )}
-        {!loadingInitial && !granted && (
-          <View style={localStyles.center}>
-            <Text>メディアへのアクセス権限がありません。</Text>
-            <TouchableOpacity onPress={() => Linking.openSettings()} style={{ marginTop: 10 }}>
-              <Text style={{ color: 'blue' }}>設定を開く</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-        {granted && !loadingInitial && photos.length === 0 && !hasNextPage && ( // 初回ロード後、写真がない場合
-           <View style={localStyles.center}>
-            <Text>表示できる写真や動画がありません。</Text>
-          </View>
-        )}
-        {granted && photos.length > 0 && (
-          <FlatList
-            data={photos}
-            numColumns={3}
-            keyExtractor={item => item.id}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={{
-                  width: Dimensions.get('window').width / 3 - 2,
-                  height: Dimensions.get('window').width / 3 - 2,
-                  margin: 1,
-                }}
-                onPress={() => handleSelect(item.uri)}
-              >
-                <Image
-                  source={{ uri: item.uri }}
-                  style={{
-                    flex: 1,
-                    width: undefined,
-                    height: undefined,
-                    borderRadius: 4,
-                  }}
-                />
-                {selected.includes(item.uri) && (
-                  <>
-                    <View style={localStyles.overlay} />
-                    <View style={localStyles.checkCircle}>
-                      <Text style={localStyles.checkIcon}>✓</Text>
-                    </View>
-                  </>
-                )}
-              </TouchableOpacity>
-            )}
-            onEndReached={() => {
-              if (hasNextPage && !loadingMore) { // 追加ロード中でなければ実行
-                loadMedia(true); // true を渡して追加ロードであることを示す
-              }
-            }}
-            onEndReachedThreshold={0.5} // 画面下部から50%の位置でonEndReachedをトリガー
-            ListFooterComponent={renderFooter} // ローディングインジケーター
-          />
-        )}
+        {content}
       </SafeAreaView>
     </Modal>
   );
 };
 
-// スタイル定義 (既存のものをそのまま or 調整)
 const localStyles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   headerBar: {

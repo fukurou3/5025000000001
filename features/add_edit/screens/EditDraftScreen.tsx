@@ -446,7 +446,7 @@ export default function EditDraftScreen() {
 
     Toast.show({ type: 'success', text1: t('edit_draft.convert_success') });
     resetUnsaved();
-    router.replace('/(tabs)/tasks/tasks');
+    router.replace('/(tabs)/tasks');
   }, [draftId, title, memo, deadline, imageUris, notifyEnabled, customUnit, customAmount, resetUnsaved, router, t]);
 
   const handleDiscard = useCallback(() => {

@@ -13,7 +13,12 @@ export default {
       supportsTablet: true
     },
     android: {
-      permissions: ["READ_MEDIA_IMAGES", "READ_MEDIA_VIDEO"],
+      permissions: [
+        "READ_MEDIA_IMAGES",
+        "READ_MEDIA_VIDEO",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ],
       adaptiveIcon: {
         foregroundImage: "./assets/images/adaptive-icon.png",
         backgroundColor: "#ffffff"

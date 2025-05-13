@@ -316,7 +316,7 @@ export default function EditTaskScreen() {
             style: 'destructive',
             onPress: () => {
               resetUnsaved();
-              router.replace('/(tabs)/tasks/tasks');
+              router.replace('/(tabs)/tasks');
             },
           },
         ]
@@ -385,13 +385,13 @@ export default function EditTaskScreen() {
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
     Toast.show({ type: 'success', text1: t('edit_task.save_success') });
     resetUnsaved();
-    router.replace('/(tabs)/tasks/tasks');
+    router.replace('/(tabs)/tasks');
   }, [id, title, memo, deadline, imageUris, notifyEnabled, customUnit, customAmount]);
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.appBar}>
-        <TouchableOpacity onPress={() => router.replace('/(tabs)/tasks/tasks')}>
+        <TouchableOpacity onPress={() => router.replace('/(tabs)/tasks')}>
           <Ionicons name="arrow-back" size={fontSizes[fontSizeKey]} color={subColor} />
         </TouchableOpacity>
         <Text style={styles.appBarTitle}>{t('edit_task.title')}</Text>
@@ -514,7 +514,7 @@ export default function EditTaskScreen() {
         </View>
 
         <View style={styles.buttonRow}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.replace('/(tabs)/tasks/tasks')}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.replace('/(tabs)/tasks')}>
             <Text style={styles.saveButtonText}>{t('edit_task.back')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.saveButton} onPress={handleSave}>

@@ -30,7 +30,18 @@
     "cancel": "キャンセル",
     "delete": "削除",
     "save": "保存",
-    "select_all": "全選択"
+    "select_all": "全選択",
+    "sun_short": "日",
+    "mon_short": "月",
+    "tue_short": "火",
+    "wed_short": "水",
+    "thu_short": "木",
+    "fri_short": "金",
+    "sat_short": "土",
+    "am": "午前",
+    "pm": "午後",
+    "none": "なし",
+    "clear": "クリア"
   },
   "add_task": {
     "title": "タスク追加",
@@ -184,6 +195,34 @@
     "passed_hours": "{{count}}時間経過",
     "passed_days": "{{count}}日経過",
     "passed_weeks": "{{count}}週間経過"
-  }
-  
+  },
+    "deadline_modal": {
+    "title_display": "{{date}} {{time}}",
+    "title_display_no_time": "{{date}} まで",
+    "title_display_no_deadline": "期限を設定",
+    "tab_date": "日付",
+    "tab_repeat": "繰り返し",
+    "tab_period": "期間",
+    "specify_time": "時間を指定",
+    "repeat_type": "繰り返し",
+    "no_repeat": "しない",
+    "daily": "毎日",
+    "weekly": "毎週",
+    "monthly": "毎月",
+    "yearly": "毎年",
+    "exclude_holidays": "祝日を除く",
+    "end_date": "終了日",
+    "start_date": "開始日",
+    "not_selected": "未選択",
+    "every_day_unit": "日ごと",
+    "every_week_unit": "週間ごと",
+    "every_month_unit": "ヶ月ごと",
+    "every_year_unit": "年ごと",
+    "ends_never": "なし",
+    "ends_on_date": "指定日",
+    "ends_after_occurrences": "回数指定",
+    "title_display_period_full": "{{startDate}} {{to}} {{endDate}}",
+    "title_display_period_start_only": "{{startDate}} 開始"
+    
+}
 }
