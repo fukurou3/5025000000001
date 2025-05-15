@@ -30,6 +30,8 @@
     "cancel": "キャンセル",
     "delete": "削除",
     "save": "保存",
+    "ok": "OK",
+    "select": "選択",
     "select_all": "全選択",
     "sun_short": "日",
     "mon_short": "月",
@@ -38,10 +40,20 @@
     "thu_short": "木",
     "fri_short": "金",
     "sat_short": "土",
+    "sun_jp_short": "日",
+    "mon_jp_short": "月",
+    "tue_jp_short": "火",
+    "wed_jp_short": "水",
+    "thu_jp_short": "木",
+    "fri_jp_short": "金",
+    "sat_jp_short": "土",
     "am": "午前",
     "pm": "午後",
     "none": "なし",
-    "clear": "クリア"
+    "clear": "クリア",
+    "year_month_format": "yyyy年M月",
+    "all_day": "終日",
+    "to": "～"
   },
   "add_task": {
     "title": "タスク追加",
@@ -54,6 +66,7 @@
     "select_photo": "写真を選択",
     "add_photo": "写真を追加",
     "deadline": "期限",
+    "no_deadline_set": "期限未設定",
     "notification": "通知",
     "minutes_before": "分前",
     "hours_before": "時間前",
@@ -66,7 +79,6 @@
     "alert_discard": "破棄",
     "folder": "フォルダー選択",
     "no_folder": "なし",
-    "no_deadline": "期限未設定",
     "create_new_folder": "フォルダーを作成",
     "no_notification": "通知なし",
     "photo_selected": "{{count}}枚選択中"
@@ -196,7 +208,7 @@
     "passed_days": "{{count}}日経過",
     "passed_weeks": "{{count}}週間経過"
   },
-    "deadline_modal": {
+  "deadline_modal": {
     "title_display": "{{date}} {{time}}",
     "title_display_no_time": "{{date}} まで",
     "title_display_no_deadline": "期限を設定",
@@ -205,24 +217,33 @@
     "tab_period": "期間",
     "specify_time": "時間を指定",
     "repeat_type": "繰り返し",
+    "repeat_frequency": "繰り返し頻度",
+    "interval": "間隔",
+    "days_of_week": "曜日",
     "no_repeat": "しない",
     "daily": "毎日",
     "weekly": "毎週",
     "monthly": "毎月",
     "yearly": "毎年",
+    "every_x_days": "{{count}}日ごと",
+    "every_x_weeks": "{{count}}週間ごと",
+    "every_x_months": "{{count}}ヶ月ごと",
+    "every_x_years": "{{count}}年ごと",
     "exclude_holidays": "祝日を除く",
-    "end_date": "終了日",
     "start_date": "開始日",
+    "end_date": "終了日",
     "not_selected": "未選択",
-    "every_day_unit": "日ごと",
-    "every_week_unit": "週間ごと",
-    "every_month_unit": "ヶ月ごと",
-    "every_year_unit": "年ごと",
     "ends_never": "なし",
     "ends_on_date": "指定日",
     "ends_after_occurrences": "回数指定",
-    "title_display_period_full": "{{startDate}} {{to}} {{endDate}}",
-    "title_display_period_start_only": "{{startDate}} 開始"
-    
-}
+    "occurrences_suffix": "回",
+    "end_repeat_title": "繰り返しの終了",
+    "title_display_period_full": "{{startDate}} ～ {{endDate}}",
+    "title_display_period_start_only": "{{startDate}} 開始",
+    "common_select": "未選択",
+    "select_start_date": "開始日を選択",
+    "select_end_date": "終了日を選択",
+    "clear_start_date": "開始日をクリア",
+    "clear_end_date": "終了日をクリア"
+  }
 }

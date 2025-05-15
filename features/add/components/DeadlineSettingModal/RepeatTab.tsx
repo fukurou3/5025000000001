@@ -3,19 +3,23 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { ScrollView, View, Text, TouchableOpacity, Switch, Modal, Pressable, TextInput, Platform } from 'react-native';
 import { Calendar, CalendarUtils, CalendarProps } from 'react-native-calendars';
 import { useTranslation } from 'react-i18next';
+import { isEqual } // lodash などのディープ比較関数をインポートするか、手動で比較
+from 'lodash'; // もしlodashを使わない場合は、手動で比較ロジックを実装
 
 import { useAppTheme } from '@/hooks/ThemeContext';
 import type {
-    RepeatTabProps,
+    SpecificRepeatTabProps,
     RepeatFrequency,
     RepeatEnds,
     DeadlineModalTranslationKey,
     CommonTranslationKey,
-    CalendarFontWeight
+    CalendarFontWeight,
+    DeadlineSettings // settings の型を参照するためにインポート
 } from './types';
 
 const todayString = CalendarUtils.getCalendarDateString(new Date());
 
+// frequencyOptions と repeatEndOptions は変更なし
 const frequencyOptions: { labelKey: Extract<DeadlineModalTranslationKey, 'no_repeat' | 'daily' | 'weekly' | 'monthly' | 'yearly'>; value: RepeatFrequency }[] = [
   { labelKey: 'no_repeat', value: 'none' },
   { labelKey: 'daily', value: 'daily' },
@@ -34,12 +38,13 @@ const dayNameKeys: Extract<CommonTranslationKey, 'sun_short' | 'mon_short' | 'tu
   ['sun_short', 'mon_short', 'tue_short', 'wed_short', 'thu_short', 'fri_short', 'sat_short'];
 
 
-const RepeatTabMemo: React.FC<RepeatTabProps> = ({ styles, settings, updateSettings, updateFullSettings }) => {
+const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, updateSettings, updateFullSettings }) => {
   const { colorScheme, subColor } = useAppTheme();
   const isDark = colorScheme === 'dark';
   const { t } = useTranslation();
 
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
+  // settings.repeatEnds?.occurrences が string ではないため toString() を使用
   const [occurrences, setOccurrences] = useState<string>(settings.repeatEnds?.occurrences?.toString() || '1');
 
   const currentFrequency = settings.repeatFrequency ?? 'none';
@@ -49,21 +54,23 @@ const RepeatTabMemo: React.FC<RepeatTabProps> = ({ styles, settings, updateSetti
   const currentRepeatEnds = settings.repeatEnds ?? { type: 'never' };
 
   const handleFrequencyChange = useCallback((freq: RepeatFrequency) => {
-    const newSettings: Partial<typeof settings> = { repeatFrequency: freq };
+    //型エラーを避けるため、型アサーションを使用
+    const newSettingsUpdate: Partial<Pick<DeadlineSettings, 'repeatFrequency' | 'repeatInterval' | 'repeatDaysOfWeek' | 'isExcludeHolidays' | 'repeatEnds'>> = { repeatFrequency: freq };
+
     if (freq === 'none') {
-      newSettings.repeatInterval = undefined;
-      newSettings.repeatDaysOfWeek = undefined;
-      newSettings.isExcludeHolidays = undefined;
-      newSettings.repeatEnds = { type: 'never' };
+      newSettingsUpdate.repeatInterval = undefined;
+      newSettingsUpdate.repeatDaysOfWeek = undefined;
+      newSettingsUpdate.isExcludeHolidays = undefined;
+      newSettingsUpdate.repeatEnds = { type: 'never' };
     } else if (freq !== 'weekly') {
-        newSettings.repeatDaysOfWeek = undefined;
+        newSettingsUpdate.repeatDaysOfWeek = undefined;
     }
     if (freq === 'daily' || freq === 'weekly') {
-        if (!settings.repeatInterval) newSettings.repeatInterval = 1;
+        if (!settings.repeatInterval) newSettingsUpdate.repeatInterval = 1;
     } else {
-        newSettings.repeatInterval = undefined;
+        newSettingsUpdate.repeatInterval = undefined;
     }
-    updateFullSettings(newSettings);
+    updateFullSettings(newSettingsUpdate);
   }, [updateFullSettings, settings.repeatInterval]);
 
   const handleIntervalChange = useCallback((text: string) => {
@@ -109,7 +116,12 @@ const RepeatTabMemo: React.FC<RepeatTabProps> = ({ styles, settings, updateSetti
   },[currentRepeatEnds, updateSettings]);
 
   const clearRepeatEndDate = useCallback(() => {
-    updateSettings('repeatEnds', { ...currentRepeatEnds, date: undefined });
+    // currentRepeatEnds が undefined の可能性を考慮
+    const updatedEnds = { ...currentRepeatEnds, date: undefined };
+    if (!currentRepeatEnds) {
+        (updatedEnds as RepeatEnds).type = 'on_date'; // type がない場合を補う
+    }
+    updateSettings('repeatEnds', updatedEnds as RepeatEnds);
     setShowEndDatePicker(false);
   }, [currentRepeatEnds, updateSettings]);
 
@@ -149,16 +161,17 @@ const RepeatTabMemo: React.FC<RepeatTabProps> = ({ styles, settings, updateSetti
    }), [currentRepeatEnds?.date, subColor]);
 
   const handleFrequencyPickerPress = useCallback(() => {
+    // 実際のピッカー表示ロジックをここに実装
     console.log("Frequency picker pressed. Implement selection UI.");
   }, []);
-
 
   return (
     <ScrollView style={styles.tabContentContainer} contentContainerStyle={{ paddingBottom: 20}}>
       <View style={styles.settingRow}>
         <Text style={styles.label}>{t('deadline_modal.repeat_frequency')}</Text>
+        {/* TODO: Implement a proper picker for frequency */}
         <TouchableOpacity onPress={handleFrequencyPickerPress}>
-            <Text style={styles.pickerText}>{t(`deadline_modal.${currentFrequency}` as const)}</Text>
+            <Text style={styles.pickerText}>{t(`deadline_modal.${currentFrequency as 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly'}` as const)}</Text>
         </TouchableOpacity>
       </View>
 
@@ -231,7 +244,7 @@ const RepeatTabMemo: React.FC<RepeatTabProps> = ({ styles, settings, updateSetti
                             <View style={{flexDirection: 'row', alignItems: 'center'}}>
                                 <TextInput
                                     style={[styles.intervalInput, {width: 50, marginRight: 4}]}
-                                    value={occurrences}
+                                    value={occurrences} // ローカルステートの occurrences を使用
                                     onChangeText={handleOccurrencesChange}
                                     keyboardType="number-pad"
                                     maxLength={3}
@@ -272,4 +285,17 @@ const RepeatTabMemo: React.FC<RepeatTabProps> = ({ styles, settings, updateSetti
     </ScrollView>
   );
 };
-export const RepeatTab = React.memo(RepeatTabMemo);
+
+const areRepeatTabPropsEqual = (
+    prevProps: Readonly<SpecificRepeatTabProps>,
+    nextProps: Readonly<SpecificRepeatTabProps>
+): boolean => {
+    return (
+        prevProps.styles === nextProps.styles &&
+        isEqual(prevProps.settings, nextProps.settings) && // lodash.isEqual でディープ比較
+        prevProps.updateSettings === nextProps.updateSettings &&
+        prevProps.updateFullSettings === nextProps.updateFullSettings
+    );
+};
+
+export const RepeatTab = React.memo(RepeatTabMemo, areRepeatTabPropsEqual);

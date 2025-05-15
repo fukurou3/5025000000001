@@ -1,5 +1,5 @@
 // app/features/add/components/DeadlineSettingModal/types.ts
-import type { ViewStyle, TextStyle } from 'react-native'; // FlexStyle は CalendarFontWeight で TextStyle を使うので不要になるかも
+import type { ViewStyle, TextStyle } from 'react-native';
 import type { FontSizeKey } from '@/context/FontSizeContext';
 
 export interface DeadlineTime {
@@ -50,7 +50,7 @@ export interface DeadlineModalStyles {
   tabLabel: TextStyle;
   tabIndicator: ViewStyle;
   tabContentContainer: ViewStyle;
-  contentBackgroundColor: ViewStyle['backgroundColor']; // ★ 追加 (または単に string)
+  contentBackgroundColor: ViewStyle['backgroundColor'];
   label: TextStyle;
   settingRow: ViewStyle;
   timePickerToggleContainer: ViewStyle;
@@ -59,7 +59,7 @@ export interface DeadlineModalStyles {
   timeSeparator: TextStyle;
   frequencyPickerContainer: ViewStyle;
   intervalContainer: ViewStyle;
-  intervalInput: ViewStyle; // TextInput のスタイルなので TextStyle もあり得るが、ViewStyle の方が一般的
+  intervalInput: ViewStyle;
   intervalText: TextStyle;
   weekDaysContainer: ViewStyle;
   daySelector: ViewStyle;
@@ -78,20 +78,87 @@ export interface DeadlineModalStyles {
   periodButtonText: TextStyle;
   periodButtonTextSelected: TextStyle;
   pickerText: TextStyle;
-  textInput: ViewStyle; // TextInput のスタイルなので TextStyle もあり得る
+  textInput: ViewStyle;
   modal: ViewStyle;
 }
 
-export interface CommonTabProps {
+// タブ固有のProps型定義
+export interface SpecificDateSelectionTabProps {
   styles: DeadlineModalStyles;
-  settings: DeadlineSettings;
-  updateSettings: <K extends keyof DeadlineSettings>(key: K, value: DeadlineSettings[K]) => void;
-  updateFullSettings: (newSettings: Partial<DeadlineSettings>) => void;
+  selectedDate?: string;
+  selectedTime?: DeadlineTime;
+  isTimeEnabled?: boolean;
+  updateSettings: <K extends keyof Pick<DeadlineSettings, 'date' | 'time' | 'isTimeEnabled'>>(
+    key: K,
+    value: Pick<DeadlineSettings, 'date' | 'time' | 'isTimeEnabled'>[K]
+  ) => void;
 }
 
-export interface DateSelectionTabProps extends CommonTabProps {}
-export interface RepeatTabProps extends CommonTabProps {}
-export interface PeriodTabProps extends CommonTabProps {}
+export interface SpecificRepeatTabProps {
+  styles: DeadlineModalStyles;
+  settings: Pick<
+    DeadlineSettings,
+    | 'repeatFrequency'
+    | 'repeatInterval'
+    | 'repeatDaysOfWeek'
+    | 'isExcludeHolidays'
+    | 'repeatEnds'
+  >;
+  updateSettings: <
+    K extends keyof Pick<
+      DeadlineSettings,
+      | 'repeatFrequency'
+      | 'repeatInterval'
+      | 'repeatDaysOfWeek'
+      | 'isExcludeHolidays'
+      | 'repeatEnds'
+    >
+  >(
+    key: K,
+    value: Pick<
+      DeadlineSettings,
+      | 'repeatFrequency'
+      | 'repeatInterval'
+      | 'repeatDaysOfWeek'
+      | 'isExcludeHolidays'
+      | 'repeatEnds'
+    >[K]
+  ) => void;
+  updateFullSettings: (
+    newSettings: Partial<
+      Pick<
+        DeadlineSettings,
+        | 'repeatFrequency'
+        | 'repeatInterval'
+        | 'repeatDaysOfWeek'
+        | 'isExcludeHolidays'
+        | 'repeatEnds'
+      >
+    >
+  ) => void;
+}
+
+export interface SpecificPeriodTabProps {
+  styles: DeadlineModalStyles;
+  periodStartDate?: string;
+  periodEndDate?: string;
+  updateSettings: <K extends keyof Pick<DeadlineSettings, 'periodStartDate' | 'periodEndDate'>>(
+    key: K,
+    value: Pick<DeadlineSettings, 'periodStartDate' | 'periodEndDate'>[K]
+  ) => void;
+}
+
+// CommonTabProps は直接使用されなくなる可能性がありますが、参考のために残すか、削除します。
+// export interface CommonTabProps {
+//   styles: DeadlineModalStyles;
+//   settings: DeadlineSettings;
+//   updateSettings: <K extends keyof DeadlineSettings>(key: K, value: DeadlineSettings[K]) => void;
+//   updateFullSettings: (newSettings: Partial<DeadlineSettings>) => void;
+// }
+// export interface DateSelectionTabProps extends CommonTabProps {} // <- これらは Specific***Props に置き換わる
+// export interface RepeatTabProps extends CommonTabProps {}
+// export interface PeriodTabProps extends CommonTabProps {}
+
 
 export type AmPm = 'AM' | 'PM';
 

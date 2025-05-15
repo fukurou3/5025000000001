@@ -4,7 +4,7 @@ import { ScrollView, View, Text, TouchableOpacity } from 'react-native';
 import { Calendar, CalendarUtils, CalendarProps } from 'react-native-calendars';
 import { useTranslation } from 'react-i18next';
 import { useAppTheme } from '@/hooks/ThemeContext';
-import type { PeriodTabProps, CalendarFontWeight, DeadlineSettings } from './types'; // DeadlineSettings をインポート
+import type { SpecificPeriodTabProps, CalendarFontWeight } from './types';
 
 const todayString = CalendarUtils.getCalendarDateString(new Date());
 
@@ -17,14 +17,17 @@ interface PeriodMarking {
   disableTouchEvent?: boolean;
 }
 
-const PeriodTabMemo: React.FC<PeriodTabProps> = ({ styles, settings, updateSettings }) => {
+const PeriodTabMemo: React.FC<SpecificPeriodTabProps> = ({
+  styles,
+  periodStartDate,
+  periodEndDate,
+  updateSettings,
+}) => {
   const { colorScheme, subColor } = useAppTheme();
   const isDark = colorScheme === 'dark';
   const { t } = useTranslation();
 
   const [selectingFor, setSelectingFor] = useState<'start' | 'end'>('start');
-
-  const { periodStartDate, periodEndDate } = settings;
 
   const onDayPress = useCallback((day: { dateString: string }) => {
     if (selectingFor === 'start') {
@@ -149,28 +152,15 @@ const PeriodTabMemo: React.FC<PeriodTabProps> = ({ styles, settings, updateSetti
 };
 
 const arePeriodTabPropsEqual = (
-    prevProps: Readonly<PeriodTabProps>,
-    nextProps: Readonly<PeriodTabProps>
+    prevProps: Readonly<SpecificPeriodTabProps>,
+    nextProps: Readonly<SpecificPeriodTabProps>
 ): boolean => {
-    if (
-        prevProps.styles !== nextProps.styles ||
-        prevProps.updateSettings !== nextProps.updateSettings ||
-        prevProps.updateFullSettings !== nextProps.updateFullSettings
-    ) {
-        return false;
-    }
-
-    const prevSettings = prevProps.settings;
-    const nextSettings = nextProps.settings;
-
-    if (
-        prevSettings.periodStartDate !== nextSettings.periodStartDate ||
-        prevSettings.periodEndDate !== nextSettings.periodEndDate
-    ) {
-        return false;
-    }
-
-    return true;
+    return (
+        prevProps.styles === nextProps.styles &&
+        prevProps.periodStartDate === nextProps.periodStartDate &&
+        prevProps.periodEndDate === nextProps.periodEndDate &&
+        prevProps.updateSettings === nextProps.updateSettings
+    );
 };
 
 export const PeriodTab = React.memo(PeriodTabMemo, arePeriodTabPropsEqual);

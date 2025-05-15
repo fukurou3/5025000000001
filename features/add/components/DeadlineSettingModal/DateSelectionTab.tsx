@@ -1,12 +1,12 @@
 // app/features/add/components/DeadlineSettingModal/DateSelectionTab.tsx
-import React, { useContext, useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { ScrollView, View, Text, TouchableOpacity } from 'react-native';
 import { Calendar, CalendarUtils, CalendarProps } from 'react-native-calendars';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useAppTheme } from '@/hooks/ThemeContext';
-import type { DateSelectionTabProps, DeadlineTime, CalendarFontWeight, DeadlineSettings } from './types'; // DeadlineSettings をインポート
+import type { SpecificDateSelectionTabProps, DeadlineTime, CalendarFontWeight } from './types';
 import { TimePickerModal } from './TimePickerModal';
 
 const formatTimeToDisplay = (time: DeadlineTime, t: (key: string) => string): string => {
@@ -18,9 +18,11 @@ const formatTimeToDisplay = (time: DeadlineTime, t: (key: string) => string): st
     return `${ampm} ${hour12}:${String(time.minute).padStart(2, '0')}`;
 };
 
-const DateSelectionTabMemo: React.FC<DateSelectionTabProps> = ({
+const DateSelectionTabMemo: React.FC<SpecificDateSelectionTabProps> = ({
   styles,
-  settings,
+  selectedDate,
+  selectedTime,
+  isTimeEnabled,
   updateSettings,
 }) => {
   const { colorScheme, subColor } = useAppTheme();
@@ -29,7 +31,7 @@ const DateSelectionTabMemo: React.FC<DateSelectionTabProps> = ({
 
   const [isTimePickerModalVisible, setTimePickerModalVisible] = useState(false);
 
-  const currentSelectedDate = settings.date || CalendarUtils.getCalendarDateString(new Date());
+  const currentSelectedDate = selectedDate || CalendarUtils.getCalendarDateString(new Date());
 
   const onDayPress = useCallback((day: { dateString: string }) => {
     updateSettings('date', day.dateString);
@@ -58,11 +60,11 @@ const DateSelectionTabMemo: React.FC<DateSelectionTabProps> = ({
 
 
   const displayTime = useMemo(() => {
-    if (settings.isTimeEnabled && settings.time) {
-      return formatTimeToDisplay(settings.time, t);
+    if (isTimeEnabled && selectedTime) {
+      return formatTimeToDisplay(selectedTime, t);
     }
     return t('common.select');
-  }, [settings.isTimeEnabled, settings.time, t]);
+  }, [isTimeEnabled, selectedTime, t]);
 
   const labelFontSize = typeof styles.label.fontSize === 'number' ? styles.label.fontSize : 16;
 
@@ -102,7 +104,7 @@ const DateSelectionTabMemo: React.FC<DateSelectionTabProps> = ({
       <TouchableOpacity onPress={handleTimeSectionPress} style={styles.timePickerToggleContainer}>
         <Text style={[styles.label, { marginBottom: 0 }]}>{t('deadline_modal.specify_time')}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Text style={[styles.pickerText, { marginRight: 4, color: settings.isTimeEnabled ? subColor : (isDark ? '#A0A0A0' : '#555555')}]}>
+          <Text style={[styles.pickerText, { marginRight: 4, color: isTimeEnabled ? subColor : (isDark ? '#A0A0A0' : '#555555')}]}>
             {displayTime}
           </Text>
           <Ionicons
@@ -115,7 +117,7 @@ const DateSelectionTabMemo: React.FC<DateSelectionTabProps> = ({
 
       <TimePickerModal
         visible={isTimePickerModalVisible}
-        initialTime={settings.time}
+        initialTime={selectedTime}
         onClose={handleTimePickerClose}
         onConfirm={handleTimeConfirm}
         onClear={handleTimeClear}
@@ -125,33 +127,17 @@ const DateSelectionTabMemo: React.FC<DateSelectionTabProps> = ({
 };
 
 const areDateSelectionTabPropsEqual = (
-    prevProps: Readonly<DateSelectionTabProps>,
-    nextProps: Readonly<DateSelectionTabProps>
+    prevProps: Readonly<SpecificDateSelectionTabProps>,
+    nextProps: Readonly<SpecificDateSelectionTabProps>
 ): boolean => {
-    // styles と updateSettings/updateFullSettings は参照が安定している前提
-    if (
-        prevProps.styles !== nextProps.styles ||
-        prevProps.updateSettings !== nextProps.updateSettings ||
-        prevProps.updateFullSettings !== nextProps.updateFullSettings // DateSelectionTab では未使用だが念のため
-    ) {
-        return false;
-    }
-
-    // settings の中で、DateSelectionTab が実際に依存するプロパティのみを比較
-    const prevSettings = prevProps.settings;
-    const nextSettings = nextProps.settings;
-
-    if (
-        prevSettings.date !== nextSettings.date ||
-        prevSettings.isTimeEnabled !== nextSettings.isTimeEnabled ||
-        prevSettings.time?.hour !== nextSettings.time?.hour ||
-        prevSettings.time?.minute !== nextSettings.time?.minute
-    ) {
-        return false;
-    }
-    // DateSelectionTab が settings の他のプロパティに依存していないことを確認
-
-    return true; // すべての関連Propsが等しければ true (再レンダリングしない)
+    return (
+        prevProps.styles === nextProps.styles &&
+        prevProps.selectedDate === nextProps.selectedDate &&
+        prevProps.isTimeEnabled === nextProps.isTimeEnabled &&
+        prevProps.selectedTime?.hour === nextProps.selectedTime?.hour &&
+        prevProps.selectedTime?.minute === nextProps.selectedTime?.minute &&
+        prevProps.updateSettings === nextProps.updateSettings
+    );
 };
 
 export const DateSelectionTab = React.memo(DateSelectionTabMemo, areDateSelectionTabPropsEqual);

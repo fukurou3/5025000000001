@@ -1,14 +1,21 @@
 // app/features/add/components/DeadlineSettingModal/index.tsx
 import React, { useState, useEffect, useCallback, useContext, useMemo } from 'react';
-import { Modal, View, TouchableOpacity, Text, useWindowDimensions, Platform, InteractionManager, ViewStyle, TextStyle } from 'react-native'; // InteractionManager, ViewStyle, TextStyle をインポート
+import { Modal, View, TouchableOpacity, Text, useWindowDimensions, Platform, InteractionManager } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { TabView, SceneMap, TabBar, NavigationState, Route, TabBarProps } from 'react-native-tab-view'; // TabBarProps をインポート
+import { TabView, TabBar, SceneRendererProps } from 'react-native-tab-view'; // SceneMap は不要になったので削除, TabBarProps, Route, NavigationStateも直接は不要
 import { useTranslation } from 'react-i18next';
-import { LocaleConfig, CalendarUtils } from 'react-native-calendars';
+import { CalendarUtils } from 'react-native-calendars'; // LocaleConfig はこのファイルでは直接不要
 
 import { useAppTheme } from '@/hooks/ThemeContext';
 import { FontSizeContext } from '@/context/FontSizeContext';
-import type { DeadlineSettings, DeadlineTime, DeadlineRoute } from './types';
+import type {
+    DeadlineSettings,
+    DeadlineTime,
+    DeadlineRoute,
+    SpecificDateSelectionTabProps, // 追加
+    SpecificRepeatTabProps,    // 追加
+    SpecificPeriodTabProps     // 追加
+} from './types';
 import { createDeadlineModalStyles } from './styles';
 import { DeadlineModalHeader } from './DeadlineModalHeader';
 import { DateSelectionTab } from './DateSelectionTab';
@@ -22,7 +29,7 @@ interface DeadlineSettingModalProps {
   initialSettings?: DeadlineSettings;
 }
 
-const todayString = CalendarUtils.getCalendarDateString(new Date());
+// const todayString = CalendarUtils.getCalendarDateString(new Date()); // このファイルでは直接不要
 const defaultTime: DeadlineTime = { hour: 9, minute: 0 };
 
 export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
@@ -33,9 +40,8 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
 }) => {
   const { colorScheme, subColor } = useAppTheme();
   const { fontSizeKey } = useContext(FontSizeContext);
-  // createDeadlineModalStyles の結果を useMemo でメモ化
   const styles = useMemo(() => createDeadlineModalStyles(colorScheme === 'dark', subColor, fontSizeKey), [colorScheme, subColor, fontSizeKey]);
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation(); // i18n は直接使用していないので削除
   const layout = useWindowDimensions();
 
   const [activeTabIndex, setActiveTabIndex] = useState(0);
@@ -73,30 +79,79 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
     { key: 'period', title: t('deadline_modal.tab_period') },
   ], [t]);
 
-  // commonTabProps の settings も渡すが、各タブの React.memo で詳細比較する
-  const commonTabProps = useMemo(() => ({
+  // --- タブ固有のPropsを作成 ---
+  const dateTabProps = useMemo((): SpecificDateSelectionTabProps => ({
     styles,
-    settings,
+    selectedDate: settings.date,
+    selectedTime: settings.time,
+    isTimeEnabled: settings.isTimeEnabled,
+    // updateSettings の型を合わせるため、必要なキーのみを渡すように調整
+    updateSettings: (key, value) => {
+        if (key === 'date' || key === 'time' || key === 'isTimeEnabled') {
+            updateSettings(key, value as any); // 型アサーションで対応 (より厳密な型ガードも検討可)
+        }
+    },
+  }), [styles, settings.date, settings.time, settings.isTimeEnabled, updateSettings]);
+
+  const repeatTabProps = useMemo((): SpecificRepeatTabProps => ({
+    styles,
+    settings: {
+        repeatFrequency: settings.repeatFrequency,
+        repeatInterval: settings.repeatInterval,
+        repeatDaysOfWeek: settings.repeatDaysOfWeek,
+        isExcludeHolidays: settings.isExcludeHolidays,
+        repeatEnds: settings.repeatEnds,
+    },
+    // updateSettings の型を合わせる
+    updateSettings: (key, value) => {
+        // settings の Pick に含まれるキーのみを扱うようにガードするか、型アサーション
+        updateSettings(key as any, value as any);
+    },
+    updateFullSettings: (newPartialSettings) => updateFullSettings(newPartialSettings),
+  }), [
+    styles,
+    settings.repeatFrequency,
+    settings.repeatInterval,
+    settings.repeatDaysOfWeek,
+    settings.isExcludeHolidays,
+    settings.repeatEnds,
     updateSettings,
     updateFullSettings,
-  }), [styles, settings, updateSettings, updateFullSettings]);
+  ]);
 
-  const renderScene = useCallback(
-    SceneMap({
-      date: () => <DateSelectionTab {...commonTabProps} />,
-      repeat: () => <RepeatTab {...commonTabProps} />,
-      period: () => <PeriodTab {...commonTabProps} />,
-    }),
-    [commonTabProps] // commonTabProps が変更された時のみ再生成
-  );
+  const periodTabProps = useMemo((): SpecificPeriodTabProps => ({
+    styles,
+    periodStartDate: settings.periodStartDate,
+    periodEndDate: settings.periodEndDate,
+    // updateSettings の型を合わせる
+    updateSettings: (key, value) => {
+        if (key === 'periodStartDate' || key === 'periodEndDate') {
+            updateSettings(key, value as any);
+        }
+    },
+  }), [styles, settings.periodStartDate, settings.periodEndDate, updateSettings]);
+
+  // --- カスタム renderScene ---
+  const renderScene = useCallback(({ route }: SceneRendererProps & { route: DeadlineRoute }) => {
+    switch (route.key) {
+      case 'date':
+        return <DateSelectionTab {...dateTabProps} />;
+      case 'repeat':
+        return <RepeatTab {...repeatTabProps} />;
+      case 'period':
+        return <PeriodTab {...periodTabProps} />;
+      default:
+        return null;
+    }
+  }, [dateTabProps, repeatTabProps, periodTabProps]); // 依存配列に各タブのPropsオブジェクトを指定
 
   const renderTabBar = useCallback(
-    (props: any) => ( // 型エラー回避のため any を使用
+    (props: any) => ( // TabBarProps 型を使用することも可能
       <TabBar
         {...props}
         indicatorStyle={[styles.tabIndicator, { backgroundColor: subColor }]}
         style={styles.tabBar}
-        labelStyle={styles.tabLabel as any} // 型エラー回避のため any を使用
+        labelStyle={styles.tabLabel as any} // TextStyle としてキャスト可能ならそれが望ましい
         activeColor={subColor}
         inactiveColor={colorScheme === 'dark' ? '#A0A0A0' : '#555555'}
         pressOpacity={0.8}
@@ -127,7 +182,7 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
             renderTabBar={renderTabBar}
             swipeEnabled={Platform.OS !== 'web'}
             lazy
-            lazyPreloadDistance={0}
+            lazyPreloadDistance={0} // 全てのタブを事前にロードしない
           />
           <View style={styles.footer}>
             <TouchableOpacity style={styles.button} onPress={onClose}>
