@@ -53,7 +53,8 @@
     "clear": "クリア",
     "year_month_format": "yyyy年M月",
     "all_day": "終日",
-    "to": "～"
+    "to": "～",
+    "unset": "設定しない"
   },
   "add_task": {
     "title": "タスク追加",
@@ -244,6 +245,7 @@
     "select_start_date": "開始日を選択",
     "select_end_date": "終了日を選択",
     "clear_start_date": "開始日をクリア",
-    "clear_end_date": "終了日をクリア"
+    "clear_end_date": "終了日をクリア",
+    "unset_confirm_message": "変更内容は保存されません。本当によろしいですか？"
   }
 }
