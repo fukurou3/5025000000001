@@ -1,11 +1,15 @@
-// C:\Users\fukur\task-app\app\app\lib\tasks\taskUtils.ts
+// app/features/tasks/utils.ts
 
 import dayjs from 'dayjs';
 
-export const getTimeText = (deadline: string, t: any) => {
+export const getTimeText = (deadline: string | undefined, t: any) => {
+  if (!deadline) {
+    return t('task_list.no_deadline');
+  }
   const now = dayjs();
   const due = dayjs(deadline);
   const diff = due.diff(now, 'minute');
+
   if (diff < 0) {
     const past = now.diff(due, 'minute');
     if (past < 60) return t('time.minutesAgo', { count: past });
@@ -18,10 +22,24 @@ export const getTimeText = (deadline: string, t: any) => {
   }
 };
 
-export const getTimeColor = (deadline: string, isDark: boolean) => {
+export const getTimeColor = (deadline: string | undefined, isDark: boolean) => {
+  if (!deadline) {
+    return isDark ? '#ffffff' : '#000000'; // 期限なし
+  }
+
   const now = dayjs();
   const due = dayjs(deadline);
-  if (due.isBefore(now)) return isDark ? '#ff6b6b' : '#d32f2f';
-  if (due.isSame(now, 'day')) return isDark ? '#ffd93d' : '#ff9800';
-  return isDark ? '#fff' : '#000';
+
+  if (due.isBefore(now)) {
+    return isDark ? '#ff6b6b' : '#d32f2f'; // 期限切れ (赤色)
+  }
+
+  // 期限まで24時間以内かどうかを判定
+  const oneDayLater = now.add(1, 'day');
+  if (due.isBefore(oneDayLater)) {
+    return isDark ? '#ffd93d' : '#ff9800'; // 残り一日未満 (黄色)
+  }
+
+  // それ以外 (期限が24時間以上先)
+  return isDark ? '#ffffff' : '#000000'; // 通常色
 };

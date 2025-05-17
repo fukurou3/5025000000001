@@ -18,11 +18,13 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
   styles,
 }) => (
   <View style={styles.buttonRow}>
-    <TouchableOpacity style={styles.saveButton} onPress={onSave}>
-      <Text style={styles.saveButtonText}>{saveText}</Text>
-    </TouchableOpacity>
+    {/* 「下書きに保存」ボタンを先に記述 */}
     <TouchableOpacity style={styles.draftButton} onPress={onSaveDraft}>
       <Text style={styles.saveButtonText}>{draftText}</Text>
+    </TouchableOpacity>
+    {/* 「タスクに追加」ボタンを後に記述 */}
+    <TouchableOpacity style={styles.saveButton} onPress={onSave}>
+      <Text style={styles.saveButtonText}>{saveText}</Text>
     </TouchableOpacity>
   </View>
 );

@@ -1,3 +1,4 @@
+//C:\Users\fukur\task-app\app\features\tasks\TasksScreen.tsx
 import React, { useEffect, useState, useCallback, useContext } from 'react';
 import {
   View,
@@ -63,7 +64,6 @@ export default function TasksScreen() {
   const [collapsedFolders, setCollapsedFolders] = useState<Record<string, boolean>>({});
   const [isReordering, setIsReordering] = useState(false);
   const [draggingFolder, setDraggingFolder] = useState<string | null>(null);
-  const [isDirty, setIsDirty] = useState(false);
   const [renameModalVisible, setRenameModalVisible] = useState(false);
   const [renameTarget, setRenameTarget] = useState<string | null>(null);
 
@@ -73,9 +73,10 @@ export default function TasksScreen() {
     Animated.timing(selectionAnim, {
       toValue: isSelecting ? 0 : -TAB_HEIGHT,
       duration: 300,
-      useNativeDriver: false,
+      useNativeDriver: false, // trueにするとWebで動作しない可能性があるため注意
     }).start();
   }, [isSelecting]);
+
   const loadTasks = useCallback(async () => {
     setLoading(true);
     try {
@@ -90,14 +91,11 @@ export default function TasksScreen() {
     }
   }, []);
 
-  const saveTasksIfNeeded = async () => {
-    if (isDirty) {
-      try {
-        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
-        setIsDirty(false);
-      } catch (e) {
-        console.error('保存失敗:', e);
-      }
+  const saveTasks = async (updatedTasks: Task[]) => {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTasks));
+    } catch (e) {
+      console.error('保存失敗:', e);
     }
   };
 
@@ -110,19 +108,18 @@ export default function TasksScreen() {
     }
   };
 
-  const toggleTaskDone = (id: string) => {
-    setTasks(prev =>
-      prev.map(task =>
-        task.id === id
-          ? {
-              ...task,
-              done: !task.done,
-              completedAt: !task.done ? new Date().toISOString() : undefined,
-            }
-          : task
-      )
+  const toggleTaskDone = async (id: string) => {
+    const newTasks = tasks.map(task =>
+      task.id === id
+        ? {
+            ...task,
+            done: !task.done,
+            completedAt: !task.done ? new Date().toISOString() : undefined,
+          }
+        : task
     );
-    setIsDirty(true);
+    setTasks(newTasks);
+    await saveTasks(newTasks);
   };
 
   const toggleFolder = (name: string) => {
@@ -162,64 +159,71 @@ export default function TasksScreen() {
   const handleDeleteSelected = () => {
     Alert.alert(
       t('common.confirm'),
-      t('task_list.confirm_delete_selected'),
+      t('task_list.delete_confirm_message'), // 汎用的な削除確認メッセージに変更
       [
         { text: t('common.cancel'), style: 'cancel' },
         {
           text: t('common.delete'),
           style: 'destructive',
           onPress: async () => {
-            const updated = tasks.filter(task => {
+            const updatedTasks = tasks.filter(task => {
               const byTask = selectedItems.some(it => it.type === 'task' && it.id === task.id);
               const byFolder = selectedItems.some(
                 it => it.type === 'folder' && (task.folder ?? '') === it.id
               );
               return !byTask && !byFolder;
             });
-            setTasks(updated);
-            setIsDirty(true);
+            setTasks(updatedTasks);
+            await saveTasks(updatedTasks);
             clearSelection();
-            await saveTasksIfNeeded();
           },
         },
       ]
     );
   };
 
-  const handleRenameFolder = () => {
-    if (selectedItems.length === 1 && selectedItems[0].type === 'folder') {
-      setRenameTarget(selectedItems[0].id);
-      setRenameModalVisible(true);
-    }
+  const handleRenameFolder = async (newName: string) => {
+    if (!renameTarget) return;
+    const newTasks = tasks.map(task =>
+        (task.folder ?? '') === renameTarget ? { ...task, folder: newName } : task
+    );
+    setTasks(newTasks);
+    const newFolderOrder = folderOrder.map(name => (name === renameTarget ? newName : name));
+    setFolderOrder(newFolderOrder);
+    await saveTasks(newTasks);
+    await saveFolderOrder(newFolderOrder);
+    setRenameModalVisible(false);
+    clearSelection();
   };
+
 
   const handleReorderFolder = () => {
     if (selectedItems.length === 1 && selectedItems[0].type === 'folder') {
       setIsReordering(true);
-      clearSelection();
+      clearSelection(); // 選択を解除してから並び替えモードへ
     }
   };
 
   useEffect(() => {
     loadTasks();
-  }, [tab, sortMode, fontSizeKey]);
+  }, [fontSizeKey]); // 初回ロードとフォントサイズ変更時のみ実行
 
   useFocusEffect(
     useCallback(() => {
-      loadTasks();
-    }, [loadTasks])
+      loadTasks(); // 画面フォーカス時にタスクを再読み込み
+    }, [loadTasks]) // loadTasks を依存配列に追加
   );
 
-  useEffect(() => {
-    saveTasksIfNeeded();
-  }, [tasks]);
+
   const filtered = tasks.filter(t => (tab === 'completed' ? t.done : !t.done));
   const allFolders = Array.from(new Set(filtered.map(t => t.folder ?? '')));
+
+  // フォルダのソート順を folderOrder に基づいて決定
   const sortedFolders = folderOrder.length
     ? folderOrder
-        .filter(n => allFolders.includes(n))
-        .concat(allFolders.filter(n => !folderOrder.includes(n)))
-    : allFolders;
+        .filter(n => allFolders.includes(n)) // folderOrder に存在し、かつ現在のフィルタ結果にも存在するフォルダ
+        .concat(allFolders.filter(n => !folderOrder.includes(n))) // folderOrder に存在しないフォルダを末尾に追加
+    : allFolders; // folderOrder が空の場合はそのまま
 
   const fontSizeMap: Record<string, number> = {
     small: 10,
@@ -273,27 +277,55 @@ export default function TasksScreen() {
       {loading ? (
         <ActivityIndicator style={styles.loader} size="large" />
       ) : (
-        <ScrollView contentContainerStyle={{ paddingBottom: 120, paddingTop: 20 }}>
+        <ScrollView contentContainerStyle={{ paddingBottom: isSelecting ? TAB_HEIGHT + 20 : 120, paddingTop: 8 }}>
           {sortedFolders.map(folder => {
             const folderTasks = filtered
               .filter(t => (t.folder ?? '') === folder)
               .sort((a, b) => {
-                if (sortMode === 'deadline') return dayjs(a.deadline).unix() - dayjs(b.deadline).unix();
-                if (sortMode === 'custom') return (a.customOrder ?? 0) - (b.customOrder ?? 0);
-                return (b.priority ?? 0) - (a.priority ?? 0);
+                if (sortMode === 'deadline') {
+                  const aHasDeadline = !!a.deadline;
+                  const bHasDeadline = !!b.deadline;
+
+                  if (aHasDeadline && bHasDeadline) {
+                    return dayjs(a.deadline).unix() - dayjs(b.deadline).unix();
+                  } else if (aHasDeadline && !bHasDeadline) {
+                    return -1; // a (期限あり) を b (期限なし) より前に
+                  } else if (!aHasDeadline && bHasDeadline) {
+                    return 1;  // b (期限あり) を a (期限なし) より前に
+                  }
+                  // 両方とも期限なしの場合、またはカスタム・優先度ソートの場合はタイトルでソート (または他の基準)
+                  return a.title.localeCompare(b.title);
+                }
+                if (sortMode === 'custom') {
+                    // カスタムソートの場合、customOrderが未定義なら大きな値として扱う
+                    const orderA = a.customOrder ?? Infinity;
+                    const orderB = b.customOrder ?? Infinity;
+                    if (orderA === Infinity && orderB === Infinity) {
+                        return a.title.localeCompare(b.title); // 両方未定義ならタイトル順
+                    }
+                    return orderA - orderB;
+                }
+                // 優先度ソート (priorityが高いものが先頭)
+                // priority が未定義の場合は低い優先度 (例: 0) として扱う
+                const priorityA = a.priority ?? 0;
+                const priorityB = b.priority ?? 0;
+                if (priorityB === priorityA) {
+                    return a.title.localeCompare(b.title); // 優先度が同じならタイトル順
+                }
+                return priorityB - priorityA;
               });
             if (!folderTasks.length) return null;
             return (
               <TaskFolder
-                key={folder || 'none'}
+                key={folder || 'none'} // フォルダ名が空文字列の場合も考慮
                 folderName={folder}
                 tasks={folderTasks}
-                isCollapsed={collapsedFolders[folder]}
+                isCollapsed={!!collapsedFolders[folder]}
                 toggleFolder={toggleFolder}
                 onToggleTaskDone={toggleTaskDone}
                 sortMode={sortMode}
                 onRefreshTasks={loadTasks}
-                isReordering={isReordering}
+                isReordering={isReordering && selectedItems.length === 0 && draggingFolder === folder} // 修正: reordering条件
                 setDraggingFolder={setDraggingFolder}
                 draggingFolder={draggingFolder}
                 moveFolder={moveFolder}
@@ -307,6 +339,13 @@ export default function TasksScreen() {
               />
             );
           })}
+          {filtered.length === 0 && !loading && (
+             <View style={styles.emptyContainer}>
+               <Text style={styles.emptyText}>
+                 {tab === 'incomplete' ? t('task_list.empty') : t('task_list.no_tasks_completed')}
+               </Text>
+             </View>
+           )}
         </ScrollView>
       )}
       {!isSelecting && (
@@ -318,60 +357,54 @@ export default function TasksScreen() {
       {isSelecting && (
         <Animated.View
           style={[
-            {
-              position: 'absolute',
-              left: 0,
-              right: 0,
-              height: TAB_HEIGHT,
-              flexDirection: 'row',
-              justifyContent: 'space-around',
-              alignItems: 'center',
-              backgroundColor: isDark ? '#121212' : '#fff',
-              borderTopWidth: 1,
-              borderColor: isDark ? '#555' : '#ccc',
-            },
+            styles.selectionBar, // styles.ts から共通スタイルを適用
             { bottom: selectionAnim },
           ]}
         >
           <TouchableOpacity onPress={handleSelectAll} style={{ alignItems: 'center' }}>
             <Ionicons name="checkmark-done-outline" size={26} color={subColor} />
-            <Text style={{ fontSize: fontSizeMap[fontSizeKey] ?? 12, color: subColor, marginTop: 2 }}>
+            <Text style={[styles.selectionAction, {fontSize: fontSizeMap[fontSizeKey] ?? 12, color: subColor, marginTop: 2}]}>
               {t('common.select_all')}
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity onPress={handleDeleteSelected} style={{ alignItems: 'center' }}>
             <Ionicons name="trash-outline" size={26} color={subColor} />
-            <Text style={{ fontSize: fontSizeMap[fontSizeKey] ?? 12, color: subColor, marginTop: 2 }}>
+            <Text style={[styles.selectionAction, {fontSize: fontSizeMap[fontSizeKey] ?? 12, color: subColor, marginTop: 2}]}>
               {t('common.delete')}
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            disabled={selectedItems.length !== 1 || selectedItems[0].type !== 'folder'}
-            onPress={handleRenameFolder}
-            style={{ alignItems: 'center', opacity: selectedItems.length === 1 && selectedItems[0].type === 'folder' ? 1 : 0.4 }}
+            disabled={!(selectedItems.length === 1 && selectedItems[0].type === 'folder')}
+            onPress={() => {
+                 if (selectedItems.length === 1 && selectedItems[0].type === 'folder') {
+                    setRenameTarget(selectedItems[0].id);
+                    setRenameModalVisible(true);
+                }
+            }}
+            style={{ alignItems: 'center', opacity: (selectedItems.length === 1 && selectedItems[0].type === 'folder') ? 1 : 0.4 }}
           >
             <Ionicons name="create-outline" size={26} color={subColor} />
-            <Text style={{ fontSize: fontSizeMap[fontSizeKey] ?? 12, color: subColor, marginTop: 2 }}>
+            <Text style={[styles.selectionAction, {fontSize: fontSizeMap[fontSizeKey] ?? 12, color: subColor, marginTop: 2}]}>
               {t('common.rename')}
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            disabled={selectedItems.length !== 1 || selectedItems[0].type !== 'folder'}
+            disabled={!(selectedItems.length === 1 && selectedItems[0].type === 'folder')}
             onPress={handleReorderFolder}
-            style={{ alignItems: 'center', opacity: selectedItems.length === 1 && selectedItems[0].type === 'folder' ? 1 : 0.4 }}
+            style={{ alignItems: 'center', opacity: (selectedItems.length === 1 && selectedItems[0].type === 'folder') ? 1 : 0.4 }}
           >
             <Ionicons name="swap-vertical-outline" size={26} color={subColor} />
-            <Text style={{ fontSize: fontSizeMap[fontSizeKey] ?? 12, color: subColor, marginTop: 2 }}>
+            <Text style={[styles.selectionAction, {fontSize: fontSizeMap[fontSizeKey] ?? 12, color: subColor, marginTop: 2}]}>
               {t('common.reorder')}
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity onPress={cancelSelecting} style={{ alignItems: 'center' }}>
             <Ionicons name="close-outline" size={26} color={subColor} />
-            <Text style={{ fontSize: fontSizeMap[fontSizeKey] ?? 12, color: subColor, marginTop: 2 }}>
+            <Text style={[styles.selectionAction, {fontSize: fontSizeMap[fontSizeKey] ?? 12, color: subColor, marginTop: 2}]}>
               {t('common.cancel')}
             </Text>
           </TouchableOpacity>
@@ -382,20 +415,7 @@ export default function TasksScreen() {
         visible={renameModalVisible}
         onClose={() => setRenameModalVisible(false)}
         initialName={renameTarget || ''}
-        onSubmit={(newName) => {
-          if (!renameTarget) return;
-          setTasks(prev =>
-            prev.map(task =>
-              (task.folder ?? '') === renameTarget ? { ...task, folder: newName } : task
-            )
-          );
-          setFolderOrder(prev =>
-            prev.map(name => (name === renameTarget ? newName : name))
-          );
-          setRenameModalVisible(false);
-          clearSelection();
-          setIsDirty(true);
-        }}
+        onSubmit={handleRenameFolder}
       />
 
       <Modal
@@ -404,20 +424,20 @@ export default function TasksScreen() {
         animationType="fade"
         onRequestClose={() => setSortModalVisible(false)}
       >
-        <BlurView intensity={80} style={styles.modalBlur}>
+        <BlurView intensity={isDark ? 30 : 80} tint={isDark ? 'dark' : 'light'} style={styles.modalBlur}>
           <View style={styles.modalContainer}>
             <View style={styles.modalContent}>
               <TouchableOpacity onPress={() => { setSortMode('deadline'); setSortModalVisible(false); }}>
-                <Text style={styles.modalOption}>{t('sort.date')}</Text>
+                <Text style={[styles.modalOption, {color: isDark ? '#fff': '#000'}]}>{t('sort.date')}</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => { setSortMode('custom'); setSortModalVisible(false); }}>
-                <Text style={styles.modalOption}>{t('sort.custom')}</Text>
+                <Text style={[styles.modalOption, {color: isDark ? '#fff': '#000'}]}>{t('sort.custom')}</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => { setSortMode('priority'); setSortModalVisible(false); }}>
-                <Text style={styles.modalOption}>{t('sort.priority')}</Text>
+                <Text style={[styles.modalOption, {color: isDark ? '#fff': '#000'}]}>{t('sort.priority')}</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => setSortModalVisible(false)} style={{ marginTop: 16 }}>
-                <Text style={styles.modalOption}>{t('common.cancel')}</Text>
+                <Text style={[styles.modalOption, {color: isDark ? '#fff': '#000'}]}>{t('common.cancel')}</Text>
               </TouchableOpacity>
             </View>
           </View>

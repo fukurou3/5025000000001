@@ -1,3 +1,4 @@
+// C:\Users\fukur\task-app\app\features\tasks\components\TaskFolder.tsx
 import React, { useContext } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -51,8 +52,8 @@ export function TaskFolder({
   const styles = createStyles(isDark, subColor, fontSizeKey);
 
   const folderLabel = folderName || t('task_list.no_folder');
-  const hasWarn = tasks.some((task) =>
-    dayjs(task.deadline).isBefore(dayjs().add(1, 'day'))
+  const hasWarn = tasks.some(
+    (task) => task.deadline && dayjs(task.deadline).isBefore(dayjs().add(1, 'day')) && !task.done // 未完了タスクのみ警告
   );
   const isSelected = selectedIds.includes(folderName);
 
@@ -62,21 +63,26 @@ export function TaskFolder({
     tomorrow: [],
     week: [],
     later: [],
+    noDeadline: [], // 「期限なし」セクション
   };
 
   const now = dayjs();
   tasks.forEach((task) => {
-    const deadline = dayjs(task.deadline);
-    if (deadline.isBefore(now, 'day')) {
-      sections.expired.push(task);
-    } else if (deadline.isSame(now, 'day')) {
-      sections.today.push(task);
-    } else if (deadline.isSame(now.add(1, 'day'), 'day')) {
-      sections.tomorrow.push(task);
-    } else if (deadline.isBefore(now.add(7, 'day'), 'day')) {
-      sections.week.push(task);
+    if (!task.deadline) {
+      sections.noDeadline.push(task);
     } else {
-      sections.later.push(task);
+      const deadline = dayjs(task.deadline);
+      if (deadline.isBefore(now, 'day')) {
+        sections.expired.push(task);
+      } else if (deadline.isSame(now, 'day')) {
+        sections.today.push(task);
+      } else if (deadline.isSame(now.add(1, 'day'), 'day')) {
+        sections.tomorrow.push(task);
+      } else if (deadline.isBefore(now.add(7, 'day'), 'day')) {
+        sections.week.push(task);
+      } else {
+        sections.later.push(task);
+      }
     }
   });
 
@@ -87,6 +93,17 @@ export function TaskFolder({
       toggleFolder(folderName);
     }
   };
+
+  // セクションの表示順序を定義 (期限なしは一番下)
+  const sectionOrder: (keyof typeof sections)[] = [
+    'expired',
+    'today',
+    'tomorrow',
+    'week',
+    'later',
+    'noDeadline', // 期限なしセクションを最後に配置
+  ];
+
 
   return (
     <View
@@ -121,7 +138,7 @@ export function TaskFolder({
           <Text style={styles.folderTitleText}>{folderLabel}</Text>
         </View>
 
-        {!isSelecting && hasWarn && (
+        {!isSelecting && hasWarn && ( // 未完了タスクに警告がある場合のみ表示
           <Ionicons name="warning-outline" size={22} color={subColor} />
         )}
 
@@ -142,7 +159,7 @@ export function TaskFolder({
 
       {!isCollapsed && (
         <View>
-          {(['expired', 'today', 'tomorrow', 'week', 'later'] as const).map(
+          {sectionOrder.map(
             (key) =>
               sections[key].length > 0 && (
                 <View key={key}>

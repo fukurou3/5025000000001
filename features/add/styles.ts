@@ -207,25 +207,26 @@ export function createStyles(
       justifyContent: 'space-between',
       marginTop: 20,
     },
-    saveButton: {
+    saveButton: { // 「タスクに追加」ボタンのスタイル
       flex: 1,
       backgroundColor: subColor,
       paddingVertical: 12,
       borderRadius: 10,
       alignItems: 'center',
+      marginLeft: 10, // 「下書きに保存」ボタンとの間にマージンを設定
     },
     saveButtonText: {
       color: '#fff',
       fontSize: fontSizes[fsKey],
       fontWeight: 'bold',
     },
-    draftButton: {
+    draftButton: { // 「下書きに保存」ボタンのスタイル
       flex: 1,
       backgroundColor: '#888',
       paddingVertical: 12,
       borderRadius: 10,
       alignItems: 'center',
-      marginLeft: 10,
+      // marginLeft は不要なので削除、もしくは marginRight を設定して saveButton の marginLeft を削除
     },
   });
 }

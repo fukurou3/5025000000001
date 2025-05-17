@@ -1,16 +1,15 @@
-// /app/(tabs)/tasks/TaskItem.tsx
-
+// C:\Users\fukur\task-app\app\features\tasks\components\TaskItem.tsx
 import React, { useContext, useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Task } from '@/features/tasks/types';
-import { createStyles } from '@/features/tasks/styles';
+import { Task } from '../types';
+import { createStyles } from '../styles';
 import { useAppTheme } from '@/hooks/ThemeContext';
 import { useTranslation } from 'react-i18next';
 import { FontSizeContext } from '@/context/FontSizeContext';
 import { useRouter } from 'expo-router';
 import dayjs from 'dayjs';
-
+import { getTimeColor, getTimeText } from '../utils';
 type Props = {
   task: Task;
   onToggle: (id: string) => void;
@@ -32,41 +31,19 @@ export function TaskItem({
   const { fontSizeKey } = useContext(FontSizeContext);
   const styles = createStyles(isDark, subColor, fontSizeKey);
   const router = useRouter();
-  const [now, setNow] = useState(dayjs());
+  const [now, setNow] = useState(dayjs()); // getTimeTextで使うのでnowはTaskItemで管理する
 
   useEffect(() => {
-    const diffMinutes = Math.abs(dayjs(task.deadline).diff(dayjs(), 'minute'));
-    const intervalMs = diffMinutes <= 120 ? 60000 : 600000;
-    const id = setInterval(() => setNow(dayjs()), intervalMs);
-    return () => clearInterval(id);
+    if (task.deadline) {
+      const diffMinutes = Math.abs(dayjs(task.deadline).diff(dayjs(), 'minute'));
+      const intervalMs = diffMinutes <= 120 ? 60000 : 300000; // 1分 or 5分更新
+      const id = setInterval(() => setNow(dayjs()), intervalMs);
+      return () => clearInterval(id);
+    }
   }, [task.deadline]);
 
-  const getTimeLabel = () => {
-    const deadline = dayjs(task.deadline);
-    const diffMs = deadline.diff(now);
-
-    if (diffMs > 0) {
-      const weeks = deadline.diff(now, 'week');
-      const days = deadline.diff(now, 'day');
-      const hours = deadline.diff(now, 'hour');
-      const minutes = deadline.diff(now, 'minute');
-
-      if (weeks >= 1) return t('countdown.after_weeks', { count: weeks });
-      if (days >= 1) return t('countdown.after_days', { count: days });
-      if (hours >= 1) return t('countdown.after_hours', { count: hours });
-      return t('countdown.after_minutes', { count: minutes });
-    } else {
-      const weeksPassed = now.diff(deadline, 'week');
-      const daysPassed = now.diff(deadline, 'day');
-      const hoursPassed = now.diff(deadline, 'hour');
-      const minutesPassed = now.diff(deadline, 'minute');
-
-      if (weeksPassed >= 1) return t('countdown.passed_weeks', { count: weeksPassed });
-      if (daysPassed >= 1) return t('countdown.passed_days', { count: daysPassed });
-      if (hoursPassed >= 1) return t('countdown.passed_hours', { count: hoursPassed });
-      return t('countdown.passed_minutes', { count: minutesPassed });
-    }
-  };
+  const timeLabel = getTimeText(task.deadline, t);
+  const timeColor = getTimeColor(task.deadline, isDark);
 
   const handlePress = () => {
     if (isSelecting) {
@@ -105,17 +82,21 @@ export function TaskItem({
           )}
         </View>
 
-        <View style={styles.taskRight}>
-          <Text style={styles.taskTime}>{getTimeLabel()}</Text>
-          {isSelecting && (
+        {timeLabel && ( // timeLabelが存在する場合のみTextコンポーネントを描画
+          <Text style={[styles.taskTime, { color: timeColor }, !task.deadline && styles.noDeadlineText]}>
+            {timeLabel}
+          </Text>
+        )}
+
+        {isSelecting && (
+          <View style={styles.selectionIconContainer}>
             <Ionicons
               name={isSelected ? 'checkmark-circle' : 'ellipse-outline'}
               size={24}
               color={subColor}
-              style={{ marginLeft: 8 }}
             />
-          )}
-        </View>
+          </View>
+        )}
       </View>
     </TouchableOpacity>
   );

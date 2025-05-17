@@ -1,4 +1,4 @@
-// lib/tasks/taskStyles.ts
+// C:\Users\fukur\task-app\app\features\tasks\styles.ts
 
 import { StyleSheet } from 'react-native';
 import { fontSizes } from '@/constants/fontSizes';
@@ -83,21 +83,23 @@ export const createStyles = (
       alignSelf: 'flex-start',
     },
 
-    // ↓ タスク行（TaskItem）レイアウト ↓
     taskItem: {
       flexDirection: 'row',
       alignItems: 'center',
       backgroundColor: 'transparent',
-      marginHorizontal: 8,    // 横余白を狭めて横幅を確保
+      marginHorizontal: 8,
       marginVertical: 4,
       paddingVertical: 8,
       paddingHorizontal: 0,
     },
     checkboxContainer: {
-      marginLeft: 4,          // チェックボックス左余白を縮小
-      marginRight: 8,         // チェックボックス右余白を縮小
+      marginLeft: 4,
+      marginRight: 8,
     },
-    taskCenter: { flex: 1 },
+    taskCenter: {
+      flex: 1,
+      marginRight: 8,
+    },
     taskTitle: {
       fontSize: fontSizes[fsKey] + 2,
       fontWeight: 'bold',
@@ -108,15 +110,20 @@ export const createStyles = (
       color: isDark ? '#ccc' : '#555',
       marginTop: 2,
     },
-    taskRight: {
-      alignItems: 'flex-end',
-      marginLeft: 4,          // 時間表示の左余白を縮小
-    },
-    taskTime: {
+    taskTime: { // このスタイルが残り時間に適用される
       fontSize: fontSizes[fsKey],
       fontWeight: 'bold',
+      // colorはTaskItem.tsxで動的に設定
+      marginHorizontal: 8,
     },
-
+    noDeadlineText: {
+      fontStyle: 'italic',
+      // colorはTaskItem.tsxで動的に設定 (getTimeColorで処理)
+    },
+    selectionIconContainer: {
+      marginLeft: 'auto',
+      paddingLeft: 8,
+    },
     fab: {
       position: 'absolute',
       bottom: 32,
@@ -163,7 +170,6 @@ export const createStyles = (
       color: subColor,
     },
 
-    // ↓ 選択モード用タブバー（BottomTabと同じデザイン） ↓
     selectionBar: {
       position: 'absolute',
       bottom: 0,
@@ -195,8 +201,8 @@ export const createStyles = (
       justifyContent: 'center',
       alignItems: 'flex-end',
     },
-    deadline: {
+    deadline: { // このスタイルは直接使用されていない可能性あり
       fontSize: 12,
       fontWeight: 'bold',
-    },    
+    },
   });

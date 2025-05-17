@@ -6,6 +6,11 @@ import { useTranslation } from 'react-i18next';
 import { useAppTheme } from '@/hooks/ThemeContext';
 import type { SpecificPeriodTabProps, CalendarFontWeight } from './types';
 
+import { LocaleConfig } from 'react-native-calendars';
+import { useEffect } from 'react';
+
+
+
 const todayString = CalendarUtils.getCalendarDateString(new Date());
 
 interface PeriodMarking {
@@ -111,6 +116,10 @@ const PeriodTabMemo: React.FC<SpecificPeriodTabProps> = ({
     textMonthFontSize: 18,
     textDayHeaderFontSize: 13,
   }), [isDark, subColor]);
+const { i18n } = useTranslation();
+useEffect(() => {
+  LocaleConfig.defaultLocale = i18n.language;
+}, [i18n.language]);
 
   const periodButtonTextFontSize = (styles.periodButtonText.fontSize as number || 14) - 2;
 
@@ -162,5 +171,6 @@ const arePeriodTabPropsEqual = (
         prevProps.updateSettings === nextProps.updateSettings
     );
 };
+
 
 export const PeriodTab = React.memo(PeriodTabMemo, arePeriodTabPropsEqual);

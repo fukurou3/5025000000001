@@ -1,10 +1,13 @@
 // app/features/add/components/DeadlineSettingModal/RepeatTab.tsx
-import React, { useState, useMemo, useCallback } from 'react';
+
+
+
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { ScrollView, View, Text, TouchableOpacity, Switch, Modal, Pressable, TextInput, Platform } from 'react-native';
-import { Calendar, CalendarUtils, CalendarProps } from 'react-native-calendars';
+import { Calendar, CalendarUtils, CalendarProps, LocaleConfig } from 'react-native-calendars';
 import { useTranslation } from 'react-i18next';
-import { isEqual } // lodash などのディープ比較関数をインポートするか、手動で比較
-from 'lodash'; // もしlodashを使わない場合は、手動で比較ロジックを実装
+import { isEqual } 
+from 'lodash';
 
 import { useAppTheme } from '@/hooks/ThemeContext';
 import type {
@@ -164,6 +167,11 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
     // 実際のピッカー表示ロジックをここに実装
     console.log("Frequency picker pressed. Implement selection UI.");
   }, []);
+
+const { i18n } = useTranslation();
+useEffect(() => {
+  LocaleConfig.defaultLocale = i18n.language;
+}, [i18n.language]);
 
   return (
     <ScrollView style={styles.tabContentContainer} contentContainerStyle={{ paddingBottom: 20}}>

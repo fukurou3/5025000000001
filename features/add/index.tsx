@@ -1,6 +1,6 @@
 // app/features/add/index.tsx
 
-import React, { useState, useEffect, useCallback, useContext } from 'react';
+import React, { useState, useEffect, useCallback, useContext, useMemo } from 'react';
 import { useWindowDimensions, View, Text, ScrollView, TouchableOpacity, Alert, Pressable, Image, Modal, Platform, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -13,7 +13,6 @@ import { useTranslation } from 'react-i18next';
 import { FontSizeContext } from '@/context/FontSizeContext';
 import { fontSizes } from '@/constants/fontSizes';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-// import { NotificationToggle } from './components/NotificationToggle'; // NotificationToggleのimportを削除
 
 import type { AddTaskStyles, Task } from './types';
 import { createStyles } from './styles';
@@ -30,12 +29,16 @@ import { LIGHT_PLACEHOLDER, DARK_PLACEHOLDER } from './constants';
 import { DeadlineSettingModal } from './components/DeadlineSettingModal';
 import type { DeadlineSettings } from './components/DeadlineSettingModal/types';
 
+type NotificationUnit = 'minutes' | 'hours' | 'days';
+
 type TabParamList = {
   calendar: undefined;
   tasks: undefined;
   add: undefined;
   settings: undefined;
 };
+
+const INITIAL_INPUT_HEIGHT = 60;
 
 const getDeadlineForSaveTask = (settings?: DeadlineSettings): Date | undefined => {
   if (!settings?.date) {
@@ -102,60 +105,93 @@ export default function AddTaskScreen() {
   const isLandscape = screenWidth > screenHeight;
   const isTablet = screenWidth >= 768;
   const previewCount = isTablet ? 5 : isLandscape ? 4 : 3;
-  const H_PADDING = 16 * 2;
-  const ITEM_MARGIN = 8;
-  const previewSize = (screenWidth - H_PADDING - ITEM_MARGIN * (previewCount - 1)) / previewCount;
 
-  const [selectedUris, setSelectedUris] = useState<string[]>([]);
+  const H_PADDING_CONTENT_AREA = 8 * 2;
+  const ITEM_MARGIN = 8;
+  const previewSize = (screenWidth - 16 - H_PADDING_CONTENT_AREA - ITEM_MARGIN * (previewCount - 1)) / previewCount;
+
+
+  const initialFormState = useMemo(() => ({
+    title: '',
+    memo: '',
+    selectedUris: [] as string[],
+    folder: '',
+    currentDeadlineSettings: undefined as DeadlineSettings | undefined,
+    notificationActive: false,
+    customAmount: 1,
+    customUnit: 'hours' as NotificationUnit,
+  }), []);
+
+
+  const [selectedUris, setSelectedUris] = useState<string[]>(initialFormState.selectedUris);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [currentDraftId, setCurrentDraftId] = useState<string | null>(draftId ?? null);
-  const [title, setTitle] = useState('');
-  const [memo, setMemo] = useState('');
-  const [memoHeight, setMemoHeight] = useState(40);
-  // const [notifyEnabled, setNotifyEnabled] = useState(true); // notifyEnabled stateを削除
-  const [customUnit, setCustomUnit] = useState<'minutes' | 'hours' | 'days'>('hours');
-  const [customAmount, setCustomAmount] = useState(1);
+  const [title, setTitle] = useState(initialFormState.title);
+  const [memo, setMemo] = useState(initialFormState.memo);
+
+  const [notificationActive, setNotificationActive] = useState(initialFormState.notificationActive);
+  const [customUnit, setCustomUnit] = useState<NotificationUnit>(initialFormState.customUnit);
+  const [customAmount, setCustomAmount] = useState(initialFormState.customAmount);
+  const [showWheelModal, setShowWheelModal] = useState(false);
+
   const [showFolderModal, setShowFolderModal] = useState(false);
   const [folders, setFolders] = useState<string[]>([]);
-  const [folder, setFolder] = useState('');
-  const [showWheelModal, setShowWheelModal] = useState(false);
+  const [folder, setFolder] = useState(initialFormState.folder);
   const [previewUri, setPreviewUri] = useState<string | null>(null);
 
   const [showDeadlineModal, setShowDeadlineModal] = useState(false);
-  const [currentDeadlineSettings, setCurrentDeadlineSettings] = useState<DeadlineSettings | undefined>(undefined);
-
-  const isFormConsideredEmpty = useCallback(() => {
-    return !title && !memo && selectedUris.length === 0 && !folder && !currentDeadlineSettings?.date && !currentDeadlineSettings?.periodStartDate;
-  }, [title, memo, selectedUris, folder, currentDeadlineSettings]);
+  const [currentDeadlineSettings, setCurrentDeadlineSettings] = useState<DeadlineSettings | undefined>(initialFormState.currentDeadlineSettings);
 
   const clearForm = useCallback(() => {
     setCurrentDraftId(null);
-    setTitle('');
-    setMemo('');
-    setMemoHeight(40);
-    // setNotifyEnabled(true); // notifyEnabledに関する処理を削除
-    setCustomUnit('hours');
-    setCustomAmount(1);
-    setFolder('');
-    setSelectedUris([]);
-    setCurrentDeadlineSettings(undefined);
+    setTitle(initialFormState.title);
+    setMemo(initialFormState.memo);
+    setNotificationActive(initialFormState.notificationActive);
+    setCustomUnit(initialFormState.customUnit);
+    setCustomAmount(initialFormState.customAmount);
+    setFolder(initialFormState.folder);
+    setSelectedUris(initialFormState.selectedUris);
+    setCurrentDeadlineSettings(initialFormState.currentDeadlineSettings);
     resetUnsaved();
-  }, [resetUnsaved]);
-
+  }, [resetUnsaved, initialFormState]);
 
   useEffect(() => {
-    if (!isFormConsideredEmpty()) {
-        setUnsaved(true);
-    } else {
-        setUnsaved(false);
-    }
-  }, [title, memo, selectedUris, folder, currentDeadlineSettings, isFormConsideredEmpty, setUnsaved]);
+    let formChanged = false;
+    if (currentDraftId) {
+      formChanged =
+        title !== (AsyncStorage.getItem(currentDraftId + '_title') || initialFormState.title) ||
+        title !== initialFormState.title ||
+        memo !== initialFormState.memo ||
+        selectedUris.length !== initialFormState.selectedUris.length ||
+        folder !== initialFormState.folder ||
+        JSON.stringify(currentDeadlineSettings) !== JSON.stringify(initialFormState.currentDeadlineSettings) ||
+        notificationActive !== initialFormState.notificationActive ||
+        customAmount !== initialFormState.customAmount ||
+        customUnit !== initialFormState.customUnit;
 
+    } else {
+      formChanged =
+        title !== initialFormState.title ||
+        memo !== initialFormState.memo ||
+        selectedUris.length !== initialFormState.selectedUris.length ||
+        folder !== initialFormState.folder ||
+        JSON.stringify(currentDeadlineSettings) !== JSON.stringify(initialFormState.currentDeadlineSettings) ||
+        notificationActive !== initialFormState.notificationActive ||
+        (notificationActive &&
+          (customAmount !== initialFormState.customAmount ||
+           customUnit !== initialFormState.customUnit)
+        );
+    }
+    setUnsaved(formChanged);
+  }, [
+    title, memo, selectedUris, folder, currentDeadlineSettings,
+    notificationActive, customAmount, customUnit,
+    initialFormState, currentDraftId, setUnsaved
+  ]);
 
   useEffect(() => {
     const unsub = navigation.addListener('beforeRemove', (e: any) => {
-      if (isFormConsideredEmpty() || !unsaved) {
-        resetUnsaved();
+      if (!unsaved) {
         return;
       }
       e.preventDefault();
@@ -177,7 +213,7 @@ export default function AddTaskScreen() {
       );
     });
     return unsub;
-  }, [navigation, clearForm, t, isFormConsideredEmpty, unsaved, resetUnsaved, router]);
+  }, [navigation, clearForm, t, unsaved, router]);
 
   const existingFolders = useFolders(showFolderModal);
   useEffect(() => {
@@ -191,9 +227,9 @@ export default function AddTaskScreen() {
     memo,
     deadline: getDeadlineForSaveTask(currentDeadlineSettings),
     imageUris: selectedUris,
-    notifyEnabled: true, // notifyEnabledをtrueに固定
-    customUnit,
-    customAmount,
+    notifyEnabled: notificationActive,
+    customUnit: notificationActive ? customUnit : undefined,
+    customAmount: notificationActive ? customAmount : undefined,
     folder,
     currentDraftId,
     clearForm: () => {
@@ -213,28 +249,49 @@ export default function AddTaskScreen() {
             const draftToLoad = draftsArray.find(d => d.id === draftId) as (Task & { deadlineDetails?: DeadlineSettings });
             if (draftToLoad) {
               setCurrentDraftId(draftToLoad.id);
-              setTitle(draftToLoad.title || '');
-              setMemo(draftToLoad.memo || '');
-              setCurrentDeadlineSettings(draftToLoad.deadlineDetails || undefined);
-              setSelectedUris(draftToLoad.imageUris || []);
-              // setNotifyEnabled(draftToLoad.notifyEnabled !== undefined ? draftToLoad.notifyEnabled : true); // notifyEnabledに関する処理を削除
-              setCustomUnit(draftToLoad.customUnit || 'hours');
-              setCustomAmount(draftToLoad.customAmount || 1);
-              setFolder(draftToLoad.folder || '');
+              setTitle(draftToLoad.title || initialFormState.title);
+              setMemo(draftToLoad.memo || initialFormState.memo);
+              setCurrentDeadlineSettings(draftToLoad.deadlineDetails || initialFormState.currentDeadlineSettings);
+              setSelectedUris(draftToLoad.imageUris || initialFormState.selectedUris);
+              setNotificationActive(draftToLoad.notifyEnabled !== undefined ? draftToLoad.notifyEnabled : initialFormState.notificationActive);
+              setCustomUnit(draftToLoad.customUnit || initialFormState.customUnit);
+              setCustomAmount(draftToLoad.customAmount || initialFormState.customAmount);
+              setFolder(draftToLoad.folder || initialFormState.folder);
+
+              setTimeout(() => {
+                setUnsaved(false);
+              }, 0);
+            } else {
+              clearForm();
             }
+          } else {
+            clearForm();
           }
         } catch (error) {
           console.error("Failed to load draft:", error);
+          clearForm();
         }
+      } else {
+        clearForm();
       }
     };
     loadDraft();
-  }, [draftId]);
+  }, [draftId, clearForm, initialFormState, setUnsaved]);
 
-  // handleToggleNotify関数を削除
-  // const handleToggleNotify = useCallback(() => {
-  //   setNotifyEnabled(prev => !prev);
-  // }, []);
+
+  const handleSetNoNotificationInModal = () => {
+    setNotificationActive(false);
+    setCustomAmount(initialFormState.customAmount);
+    setCustomUnit(initialFormState.customUnit);
+    setShowWheelModal(false);
+  };
+
+  const handleConfirmNotificationInModal = (amount: number, unit: NotificationUnit) => {
+    setNotificationActive(true);
+    setCustomAmount(amount);
+    setCustomUnit(unit);
+    setShowWheelModal(false);
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
@@ -250,18 +307,18 @@ export default function AddTaskScreen() {
       </View>
 
       <ScrollView
-        contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+        contentContainerStyle={{ paddingHorizontal: 8, paddingTop: 16, paddingBottom: 100 }}
         keyboardShouldPersistTaps="handled"
       >
         <View
           style={{
-            backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF',
+            backgroundColor: isDark ? '#121212' : '#FFFFFF', // Modified: Deepest background color
             borderRadius: 12,
             overflow: 'hidden',
             marginBottom: 24,
           }}
         >
-          <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12 }}>
+          <View style={{ paddingHorizontal: 8, paddingTop: 12, paddingBottom: 12 }}>
             <TitleField
               label={t('add_task.input_title')}
               value={title}
@@ -269,29 +326,25 @@ export default function AddTaskScreen() {
               placeholder={t('add_task.input_title_placeholder')}
               placeholderTextColor={isDark ? DARK_PLACEHOLDER : LIGHT_PLACEHOLDER}
               labelStyle={[styles.label, { color: subColor }]}
-              inputStyle={[styles.input, { minHeight: 40, backgroundColor: isDark ? '#1C1C1E' : '#F0F0F0' }]}
+              inputStyle={[styles.input, { minHeight: INITIAL_INPUT_HEIGHT, backgroundColor: isDark ? '#2C2C2E' : '#F0F0F0' }]} // Modified: Original container background color
             />
           </View>
+          <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: isDark ? '#444' : '#DDD', marginHorizontal: 8 }} />
 
-          <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: isDark ? '#444' : '#DDD', marginHorizontal: 16 }} />
-
-          <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12 }}>
+          <View style={{ paddingHorizontal: 8, paddingTop: 12, paddingBottom: 12 }}>
             <MemoField
               label={t('add_task.memo')}
               value={memo}
               onChangeText={setMemo}
               placeholder={t('add_task.memo_placeholder')}
               placeholderTextColor={isDark ? DARK_PLACEHOLDER : LIGHT_PLACEHOLDER}
-              onContentSizeChange={e => setMemoHeight(e.nativeEvent.contentSize.height)}
-              height={memoHeight}
               labelStyle={[styles.label, { color: subColor }]}
-              inputStyle={[styles.input, { height: Math.max(40, memoHeight), backgroundColor: isDark ? '#1C1C1E' : '#F0F0F0' }]}
+              inputStyle={[styles.input, { minHeight: INITIAL_INPUT_HEIGHT, backgroundColor: isDark ? '#2C2C2E' : '#F0F0F0' }]} // Modified: Original container background color
             />
           </View>
+          <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: isDark ? '#444' : '#DDD', marginHorizontal: 8 }} />
 
-          <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: isDark ? '#444' : '#DDD', marginHorizontal: 16 }} />
-
-          <TouchableOpacity onPress={() => setPickerVisible(true)} style={{ paddingVertical: 14, paddingHorizontal: 16 }}>
+          <TouchableOpacity onPress={() => setPickerVisible(true)} style={{ paddingVertical: 14, paddingHorizontal: 8 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <Text style={[styles.label, { color: subColor, marginBottom: 0 }]}>{t('add_task.photo')}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -302,9 +355,8 @@ export default function AddTaskScreen() {
               </View>
             </View>
           </TouchableOpacity>
-
           {selectedUris.length > 0 && (
-            <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
+            <View style={{ paddingHorizontal: 8, paddingBottom: 12 }}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingTop: 8 }}>
                 {selectedUris.map(uri => (
                   <View key={uri} style={{ position: 'relative', marginRight: ITEM_MARGIN, marginBottom: ITEM_MARGIN }}>
@@ -322,10 +374,9 @@ export default function AddTaskScreen() {
               </ScrollView>
             </View>
           )}
+          <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: isDark ? '#444' : '#DDD', marginHorizontal: 8 }} />
 
-          <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: isDark ? '#444' : '#DDD', marginHorizontal: 16 }} />
-
-          <TouchableOpacity onPress={() => setShowFolderModal(true)} style={{ paddingVertical: 14, paddingHorizontal: 16 }}>
+          <TouchableOpacity onPress={() => setShowFolderModal(true)} style={{ paddingVertical: 14, paddingHorizontal: 8 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <Text style={[styles.label, { color: subColor, marginBottom: 0 }]}>{t('add_task.folder')}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -336,57 +387,56 @@ export default function AddTaskScreen() {
               </View>
             </View>
           </TouchableOpacity>
+          <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: isDark ? '#444' : '#DDD', marginHorizontal: 8 }} />
 
-          <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: isDark ? '#444' : '#DDD', marginHorizontal: 16 }} />
-
-          <TouchableOpacity onPress={() => setShowDeadlineModal(true)} style={{ paddingVertical: 14, paddingHorizontal: 16 }}>
+          <TouchableOpacity onPress={() => setShowDeadlineModal(true)} style={{ paddingVertical: 14, paddingHorizontal: 8 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <Text style={[styles.label, { color: subColor, marginBottom: 0 }]}>{t('add_task.deadline')}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={{ color: isDark ? '#FFF' : '#000', fontSize: fontSizes[fsKey], fontWeight: '400', marginRight: 4, maxWidth: screenWidth * 0.5 }} numberOfLines={1} ellipsizeMode="tail">
+                <Text style={{ color: isDark ? '#FFF' : '#000', fontSize: fontSizes[fsKey], fontWeight: '400', marginRight: 4, maxWidth: screenWidth * 0.55 }} numberOfLines={1} ellipsizeMode="tail">
                   {formatDeadlineForDisplay(currentDeadlineSettings, t)}
                 </Text>
                 <Ionicons name="chevron-forward" size={fontSizes[fsKey]} color={isDark ? '#A0A0A0' : '#555555'} />
               </View>
             </View>
           </TouchableOpacity>
+           <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: isDark ? '#444' : '#DDD', marginHorizontal: 8 }} />
 
-           <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: isDark ? '#444' : '#DDD', marginHorizontal: 16 }} />
-
-          {/* === 通知設定の変更箇所 === */}
           <TouchableOpacity
-            onPress={() => setShowWheelModal(true)} // 常にWheelPickerModalを開く
-            style={{ paddingVertical: 14, paddingHorizontal: 16 }}
-            activeOpacity={0.7} // activeOpacityを0.7に固定 (または削除してデフォルト動作)
+            onPress={() => setShowWheelModal(true)}
+            style={{ paddingVertical: 14, paddingHorizontal: 8 }}
+            activeOpacity={0.7}
           >
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                <Text style={[styles.label, { color: subColor, marginBottom: 0 }]}>{t('add_task.notification')}</Text>
-               {/* NotificationToggleを削除 */}
-               {/* 右側の通知時間表示部分は常に表示 */}
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <Text style={{
                         color: isDark ? '#FFF' : '#000',
                         fontSize: fontSizes[fsKey],
                         fontWeight: '400',
                         marginRight: 4,
-                    }}>
-                        {`${customAmount} ${t(`add_task.${customUnit}_before` as const)}`}
+                        maxWidth: screenWidth * 0.55
+                    }} numberOfLines={1} ellipsizeMode="tail">
+                        {notificationActive
+                            ? `${customAmount} ${t(`add_task.${customUnit}_before` as const, { count: customAmount })}`
+                            : t('add_task.no_notification_display', '通知なし')
+                        }
                     </Text>
                     <Ionicons name="chevron-forward" size={fontSizes[fsKey]} color={isDark ? '#A0A0A0' : '#555555'} />
                 </View>
-               {/* notifyEnabledがfalseの場合の表示を削除 */}
             </View>
           </TouchableOpacity>
-          {/* === 通知設定の変更箇所ここまで === */}
         </View>
 
-        <ActionButtons
-          onSave={saveTask}
-          onSaveDraft={saveDraft}
-          saveText={t('add_task.add_task_button')}
-          draftText={t('add_task.save_draft_button')}
-          styles={styles}
-        />
+        <View style={{ paddingHorizontal: 8 }}>
+            <ActionButtons
+            onSave={saveTask}
+            onSaveDraft={saveDraft}
+            saveText={t('add_task.add_task_button')}
+            draftText={t('add_task.save_draft_button')}
+            styles={styles}
+            />
+        </View>
 
         <PhotoPicker
           visible={pickerVisible}
@@ -402,6 +452,7 @@ export default function AddTaskScreen() {
           onClose={() => setShowFolderModal(false)}
           onSubmit={(name) => {
             setFolder(name);
+            setShowFolderModal(false);
           }}
           folders={folders}
         />
@@ -409,12 +460,9 @@ export default function AddTaskScreen() {
           visible={showWheelModal}
           initialAmount={customAmount}
           initialUnit={customUnit}
-          onConfirm={(amount, unit) => {
-            setCustomAmount(amount);
-            setCustomUnit(unit);
-            setShowWheelModal(false);
-          }}
-          onCancel={() => setShowWheelModal(false)}
+          onConfirm={handleConfirmNotificationInModal}
+          onClose={() => setShowWheelModal(false)}
+          onSetNoNotification={handleSetNoNotificationInModal}
         />
         <DeadlineSettingModal
           visible={showDeadlineModal}

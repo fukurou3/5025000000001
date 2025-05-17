@@ -1,10 +1,10 @@
-// /lib/tasks/taskTypes.ts
+// C:\Users\fukur\task-app\app\features\tasks\types.ts
 
 export type Task = {
   id: string;
   title: string;
   memo?: string;
-  deadline: string;
+  deadline?: string; // Made deadline optional
   folder?: string;
   done: boolean;
   completedAt?: string;

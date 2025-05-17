@@ -1,7 +1,7 @@
 // app/features/add/components/DeadlineSettingModal/styles.ts
-import { StyleSheet, Platform } from 'react-native';
+import { StyleSheet, Platform, TextStyle } from 'react-native';
 import type { DeadlineModalStyles } from './types';
-import { fontSizes as appFontSizes } from '@/constants/fontSizes'; // アプリ全体のフォントサイズ定義
+import { fontSizes as appFontSizes } from '@/constants/fontSizes';
 import type { FontSizeKey } from '@/context/FontSizeContext';
 
 export const createDeadlineModalStyles = (
@@ -9,82 +9,92 @@ export const createDeadlineModalStyles = (
   subColor: string,
   fsKey: FontSizeKey,
 ): DeadlineModalStyles => {
-  const fontSizes = appFontSizes; // Alias for clarity
+  const fontSizes = appFontSizes;
   const baseTextColor = isDark ? '#FFFFFF' : '#000000';
-  const faintTextColor = isDark ? '#A0A0A0' : '#555555';
   const backgroundColor = isDark ? '#1C1C1E' : '#F2F2F7';
   const contentBackgroundColor = isDark ? '#000000' : '#FFFFFF';
-  const borderColor = isDark ? '#3A3A3C' : '#D1D1D6';
+  const iosModalContentBackgroundColor = isDark ? '#1A1A1A' : '#F0F0F0'; // (前回と同様)
+  const iosSeparatorColor = isDark ? '#38383A' : '#C7C7CC'; // (前回と同様)
+
+  const baseButtonFontSize = fontSizes[fsKey];
 
   return StyleSheet.create<DeadlineModalStyles>({
+    // ... (overlay, container, headerContainer, headerText, footer, button, buttonText, saveButton, saveButtonText, tabBar, tabLabel, tabIndicator, tabContentContainer は前回と同様) ...
     overlay: {
       flex: 1,
       justifyContent: 'flex-end',
       backgroundColor: 'rgba(0,0,0,0.5)',
     },
     container: {
-      height: '90%', // 画面占有率を調整
+      height: '90%',
       backgroundColor: backgroundColor,
       borderTopLeftRadius: 16,
       borderTopRightRadius: 16,
-      overflow: 'hidden', // borderRadiusを子要素にも適用
+      overflow: 'hidden',
     },
     headerContainer: {
       paddingHorizontal: 16,
       paddingVertical: 12,
       borderBottomWidth: StyleSheet.hairlineWidth,
-      borderColor: borderColor,
+      borderColor: iosSeparatorColor,
       alignItems: 'center',
+      backgroundColor: iosModalContentBackgroundColor,
     },
     headerText: {
       fontSize: fontSizes[fsKey] - 1,
-      fontWeight: '500',
+      fontWeight: '600',
       color: baseTextColor,
     },
     footer: {
       flexDirection: 'row',
-      justifyContent: 'space-between', // "キャンセル" と "保存" を両端に
       paddingVertical: Platform.OS === 'ios' ? 12 : 16,
       paddingHorizontal: 16,
-      paddingBottom: Platform.OS === 'ios' ? 28 : 16, // SafeAreaを考慮
+      paddingBottom: Platform.OS === 'ios' ? 28 : 16,
       borderTopWidth: StyleSheet.hairlineWidth,
-      borderColor: borderColor,
-      backgroundColor: backgroundColor,
+      borderColor: iosSeparatorColor,
+      backgroundColor: iosModalContentBackgroundColor,
+      gap: 8,
     },
     button: {
+      flex: 1,
       paddingVertical: 10,
-      paddingHorizontal: 20,
+      paddingHorizontal: 5,
       borderRadius: 8,
-      minWidth: '45%', // ボタン幅を調整
       alignItems: 'center',
-      borderWidth: 1,
+      justifyContent: 'center',
+      borderWidth: 1.5,
       borderColor: subColor,
+      minHeight: 40,
     },
     buttonText: {
-      fontSize: fontSizes[fsKey],
+      fontSize: baseButtonFontSize,
       fontWeight: '600',
       color: subColor,
+      textAlign: 'center',
     },
     saveButton: {
       backgroundColor: subColor,
-      borderColor: subColor, // 保存ボタンは枠線なしにもできる
+      borderColor: subColor,
     },
     saveButtonText: {
-      color: isDark ? '#000000' : '#FFFFFF', // subColorとのコントラスト考慮
+      color: isDark ? '#000000' : '#FFFFFF',
+      fontSize: baseButtonFontSize,
+      fontWeight: '600',
+      textAlign: 'center',
     },
     tabBar: {
       backgroundColor: backgroundColor,
       borderBottomWidth: StyleSheet.hairlineWidth,
-      borderColor: borderColor,
-      elevation: 0, // Androidの影を消す
-      shadowOpacity: 0, // iOSの影を消す
+      borderColor: iosSeparatorColor,
+      elevation: 0,
+      shadowOpacity: 0,
     },
     tabLabel: {
       fontSize: fontSizes[fsKey] - 1,
       fontWeight: '600',
       textTransform: 'none',
-      paddingHorizontal: 0, // ラベルの余白調整
-    },
+      paddingHorizontal: 0,
+    } as TextStyle,
     tabIndicator: {
       backgroundColor: subColor,
       height: 2,
@@ -93,20 +103,23 @@ export const createDeadlineModalStyles = (
       flex: 1,
       backgroundColor: contentBackgroundColor,
     },
-    label: {
-      fontSize: fontSizes[fsKey],
+
+
+    label: { // ピッカー内のラベルなど
+      fontSize: fontSizes[fsKey], // このlabelは汎用的なので、ピッカー専用の文字サイズは TimePickerModal で調整
       color: baseTextColor,
       marginBottom: 2,
       fontWeight: '500',
     },
+    // ... (settingRow, timePickerToggleContainer, pickerText は前回と同様) ...
     settingRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
       paddingHorizontal: 16,
-      paddingVertical: 14, // 少し広めに
+      paddingVertical: 14,
       borderBottomWidth: StyleSheet.hairlineWidth,
-      borderColor: borderColor,
+      borderColor: iosSeparatorColor,
     },
     timePickerToggleContainer: {
       flexDirection: 'row',
@@ -116,27 +129,65 @@ export const createDeadlineModalStyles = (
       paddingVertical: 12,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderBottomWidth: StyleSheet.hairlineWidth,
-      borderColor: borderColor,
+      borderColor: iosSeparatorColor,
       marginTop: 8,
     },
-    timePickerContainer: {
+    pickerText: {
+        fontSize: fontSizes[fsKey],
+        color: baseTextColor,
+        paddingVertical: Platform.OS === 'ios' ? 2 : 0,
+    },
+
+    modal: { // react-native-modal の style prop 用
+      justifyContent: 'flex-end',
+      margin: 0,
+    },
+    timePickerModalContainer: { // TimePickerModal のコンテナ (SafeAreaViewに適用)
+        backgroundColor: iosModalContentBackgroundColor,
+        borderTopLeftRadius: 16,
+        borderTopRightRadius: 16,
+        overflow: 'hidden',
+        paddingBottom: Platform.OS === 'ios' ? 0 : 10, // Android向けSafeArea代替
+    },
+    timePickerContentContainer: { // ヘッダー、ピッカー、フッターを実際に含むコンテナ
+      // paddingHorizontal は TimePickerModal.tsx で動的に設定して線を端まで引けるようにする
+    },
+    pickerRowSeparator: { // ピッカーの選択行の上下に引く線
+        height: StyleSheet.hairlineWidth,
+        backgroundColor: iosSeparatorColor,
+        // width は TimePickerModal.tsx で画面幅 - padding で計算
+        // marginHorizontal は TimePickerModal.tsx で適用
+    },
+    timePickerContainer: { // ホイールピッカー全体を囲むView
       flexDirection: 'row',
       justifyContent: 'center',
       alignItems: 'center',
-      paddingVertical: 10,
-      backgroundColor: isDark ? '#1C1C1E' : '#F8F8F8', // Picker背景
+      paddingVertical: Platform.OS === 'ios' ? 10 : 8, // 上下の余白を少し詰める
+      // paddingHorizontal は pickerRowSeparator との兼ね合いで調整
     },
     wheelPickerWrapper: {
-      marginHorizontal: Platform.OS === 'ios' ? 0 : 5, // iOSとAndroidで調整
+      marginHorizontal: Platform.OS === 'ios' ? 0 : 1,
     },
     timeSeparator: {
       color: baseTextColor,
-      fontSize: fontSizes[fsKey] + 2,
-      marginHorizontal: 0,
-      fontWeight: 'bold',
+      fontWeight: (Platform.OS === 'ios' ? '300' : 'normal') as TextStyle['fontWeight'],
+      marginHorizontal: Platform.OS === 'ios' ? -3 : -1, // iOSではコロンをさらにホイールに近づける
+      textAlignVertical: 'center',
     },
+    timePickerModalFooter: {
+        paddingTop: 10,
+        paddingBottom: Platform.OS === 'ios' ? 10 : 16,
+        paddingHorizontal: 16, // フッター内の左右パディングは維持
+        borderTopWidth: StyleSheet.hairlineWidth,
+        borderColor: iosSeparatorColor,
+        flexDirection: 'row',
+        gap: 8,
+    },
+    timePickerModalButton: {
+        // 'button' スタイルを継承
+    },
+    // ... (残りのスタイルは前回と同様) ...
     frequencyPickerContainer: {
-        // Pickerコンポーネントに合わせたスタイル
     },
     intervalContainer: {
       flexDirection: 'row',
@@ -144,7 +195,7 @@ export const createDeadlineModalStyles = (
     },
     intervalInput: {
       borderWidth: 1,
-      borderColor: borderColor,
+      borderColor: iosSeparatorColor,
       borderRadius: 6,
       paddingHorizontal: 10,
       paddingVertical: Platform.OS === 'ios' ? 10 : 6,
@@ -189,13 +240,13 @@ export const createDeadlineModalStyles = (
         paddingVertical: 12,
         paddingHorizontal: 16,
         borderWidth: 1,
-        borderColor: 'transparent', //非選択時は枠なし
+        borderColor: 'transparent',
         borderRadius: 8,
         marginBottom: 8,
     },
     repeatEndOptionSelected: {
-        borderColor: subColor, //選択時に枠表示
-        backgroundColor: isDark ? subColor + '30' : subColor + '20' //subColorの薄い色
+        borderColor: subColor,
+        backgroundColor: isDark ? subColor + '30' : subColor + '20'
     },
     repeatEndText: {
         fontSize: fontSizes[fsKey],
@@ -213,7 +264,7 @@ export const createDeadlineModalStyles = (
       borderRadius: 12,
       paddingVertical: 10,
       backgroundColor: contentBackgroundColor,
-      alignItems: 'stretch', // カレンダーが幅いっぱいに広がるように
+      alignItems: 'stretch',
     },
     clearRepeatEndDateButton: {
       alignSelf: 'center',
@@ -221,15 +272,15 @@ export const createDeadlineModalStyles = (
     },
     periodButtonContainer: {
       flexDirection: 'row',
-      justifyContent: 'space-evenly', // 等間隔に配置
+      justifyContent: 'space-evenly',
       paddingVertical: 16,
       paddingHorizontal: 16,
       borderBottomWidth: StyleSheet.hairlineWidth,
-      borderColor: borderColor,
+      borderColor: iosSeparatorColor,
     },
     periodButton: {
       paddingVertical: 10,
-      paddingHorizontal: 12, // 少し広めに
+      paddingHorizontal: 12,
       borderRadius: 8,
       borderWidth: 1.5,
       borderColor: subColor,
@@ -247,22 +298,13 @@ export const createDeadlineModalStyles = (
     periodButtonTextSelected: {
       color: isDark ? '#000' : '#FFF',
     },
-    pickerText: {
-        fontSize: fontSizes[fsKey],
-        color: baseTextColor,
-        paddingVertical: Platform.OS === 'ios' ? 12 : 10,
-    },
     textInput: {
         fontSize: fontSizes[fsKey],
         color: baseTextColor,
         padding: 10,
         borderWidth: 1,
-        borderColor: borderColor,
+        borderColor: iosSeparatorColor,
         borderRadius: 6,
-    },
-       modal: {
-      justifyContent: 'flex-end',
-      margin: 0,
     },
   });
 };

@@ -1,26 +1,50 @@
 // app/features/add/components/DeadlineSettingModal/TimePickerModal.tsx
-import React, { useState, useEffect, useContext, useMemo, useCallback } from 'react'; // useCallback をインポート
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState, useEffect, useContext, useMemo, useCallback } from 'react';
+import { View, Text, TouchableOpacity, Platform, TextStyle, useWindowDimensions, ViewStyle, StyleSheet, ColorValue } from 'react-native';
 import Modal from 'react-native-modal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import WheelPicker from 'react-native-wheely';
 import { useTranslation } from 'react-i18next';
 
 import { useAppTheme } from '@/hooks/ThemeContext';
-import { FontSizeContext } from '@/context/FontSizeContext';
+import { FontSizeContext, type FontSizeKey } from '@/context/FontSizeContext';
 import { fontSizes as appFontSizes } from '@/constants/fontSizes';
-import type { DeadlineTime, AmPm } from './types';
-import { ampmData as ampmOptions, hourData12 as hourOptions12, minuteData as minuteOptions } from './types';
-import { createDeadlineModalStyles } from './styles'; // スタイル生成関数
+import type { DeadlineTime, AmPm, DeadlineModalStyles } from './types';
+import { ampmData as ampmOptions, hourData12 } from './types';
+import { createDeadlineModalStyles } from './styles';
 
-// --- 定数 ---
-// const IOS_BLUE = '#007AFF'; // 未使用なら削除
-const WHEELY_ITEM_HEIGHT = 40;
-const WHEELY_CONTAINER_WIDTH_SHORT = 80;
-const WHEELY_CONTAINER_WIDTH_NORMAL = 70;
-const WHEELY_VISIBLE_COUNT = 5;
+const createMinuteData = (): Array<{ label: string; value: number }> => {
+  const data = [];
+  for (let i = 0; i < 60; i++) {
+    data.push({ label: i < 10 ? `0${i}` : `${i}`, value: i });
+  }
+  return data;
+};
+
+const minuteDataFull = createMinuteData();
+
+const WHEELY_ITEM_HEIGHT = Platform.OS === 'ios' ? 80 : 88;
+const BASE_PICKER_FONT_SIZE_INCREASE = 22;
+
+const getAmPmPickerWidth = (baseFontSize: number): number => {
+  const effectiveFontSize = baseFontSize + BASE_PICKER_FONT_SIZE_INCREASE;
+  if (effectiveFontSize > 38) return Platform.OS === 'ios' ? 130 : 150;
+  if (effectiveFontSize > 28) return Platform.OS === 'ios' ? 110 : 130;
+  return Platform.OS === 'ios' ? 90 : 110;
+};
+
+const WHEELY_CONTAINER_WIDTH_NORMAL = Platform.OS === 'ios' ? 80 : 100;
+const WHEELY_VISIBLE_COUNT = 3;
+const PICKER_AREA_TOTAL_HEIGHT = WHEELY_ITEM_HEIGHT * WHEELY_VISIBLE_COUNT;
+
 const BACKDROP_OPACITY = 0.4;
 const ANIMATION_TIMING = 300;
+const HORIZONTAL_SEPARATOR_PADDING = 24;
+
+const ACCENT_LINE_THICKNESS = 4;
+const ACCENT_LINE_LENGTH = 30;
+const ACCENT_LINE_BORDER_RADIUS = 2;
+const ACCENT_LINE_HORIZONTAL_OFFSET = 5;
 
 interface TimePickerModalProps {
   visible: boolean;
@@ -42,7 +66,7 @@ const to24HourFormat = (hour12: number, ampm: AmPm, minute: number): DeadlineTim
   if (ampm === 'PM' && hour12 !== 12) {
     hour24 += 12;
   } else if (ampm === 'AM' && hour12 === 12) {
-    hour24 = 0; // 午前12時は0時
+    hour24 = 0;
   }
   return { hour: hour24, minute };
 };
@@ -57,54 +81,130 @@ const TimePickerModalMemo: React.FC<TimePickerModalProps> = ({
   const { t } = useTranslation();
   const { colorScheme, subColor } = useAppTheme();
   const isDark = colorScheme === 'dark';
-  const { fontSizeKey: fsKey } = useContext( FontSizeContext );
+  const { fontSizeKey } = useContext(FontSizeContext);
+  const { width: windowWidth } = useWindowDimensions();
 
-  const styles = useMemo(() => createDeadlineModalStyles(isDark, subColor, fsKey), [isDark, subColor, fsKey]);
+  const stylesFromTs: DeadlineModalStyles = useMemo(() => createDeadlineModalStyles(isDark, subColor, fontSizeKey), [isDark, subColor, fontSizeKey]);
+  const currentBaseFontSize = appFontSizes[fontSizeKey];
+  const WHEELY_CONTAINER_WIDTH_SHORT = useMemo(() => getAmPmPickerWidth(currentBaseFontSize), [currentBaseFontSize]);
 
-  // initialTime が変更されたときに表示を更新するためのデフォルト値
+  const pickerItemFontSize = currentBaseFontSize + BASE_PICKER_FONT_SIZE_INCREASE;
+  const accentLineColorValue = subColor as ColorValue;
+
   const defaultDisplayTime = useMemo(() => {
-      return to12HourFormat(initialTime?.hour ?? 9, initialTime?.minute ?? 0);
+    return to12HourFormat(initialTime?.hour ?? 9, initialTime?.minute ?? 0);
   }, [initialTime]);
-
 
   const [selectedAmPm, setSelectedAmPm] = useState<AmPm>(defaultDisplayTime.ampm);
   const [selectedHour, setSelectedHour] = useState<number>(defaultDisplayTime.hour12);
   const [selectedMinute, setSelectedMinute] = useState<number>(defaultDisplayTime.minute);
 
   useEffect(() => {
-    if (visible) { // モーダル表示時に初期値を再設定
+    if (visible) {
       const displayTime = to12HourFormat(initialTime?.hour ?? 9, initialTime?.minute ?? 0);
       setSelectedAmPm(displayTime.ampm);
       setSelectedHour(displayTime.hour12);
       setSelectedMinute(displayTime.minute);
     }
-  }, [visible, initialTime]); // initialTime の変更も監視
+  }, [visible, initialTime]);
 
   const handleConfirm = useCallback(() => {
     const finalTime = to24HourFormat(selectedHour, selectedAmPm, selectedMinute);
     onConfirm(finalTime);
   }, [selectedHour, selectedAmPm, selectedMinute, onConfirm]);
 
-  // WheelPickerのonChangeハンドラをメモ化
   const handleAmPmChange = useCallback((index: number) => setSelectedAmPm(ampmOptions[index].value), []);
-  const handleHourChange = useCallback((index: number) => setSelectedHour(hourOptions12[index].value), []);
-  const handleMinuteChange = useCallback((index: number) => setSelectedMinute(minuteOptions[index].value), []);
-
+  const handleHourChange = useCallback((index: number) => setSelectedHour(hourData12[index].value), []);
+  const handleMinuteChange = useCallback((index: number) => setSelectedMinute(minuteDataFull[index].value), []);
 
   const ampmPickerOptions = useMemo(() => ampmOptions.map(opt => t(`common.${opt.labelKey}`)), [t]);
-  const hourPickerOptions = useMemo(() => hourOptions12.map(opt => opt.label), []); // これらは固定値なので初回のみ計算
-  const minutePickerOptions = useMemo(() => minuteOptions.map(opt => opt.label), []); // 同上
+  const hourPickerOptions = useMemo(() => hourData12.map(opt => opt.label), []);
+  const minutePickerOptions = useMemo(() => minuteDataFull.map(opt => opt.label), []);
 
-  const wheelyItemTextStyle = useMemo(() => ({
-      color: styles.label.color,
-      fontSize: appFontSizes[fsKey] + 2,
-  }), [styles.label.color, fsKey]);
+  const wheelyItemTextStyle = useMemo((): TextStyle => ({
+    color: stylesFromTs.label.color,
+    fontSize: pickerItemFontSize,
+    fontWeight: Platform.OS === 'ios' ? '400' : 'normal',
+  }), [stylesFromTs.label.color, pickerItemFontSize]);
 
   const wheelySelectedIndicatorStyle = useMemo(() => ({
-       borderTopWidth: StyleSheet.hairlineWidth,
-       borderBottomWidth: StyleSheet.hairlineWidth,
-       borderColor: styles.headerContainer.borderColor, // stylesから取得
-  }), [styles.headerContainer.borderColor]);
+    backgroundColor: 'transparent',
+    borderTopWidth: 0,
+    borderBottomWidth: 0,
+    borderColor: 'transparent',
+  }), []);
+
+  const originalTimeSeparatorStyle = useMemo((): TextStyle => ({ // 元のスタイルを保持
+    ...stylesFromTs.timeSeparator,
+    fontSize: pickerItemFontSize + (Platform.OS === 'ios' ? 2 : 0),
+    lineHeight: WHEELY_ITEM_HEIGHT,
+    textAlignVertical: 'center',
+  }), [stylesFromTs.timeSeparator, pickerItemFontSize, WHEELY_ITEM_HEIGHT]);
+
+  const adjustedTimeSeparatorStyle = useMemo((): TextStyle => ({ // 調整後のコロンのスタイル
+    ...originalTimeSeparatorStyle,
+    marginHorizontal: Platform.OS === 'ios' ? -10 : -8, // コロンの左右マージンを調整して時分を近づける
+  }), [originalTimeSeparatorStyle]);
+
+
+  const pickerRowSeparatorStyle = useMemo((): ViewStyle => ({
+    ...(stylesFromTs.pickerRowSeparator as ViewStyle),
+    width: windowWidth - (HORIZONTAL_SEPARATOR_PADDING * 2),
+    marginHorizontal: HORIZONTAL_SEPARATOR_PADDING,
+  }), [stylesFromTs.pickerRowSeparator, windowWidth]);
+
+  const timePickerOuterContainerPaddingVertical = useMemo((): number => {
+    const defaultPaddingV = Platform.OS === 'ios' ? 10 : 8;
+    const stylePaddingV = (stylesFromTs.timePickerContainer as ViewStyle)?.paddingVertical;
+    if (typeof stylePaddingV === 'number') {
+      return stylePaddingV;
+    }
+    return defaultPaddingV;
+  }, [stylesFromTs.timePickerContainer]);
+
+  const timePickerOuterContainerStyle = useMemo((): ViewStyle => ({
+    height: PICKER_AREA_TOTAL_HEIGHT,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: timePickerOuterContainerPaddingVertical,
+    marginHorizontal: HORIZONTAL_SEPARATOR_PADDING,
+    position: 'relative',
+  }), [PICKER_AREA_TOTAL_HEIGHT, timePickerOuterContainerPaddingVertical]);
+
+   const adjustedTimePickerModalContainerStyle = useMemo((): ViewStyle => ({
+    ...(stylesFromTs.timePickerModalContainer as ViewStyle),
+   }), [stylesFromTs.timePickerModalContainer]);
+
+  const selectedItemAccentLineStyle = useMemo((): ViewStyle => ({
+    position: 'absolute',
+    width: ACCENT_LINE_LENGTH,
+    height: ACCENT_LINE_THICKNESS,
+    borderRadius: ACCENT_LINE_BORDER_RADIUS,
+    backgroundColor: accentLineColorValue,
+  }), [accentLineColorValue]);
+
+  const accentLineTopPosition = timePickerOuterContainerPaddingVertical + WHEELY_ITEM_HEIGHT + (WHEELY_ITEM_HEIGHT / 2) - (ACCENT_LINE_THICKNESS / 2);
+  const pickerOuterContainerWidth = windowWidth - 2 * HORIZONTAL_SEPARATOR_PADDING;
+  const leftAccentLeftPosition = ACCENT_LINE_HORIZONTAL_OFFSET;
+  const rightAccentLeftPosition = pickerOuterContainerWidth - ACCENT_LINE_LENGTH - ACCENT_LINE_HORIZONTAL_OFFSET;
+
+  // ピッカーラッパーのスタイル調整
+  const ampmPickerWrapperStyle = useMemo((): ViewStyle => ({
+    ...(stylesFromTs.wheelPickerWrapper as ViewStyle),
+    marginRight: Platform.OS === 'ios' ? -5 : -30, // AM/PMピッカーの右マージンを詰めて、時ピッカーを左に寄せる
+  }), [stylesFromTs.wheelPickerWrapper]);
+
+  const hourPickerWrapperStyle = useMemo((): ViewStyle => ({
+    ...(stylesFromTs.wheelPickerWrapper as ViewStyle),
+    // 時ピッカーの左右マージンは、コロンの調整とAM/PMピッカーの調整に委ねるか、必要ならここで微調整
+  }), [stylesFromTs.wheelPickerWrapper]);
+
+  const minutePickerWrapperStyle = useMemo((): ViewStyle => ({
+    ...(stylesFromTs.wheelPickerWrapper as ViewStyle),
+    // 分ピッカーの左右マージンは、コロンの調整に委ねるか、必要ならここで微調整
+  }), [stylesFromTs.wheelPickerWrapper]);
+
 
   return (
     <Modal
@@ -119,72 +219,97 @@ const TimePickerModalMemo: React.FC<TimePickerModalProps> = ({
       useNativeDriverForBackdrop={true}
       backdropColor="#000000"
       backdropOpacity={BACKDROP_OPACITY}
-      onBackdropPress={onClose} // onCloseはpropsとして渡されるのでメモ化されている想定
-      onBackButtonPress={onClose} // 同上
-      style={styles.modal}
+      onBackdropPress={onClose}
+      onBackButtonPress={onClose}
+      style={[stylesFromTs.modal, { justifyContent: 'flex-end' }]}
       hideModalContentWhileAnimating
     >
-      <SafeAreaView style={[styles.container, { height: undefined, minHeight: '45%' }]}>
-        <View style={styles.headerContainer}>
-          <Text style={styles.headerText}>{t('deadline_modal.specify_time')}</Text>
-        </View>
+      <SafeAreaView
+        edges={['bottom']}
+        style={adjustedTimePickerModalContainerStyle}
+      >
+        <View style={stylesFromTs.timePickerContentContainer}>
+            <View style={stylesFromTs.headerContainer}>
+                <Text style={stylesFromTs.headerText}>{t('deadline_modal.specify_time')}</Text>
+            </View>
 
-        <View style={styles.timePickerContainer}>
-          <View style={styles.wheelPickerWrapper}>
-            <WheelPicker
-              options={ampmPickerOptions}
-              selectedIndex={ampmOptions.findIndex(o => o.value === selectedAmPm)}
-              onChange={handleAmPmChange} // メモ化されたコールバック
-              itemHeight={WHEELY_ITEM_HEIGHT}
-              itemTextStyle={wheelyItemTextStyle}
-              containerStyle={{ width: WHEELY_CONTAINER_WIDTH_SHORT, height: WHEELY_ITEM_HEIGHT * WHEELY_VISIBLE_COUNT }}
-              selectedIndicatorStyle={wheelySelectedIndicatorStyle}
-              decelerationRate="fast"
-              visibleRest={Math.floor(WHEELY_VISIBLE_COUNT / 2)}
-            />
-          </View>
-          <View style={styles.wheelPickerWrapper}>
-            <WheelPicker
-              options={hourPickerOptions}
-              selectedIndex={hourOptions12.findIndex(o => o.value === selectedHour)}
-              onChange={handleHourChange} // メモ化されたコールバック
-              itemHeight={WHEELY_ITEM_HEIGHT}
-              itemTextStyle={wheelyItemTextStyle}
-              containerStyle={{ width: WHEELY_CONTAINER_WIDTH_NORMAL, height: WHEELY_ITEM_HEIGHT * WHEELY_VISIBLE_COUNT }}
-              selectedIndicatorStyle={wheelySelectedIndicatorStyle}
-              decelerationRate="fast"
-              visibleRest={Math.floor(WHEELY_VISIBLE_COUNT / 2)}
-            />
-          </View>
-           <Text style={styles.timeSeparator}>:</Text>
-          <View style={styles.wheelPickerWrapper}>
-            <WheelPicker
-              options={minutePickerOptions}
-              selectedIndex={minuteOptions.findIndex(o => o.value === selectedMinute)}
-              onChange={handleMinuteChange} // メモ化されたコールバック
-              itemHeight={WHEELY_ITEM_HEIGHT}
-              itemTextStyle={wheelyItemTextStyle}
-              containerStyle={{ width: WHEELY_CONTAINER_WIDTH_NORMAL, height: WHEELY_ITEM_HEIGHT * WHEELY_VISIBLE_COUNT }}
-              selectedIndicatorStyle={wheelySelectedIndicatorStyle}
-              decelerationRate="fast"
-              visibleRest={Math.floor(WHEELY_VISIBLE_COUNT / 2)}
-            />
-          </View>
-        </View>
+            {stylesFromTs.pickerRowSeparator && <View style={pickerRowSeparatorStyle} />}
 
-        <View style={[styles.footer, { paddingTop: 12, paddingBottom: 12 }]}>
-          <TouchableOpacity style={[styles.button, {minWidth: '30%'}]} onPress={onClear}>
-            <Text style={styles.buttonText}>{t('common.clear')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.button, {minWidth: '30%'}]} onPress={onClose}>
-            <Text style={styles.buttonText}>{t('common.cancel')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.button, styles.saveButton, {minWidth: '30%'}]}
-            onPress={handleConfirm} // メモ化されたコールバック
-          >
-            <Text style={styles.saveButtonText}>{t('common.ok')}</Text>
-          </TouchableOpacity>
+            <View style={timePickerOuterContainerStyle}>
+                <View style={[
+                    selectedItemAccentLineStyle,
+                    {
+                        top: accentLineTopPosition,
+                        left: leftAccentLeftPosition,
+                    }
+                ]} />
+
+                <View style={[
+                    selectedItemAccentLineStyle,
+                    {
+                        top: accentLineTopPosition,
+                        left: rightAccentLeftPosition,
+                    }
+                ]} />
+
+                <View style={ampmPickerWrapperStyle}>
+                    <WheelPicker
+                    options={ampmPickerOptions}
+                    selectedIndex={ampmOptions.findIndex(o => o.value === selectedAmPm)}
+                    onChange={handleAmPmChange}
+                    itemHeight={WHEELY_ITEM_HEIGHT}
+                    itemTextStyle={wheelyItemTextStyle}
+                    containerStyle={{ width: WHEELY_CONTAINER_WIDTH_SHORT, height: PICKER_AREA_TOTAL_HEIGHT }}
+                    selectedIndicatorStyle={wheelySelectedIndicatorStyle}
+                    decelerationRate="fast"
+                    visibleRest={Math.floor(WHEELY_VISIBLE_COUNT / 2)}
+                    />
+                </View>
+                <View style={hourPickerWrapperStyle}>
+                    <WheelPicker
+                    options={hourPickerOptions}
+                    selectedIndex={hourData12.findIndex(o => o.value === selectedHour)}
+                    onChange={handleHourChange}
+                    itemHeight={WHEELY_ITEM_HEIGHT}
+                    itemTextStyle={wheelyItemTextStyle}
+                    containerStyle={{ width: WHEELY_CONTAINER_WIDTH_NORMAL, height: PICKER_AREA_TOTAL_HEIGHT }}
+                    selectedIndicatorStyle={wheelySelectedIndicatorStyle}
+                    decelerationRate="fast"
+                    visibleRest={Math.floor(WHEELY_VISIBLE_COUNT / 2)}
+                    />
+                </View>
+                <Text style={adjustedTimeSeparatorStyle}>:</Text>
+                <View style={minutePickerWrapperStyle}>
+                    <WheelPicker
+                    options={minutePickerOptions}
+                    selectedIndex={minuteDataFull.findIndex(o => o.value === selectedMinute)}
+                    onChange={handleMinuteChange}
+                    itemHeight={WHEELY_ITEM_HEIGHT}
+                    itemTextStyle={wheelyItemTextStyle}
+                    containerStyle={{ width: WHEELY_CONTAINER_WIDTH_NORMAL, height: PICKER_AREA_TOTAL_HEIGHT }}
+                    selectedIndicatorStyle={wheelySelectedIndicatorStyle}
+                    decelerationRate="fast"
+                    visibleRest={Math.floor(WHEELY_VISIBLE_COUNT / 2)}
+                    />
+                </View>
+            </View>
+
+            {stylesFromTs.pickerRowSeparator && <View style={pickerRowSeparatorStyle} />}
+
+            <View style={[stylesFromTs.footer, stylesFromTs.timePickerModalFooter]}>
+                <TouchableOpacity style={[stylesFromTs.button, stylesFromTs.timePickerModalButton]} onPress={onClose}>
+                    <Text style={stylesFromTs.buttonText} numberOfLines={1} adjustsFontSizeToFit>{t('common.cancel')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[stylesFromTs.button, stylesFromTs.timePickerModalButton]} onPress={onClear}>
+                    <Text style={stylesFromTs.buttonText} numberOfLines={1} adjustsFontSizeToFit>{t('common.clear')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[stylesFromTs.button, stylesFromTs.saveButton, stylesFromTs.timePickerModalButton]}
+                    onPress={handleConfirm}
+                >
+                    <Text style={stylesFromTs.saveButtonText} numberOfLines={1} adjustsFontSizeToFit>{t('common.ok')}</Text>
+                </TouchableOpacity>
+            </View>
         </View>
       </SafeAreaView>
     </Modal>

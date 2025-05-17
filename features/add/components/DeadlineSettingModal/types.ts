@@ -1,5 +1,5 @@
 // app/features/add/components/DeadlineSettingModal/types.ts
-import type { ViewStyle, TextStyle } from 'react-native';
+import type { ViewStyle, TextStyle, ColorValue } from 'react-native';
 import type { FontSizeKey } from '@/context/FontSizeContext';
 
 export interface DeadlineTime {
@@ -16,6 +16,7 @@ export interface RepeatEnds {
 export type RepeatFrequency = 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
 
 export interface DeadlineSettings {
+  // ... (変更なし)
   date?: string;
   time?: DeadlineTime;
   isTimeEnabled?: boolean;
@@ -37,6 +38,7 @@ export interface DeadlineRoute {
 export type CalendarFontWeight = TextStyle['fontWeight'];
 
 export interface DeadlineModalStyles {
+  // ... (既存のスタイルキーは変更なし)
   overlay: ViewStyle;
   container: ViewStyle;
   headerContainer: ViewStyle;
@@ -50,7 +52,6 @@ export interface DeadlineModalStyles {
   tabLabel: TextStyle;
   tabIndicator: ViewStyle;
   tabContentContainer: ViewStyle;
-  contentBackgroundColor: ViewStyle['backgroundColor'];
   label: TextStyle;
   settingRow: ViewStyle;
   timePickerToggleContainer: ViewStyle;
@@ -80,9 +81,16 @@ export interface DeadlineModalStyles {
   pickerText: TextStyle;
   textInput: ViewStyle;
   modal: ViewStyle;
+
+  // TimePickerModal 用のスタイルキー
+  timePickerModalContainer?: ViewStyle;
+  timePickerContentContainer?: ViewStyle; // 追加: ヘッダー、ピッカー、フッターを包括するコンテナ用
+  pickerRowSeparator?: ViewStyle;        // 追加: ピッカー選択行の上下の区切り線用
+  timePickerModalFooter?: ViewStyle;
+  timePickerModalButton?: ViewStyle;
 }
 
-// タブ固有のProps型定義
+// ... (Specific props, AmPm, data arrays, translation keys は変更なし)
 export interface SpecificDateSelectionTabProps {
   styles: DeadlineModalStyles;
   selectedDate?: string;
@@ -148,18 +156,6 @@ export interface SpecificPeriodTabProps {
   ) => void;
 }
 
-// CommonTabProps は直接使用されなくなる可能性がありますが、参考のために残すか、削除します。
-// export interface CommonTabProps {
-//   styles: DeadlineModalStyles;
-//   settings: DeadlineSettings;
-//   updateSettings: <K extends keyof DeadlineSettings>(key: K, value: DeadlineSettings[K]) => void;
-//   updateFullSettings: (newSettings: Partial<DeadlineSettings>) => void;
-// }
-// export interface DateSelectionTabProps extends CommonTabProps {} // <- これらは Specific***Props に置き換わる
-// export interface RepeatTabProps extends CommonTabProps {}
-// export interface PeriodTabProps extends CommonTabProps {}
-
-
 export type AmPm = 'AM' | 'PM';
 
 export const ampmData: { labelKey: Extract<CommonTranslationKey, 'am' | 'pm'>; value: AmPm }[] = [
@@ -208,7 +204,8 @@ export type DeadlineModalTranslationKey =
   | 'tab_repeat'
   | 'tab_period'
   | 'period_start_date_display'
-  | 'period_end_date_display';
+  | 'period_end_date_display'
+  | 'unset_confirm_message';
 
 
 export type CommonTranslationKey =
@@ -229,4 +226,5 @@ export type CommonTranslationKey =
   | 'select'
   | 'year_month_format'
   | 'all_day'
-  | 'to';
+  | 'to'
+  | 'unset';
