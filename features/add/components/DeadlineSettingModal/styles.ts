@@ -143,6 +143,8 @@ export const createDeadlineModalStyles = (
       margin: 0,
     },
     timePickerModalContainer: { // TimePickerModal のコンテナ (SafeAreaViewに適用)
+        width: '100%', 
+        alignSelf: 'stretch',
         backgroundColor: iosModalContentBackgroundColor,
         borderTopLeftRadius: 16,
         borderTopRightRadius: 16,

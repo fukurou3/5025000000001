@@ -33,6 +33,9 @@
     "ok": "OK",
     "select": "選択",
     "select_all": "全選択",
+    "year_unit": "年",
+    "month_unit": "月",
+    "day_unit": "日",
     "sun_short": "日",
     "mon_short": "月",
     "tue_short": "火",
@@ -88,7 +91,9 @@
     "no_notification": "通知なし",
     "photo_selected": "{{count}}枚選択中",
     "no_notification_button": "通知なし",
-    "no_notification_display": "通知なし"
+    "no_notification_display": "通知なし",
+    "hour_unit": "時",
+    "minute_unit": "分"
   },
   "edit_task": {
     "title": "編集",
@@ -221,7 +226,8 @@
   "deadline_modal": {
     "title_display": "{{date}} {{time}}",
     "title_display_no_time": "{{date}} まで",
-    "title_display_no_deadline": "期限を設定",
+    "title_display_no_deadline": "期限設定",
+    "specify_date": "日付指定",
     "tab_date": "日付",
     "tab_repeat": "繰り返し",
     "tab_period": "期間",

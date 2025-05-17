@@ -1,33 +1,31 @@
 // app/features/add/components/DeadlineSettingModal/DateSelectionTab.tsx
-import { LocaleConfig } from 'react-native-calendars';
-
-LocaleConfig.locales['ja'] = {
-  monthNames: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'],
-  monthNamesShort: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'],
-  dayNames: ['日曜日', '月曜日', '火曜日', '水曜日', '木曜日', '金曜日', '土曜日'],
-  dayNamesShort: ['日', '月', '火', '水', '木', '金', '土'],
-  today: '今日'
-};
-
-
 import React, { useMemo, useState, useCallback } from 'react';
 import { ScrollView, View, Text, TouchableOpacity } from 'react-native';
-import { Calendar, CalendarUtils, CalendarProps } from 'react-native-calendars';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
+import { CalendarUtils } from 'react-native-calendars'; // CalendarUtilsのみ残す
 
 import { useAppTheme } from '@/hooks/ThemeContext';
-import type { SpecificDateSelectionTabProps, DeadlineTime, CalendarFontWeight } from './types';
+import type { SpecificDateSelectionTabProps, DeadlineTime } from './types';
 import { TimePickerModal } from './TimePickerModal';
+import { DatePickerModal } from './DatePickerModal'; // 新規インポート
 
-const formatTimeToDisplay = (time: DeadlineTime, t: (key: string) => string): string => {
+const formatTimeToDisplay = (time: DeadlineTime, t: (key: string, options?: any) => string): string => {
     const hour24 = time.hour;
     const ampmKey = (hour24 < 12 || hour24 === 24 || hour24 === 0) ? 'am' : 'pm';
     const ampm = t(`common.${ampmKey}`);
     let hour12 = hour24 % 12;
-    if (hour12 === 0) hour12 = 12;
+    if (hour12 === 0) hour12 = 12; // 0時と12時は12と表示
     return `${ampm} ${hour12}:${String(time.minute).padStart(2, '0')}`;
 };
+
+const formatDateToDisplay = (dateString: string | undefined, t: (key: string, options?: any) => string): string => {
+    if (!dateString) return t('common.select', '選択');
+    // 必要であればここでロケールに応じたフォーマット変更
+    // 例: const date = new Date(dateString); return date.toLocaleDateString(...)
+    return dateString;
+};
+
 
 const DateSelectionTabMemo: React.FC<SpecificDateSelectionTabProps> = ({
   styles,
@@ -40,13 +38,27 @@ const DateSelectionTabMemo: React.FC<SpecificDateSelectionTabProps> = ({
   const isDark = colorScheme === 'dark';
   const { t } = useTranslation();
 
+  const [isDatePickerModalVisible, setDatePickerModalVisible] = useState(false);
   const [isTimePickerModalVisible, setTimePickerModalVisible] = useState(false);
 
-  const currentSelectedDate = selectedDate || CalendarUtils.getCalendarDateString(new Date());
+  const handleDateSectionPress = useCallback(() => {
+    setDatePickerModalVisible(true);
+  }, []);
 
-  const onDayPress = useCallback((day: { dateString: string }) => {
-    updateSettings('date', day.dateString);
+  const handleDateConfirm = useCallback((newDate: string) => {
+    updateSettings('date', newDate);
+    setDatePickerModalVisible(false);
   }, [updateSettings]);
+
+  const handleDateClear = useCallback(() => {
+    updateSettings('date', undefined);
+    setDatePickerModalVisible(false);
+  }, [updateSettings]);
+
+  const handleDatePickerClose = useCallback(() => {
+    setDatePickerModalVisible(false);
+  }, []);
+
 
   const handleTimeSectionPress = useCallback(() => {
     setTimePickerModalVisible(true);
@@ -60,7 +72,7 @@ const DateSelectionTabMemo: React.FC<SpecificDateSelectionTabProps> = ({
 
   const handleTimeClear = useCallback(() => {
     updateSettings('isTimeEnabled', false);
-    const defaultInitialTime: DeadlineTime = { hour: 9, minute: 0 };
+    const defaultInitialTime: DeadlineTime = { hour: 9, minute: 0 }; // デフォルト時刻に戻すなど
     updateSettings('time', defaultInitialTime);
     setTimePickerModalVisible(false);
   }, [updateSettings]);
@@ -70,50 +82,38 @@ const DateSelectionTabMemo: React.FC<SpecificDateSelectionTabProps> = ({
   }, []);
 
 
+  const displayDate = useMemo(() => {
+    return formatDateToDisplay(selectedDate, t);
+  }, [selectedDate, t]);
+
   const displayTime = useMemo(() => {
     if (isTimeEnabled && selectedTime) {
       return formatTimeToDisplay(selectedTime, t);
     }
-    return t('common.select');
+    return t('common.select', '選択');
   }, [isTimeEnabled, selectedTime, t]);
 
   const labelFontSize = typeof styles.label.fontSize === 'number' ? styles.label.fontSize : 16;
 
-  const calendarTheme = useMemo((): CalendarProps['theme'] => ({
-    backgroundColor: isDark ? '#000000' : '#FFFFFF',
-    calendarBackground: isDark ? '#000000' : '#FFFFFF',
-    textSectionTitleColor: isDark ? '#A0A0A0' : subColor,
-    selectedDayBackgroundColor: subColor,
-    selectedDayTextColor: isDark ? '#000' : '#FFFFFF',
-    todayTextColor: subColor,
-    dayTextColor: isDark ? '#FFFFFF' : '#2d4150',
-    textDisabledColor: isDark ? '#555555' : '#d9e1e8',
-    arrowColor: subColor,
-    monthTextColor: subColor,
-    indicatorColor: subColor,
-    textDayFontWeight: '400' as CalendarFontWeight,
-    textMonthFontWeight: 'bold' as CalendarFontWeight,
-    textDayHeaderFontWeight: '500' as CalendarFontWeight,
-    textDayFontSize: 15,
-    textMonthFontSize: 18,
-    textDayHeaderFontSize: 13,
-  }), [isDark, subColor]);
-
-  const markedDates = useMemo(() => ({
-    [currentSelectedDate]: { selected: true, selectedColor: subColor, disableTouchEvent: true },
-  }), [currentSelectedDate, subColor]);
-
 
   return (
     <ScrollView style={styles.tabContentContainer} contentContainerStyle={{ paddingBottom: 20 }}>
-      <Calendar
-        current={currentSelectedDate}
-        onDayPress={onDayPress}
-        markedDates={markedDates}
-        theme={calendarTheme}
-      />
+      <TouchableOpacity onPress={handleDateSectionPress} style={styles.settingRow}>
+        <Text style={[styles.label, { marginBottom: 0 }]}>{t('deadline_modal.specify_date_label', '日付')}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Text style={[styles.pickerText, { marginRight: 4, color: selectedDate ? subColor : (isDark ? '#A0A0A0' : '#555555')}]}>
+            {displayDate}
+          </Text>
+          <Ionicons
+            name={"chevron-forward"}
+            size={labelFontSize + 2}
+            color={isDark ? '#A0A0A0' : '#555555'}
+          />
+        </View>
+      </TouchableOpacity>
+
       <TouchableOpacity onPress={handleTimeSectionPress} style={styles.timePickerToggleContainer}>
-        <Text style={[styles.label, { marginBottom: 0 }]}>{t('deadline_modal.specify_time')}</Text>
+        <Text style={[styles.label, { marginBottom: 0 }]}>{t('deadline_modal.specify_time', '時刻を指定')}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <Text style={[styles.pickerText, { marginRight: 4, color: isTimeEnabled ? subColor : (isDark ? '#A0A0A0' : '#555555')}]}>
             {displayTime}
@@ -125,6 +125,15 @@ const DateSelectionTabMemo: React.FC<SpecificDateSelectionTabProps> = ({
           />
         </View>
       </TouchableOpacity>
+
+      <DatePickerModal
+        visible={isDatePickerModalVisible}
+        initialDate={selectedDate || CalendarUtils.getCalendarDateString(new Date())}
+        onClose={handleDatePickerClose}
+        onConfirm={handleDateConfirm}
+        onClear={handleDateClear}
+        clearButtonText={t('common.clear_date', '日付をクリア')}
+      />
 
       <TimePickerModal
         visible={isTimePickerModalVisible}

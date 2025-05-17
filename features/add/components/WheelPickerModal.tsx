@@ -84,6 +84,7 @@ const createStyles = (
       margin: 0,
     },
     modalContainer: {
+      width: '100%',
       backgroundColor: iosModalContentBackgroundColor,
       borderTopLeftRadius: 16,
       borderTopRightRadius: 16,

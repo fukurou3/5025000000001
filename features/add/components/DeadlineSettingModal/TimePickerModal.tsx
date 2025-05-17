@@ -1,16 +1,16 @@
 // app/features/add/components/DeadlineSettingModal/TimePickerModal.tsx
 import React, { useState, useEffect, useContext, useMemo, useCallback } from 'react';
-import { View, Text, TouchableOpacity, Platform, TextStyle, useWindowDimensions, ViewStyle, StyleSheet, ColorValue } from 'react-native';
+import { View, Text, TouchableOpacity, Platform, TextStyle, useWindowDimensions, ViewStyle, ColorValue } from 'react-native';
 import Modal from 'react-native-modal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import WheelPicker from 'react-native-wheely';
 import { useTranslation } from 'react-i18next';
 
 import { useAppTheme } from '@/hooks/ThemeContext';
-import { FontSizeContext, type FontSizeKey } from '@/context/FontSizeContext';
+import { FontSizeContext } from '@/context/FontSizeContext';
 import { fontSizes as appFontSizes } from '@/constants/fontSizes';
 import type { DeadlineTime, AmPm, DeadlineModalStyles } from './types';
-import { ampmData as ampmOptions, hourData12 } from './types';
+import { ampmData as ampmOptionsData, hourData12 } from './types';
 import { createDeadlineModalStyles } from './styles';
 
 const createMinuteData = (): Array<{ label: string; value: number }> => {
@@ -24,10 +24,14 @@ const createMinuteData = (): Array<{ label: string; value: number }> => {
 const minuteDataFull = createMinuteData();
 
 const WHEELY_ITEM_HEIGHT = Platform.OS === 'ios' ? 80 : 88;
-const BASE_PICKER_FONT_SIZE_INCREASE = 22;
+const TIME_PICKER_BASE_FONT_SIZE_INCREASE = 18; 
+const AMPM_FONT_SIZE_ADJUSTMENT = -4; 
 
-const getAmPmPickerWidth = (baseFontSize: number): number => {
-  const effectiveFontSize = baseFontSize + BASE_PICKER_FONT_SIZE_INCREASE;
+// ★ AM/PMピッカーと時ピッカーの間隔を詰めるための右マージン調整値
+const AMPM_PICKER_WRAPPER_MARGIN_RIGHT_ADJUSTMENT = Platform.OS === 'ios' ? -12 : -40; // この値を調整
+
+const getAmPmPickerWidth = (baseFontSize: number, ampmFontSizeIncrease: number): number => {
+  const effectiveFontSize = baseFontSize + ampmFontSizeIncrease; 
   if (effectiveFontSize > 38) return Platform.OS === 'ios' ? 130 : 150;
   if (effectiveFontSize > 28) return Platform.OS === 'ios' ? 110 : 130;
   return Platform.OS === 'ios' ? 90 : 110;
@@ -39,12 +43,14 @@ const PICKER_AREA_TOTAL_HEIGHT = WHEELY_ITEM_HEIGHT * WHEELY_VISIBLE_COUNT;
 
 const BACKDROP_OPACITY = 0.4;
 const ANIMATION_TIMING = 300;
-const HORIZONTAL_SEPARATOR_PADDING = 24;
 
 const ACCENT_LINE_THICKNESS = 4;
 const ACCENT_LINE_LENGTH = 30;
 const ACCENT_LINE_BORDER_RADIUS = 2;
-const ACCENT_LINE_HORIZONTAL_OFFSET = 5;
+const ACCENT_LINE_CONTAINER_HORIZONTAL_PADDING = 10; 
+const ACCENT_LINE_HORIZONTAL_OFFSET = 5;           
+
+const CUSTOM_VISUAL_ALIGNMENT_SHIFT_TIME = -50; // この値はAM/PMと時の間隔調整後、再確認が必要な場合があります
 
 interface TimePickerModalProps {
   visible: boolean;
@@ -86,9 +92,12 @@ const TimePickerModalMemo: React.FC<TimePickerModalProps> = ({
 
   const stylesFromTs: DeadlineModalStyles = useMemo(() => createDeadlineModalStyles(isDark, subColor, fontSizeKey), [isDark, subColor, fontSizeKey]);
   const currentBaseFontSize = appFontSizes[fontSizeKey];
-  const WHEELY_CONTAINER_WIDTH_SHORT = useMemo(() => getAmPmPickerWidth(currentBaseFontSize), [currentBaseFontSize]);
+  
+  const ampmPickerFontSizeIncrease = TIME_PICKER_BASE_FONT_SIZE_INCREASE + AMPM_FONT_SIZE_ADJUSTMENT;
+  const WHEELY_CONTAINER_WIDTH_SHORT = useMemo(() => getAmPmPickerWidth(currentBaseFontSize, ampmPickerFontSizeIncrease), [currentBaseFontSize, ampmPickerFontSizeIncrease]);
 
-  const pickerItemFontSize = currentBaseFontSize + BASE_PICKER_FONT_SIZE_INCREASE;
+  const pickerItemFontSize = currentBaseFontSize + TIME_PICKER_BASE_FONT_SIZE_INCREASE; 
+  const ampmPickerItemFontSize = currentBaseFontSize + ampmPickerFontSizeIncrease;    
   const accentLineColorValue = subColor as ColorValue;
 
   const defaultDisplayTime = useMemo(() => {
@@ -113,19 +122,25 @@ const TimePickerModalMemo: React.FC<TimePickerModalProps> = ({
     onConfirm(finalTime);
   }, [selectedHour, selectedAmPm, selectedMinute, onConfirm]);
 
-  const handleAmPmChange = useCallback((index: number) => setSelectedAmPm(ampmOptions[index].value), []);
+  const handleAmPmChange = useCallback((index: number) => setSelectedAmPm(ampmOptionsData[index].value), []);
   const handleHourChange = useCallback((index: number) => setSelectedHour(hourData12[index].value), []);
   const handleMinuteChange = useCallback((index: number) => setSelectedMinute(minuteDataFull[index].value), []);
 
-  const ampmPickerOptions = useMemo(() => ampmOptions.map(opt => t(`common.${opt.labelKey}`)), [t]);
+  const ampmPickerOptions = useMemo(() => ampmOptionsData.map(opt => t(`common.${opt.labelKey}`)), [t]);
   const hourPickerOptions = useMemo(() => hourData12.map(opt => opt.label), []);
   const minutePickerOptions = useMemo(() => minuteDataFull.map(opt => opt.label), []);
 
-  const wheelyItemTextStyle = useMemo((): TextStyle => ({
+  const wheelyItemHourMinuteTextStyle = useMemo((): TextStyle => ({ 
     color: stylesFromTs.label.color,
     fontSize: pickerItemFontSize,
-    fontWeight: Platform.OS === 'ios' ? '400' : 'normal',
+    fontWeight: Platform.OS === 'ios' ? '500' : '500', 
   }), [stylesFromTs.label.color, pickerItemFontSize]);
+
+  const wheelyItemAmPmTextStyle = useMemo((): TextStyle => ({ 
+    color: stylesFromTs.label.color,
+    fontSize: ampmPickerItemFontSize, 
+    fontWeight: Platform.OS === 'ios' ? '500' : '500', 
+  }), [stylesFromTs.label.color, ampmPickerItemFontSize]);
 
   const wheelySelectedIndicatorStyle = useMemo(() => ({
     backgroundColor: 'transparent',
@@ -134,49 +149,42 @@ const TimePickerModalMemo: React.FC<TimePickerModalProps> = ({
     borderColor: 'transparent',
   }), []);
 
-  const originalTimeSeparatorStyle = useMemo((): TextStyle => ({ // 元のスタイルを保持
+  const timeUnitLabelStyle = useMemo((): TextStyle => ({
     ...stylesFromTs.timeSeparator,
-    fontSize: pickerItemFontSize + (Platform.OS === 'ios' ? 2 : 0),
+    fontSize: pickerItemFontSize - (Platform.OS === 'ios' ? 7 : 7), 
     lineHeight: WHEELY_ITEM_HEIGHT,
     textAlignVertical: 'center',
-  }), [stylesFromTs.timeSeparator, pickerItemFontSize, WHEELY_ITEM_HEIGHT]);
+    marginHorizontal: Platform.OS === 'ios' ? -9 : -9, 
+    color: stylesFromTs.label.color,
+  }), [stylesFromTs.timeSeparator, pickerItemFontSize, WHEELY_ITEM_HEIGHT, stylesFromTs.label.color]);
 
-  const adjustedTimeSeparatorStyle = useMemo((): TextStyle => ({ // 調整後のコロンのスタイル
-    ...originalTimeSeparatorStyle,
-    marginHorizontal: Platform.OS === 'ios' ? -10 : -8, // コロンの左右マージンを調整して時分を近づける
-  }), [originalTimeSeparatorStyle]);
-
-
-  const pickerRowSeparatorStyle = useMemo((): ViewStyle => ({
-    ...(stylesFromTs.pickerRowSeparator as ViewStyle),
-    width: windowWidth - (HORIZONTAL_SEPARATOR_PADDING * 2),
-    marginHorizontal: HORIZONTAL_SEPARATOR_PADDING,
-  }), [stylesFromTs.pickerRowSeparator, windowWidth]);
-
-  const timePickerOuterContainerPaddingVertical = useMemo((): number => {
-    const defaultPaddingV = Platform.OS === 'ios' ? 10 : 8;
+  const timePickerAreaPaddingVertical = useMemo((): number => { 
+    const defaultPaddingV = Platform.OS === 'ios' ? 10 : 10; 
     const stylePaddingV = (stylesFromTs.timePickerContainer as ViewStyle)?.paddingVertical;
-    if (typeof stylePaddingV === 'number') {
-      return stylePaddingV;
-    }
-    return defaultPaddingV;
+    return typeof stylePaddingV === 'number' ? stylePaddingV : defaultPaddingV;
   }, [stylesFromTs.timePickerContainer]);
 
-  const timePickerOuterContainerStyle = useMemo((): ViewStyle => ({
+  const timePickerOuterContainerStyle = useMemo((): ViewStyle => ({ 
     height: PICKER_AREA_TOTAL_HEIGHT,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: timePickerOuterContainerPaddingVertical,
-    marginHorizontal: HORIZONTAL_SEPARATOR_PADDING,
+    paddingVertical: timePickerAreaPaddingVertical,
+    marginHorizontal: ACCENT_LINE_CONTAINER_HORIZONTAL_PADDING, 
     position: 'relative',
-  }), [PICKER_AREA_TOTAL_HEIGHT, timePickerOuterContainerPaddingVertical]);
+  }), [PICKER_AREA_TOTAL_HEIGHT, timePickerAreaPaddingVertical, ACCENT_LINE_CONTAINER_HORIZONTAL_PADDING]);
 
-   const adjustedTimePickerModalContainerStyle = useMemo((): ViewStyle => ({
+  const innerPickerContentWrapperStyle = useMemo((): ViewStyle => ({ 
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: CUSTOM_VISUAL_ALIGNMENT_SHIFT_TIME, 
+  }), [CUSTOM_VISUAL_ALIGNMENT_SHIFT_TIME]);
+
+  const adjustedTimePickerModalContainerStyle = useMemo((): ViewStyle => ({
     ...(stylesFromTs.timePickerModalContainer as ViewStyle),
-   }), [stylesFromTs.timePickerModalContainer]);
+  }), [stylesFromTs.timePickerModalContainer]);
 
-  const selectedItemAccentLineStyle = useMemo((): ViewStyle => ({
+  const selectedItemAccentLineStyle = useMemo((): ViewStyle => ({ 
     position: 'absolute',
     width: ACCENT_LINE_LENGTH,
     height: ACCENT_LINE_THICKNESS,
@@ -184,27 +192,22 @@ const TimePickerModalMemo: React.FC<TimePickerModalProps> = ({
     backgroundColor: accentLineColorValue,
   }), [accentLineColorValue]);
 
-  const accentLineTopPosition = timePickerOuterContainerPaddingVertical + WHEELY_ITEM_HEIGHT + (WHEELY_ITEM_HEIGHT / 2) - (ACCENT_LINE_THICKNESS / 2);
-  const pickerOuterContainerWidth = windowWidth - 2 * HORIZONTAL_SEPARATOR_PADDING;
+  const accentLineTopPosition = timePickerAreaPaddingVertical + WHEELY_ITEM_HEIGHT + (WHEELY_ITEM_HEIGHT / 2) - (ACCENT_LINE_THICKNESS / 2);
+  const pickerOuterContainerActualWidth = windowWidth - 2 * ACCENT_LINE_CONTAINER_HORIZONTAL_PADDING;
   const leftAccentLeftPosition = ACCENT_LINE_HORIZONTAL_OFFSET;
-  const rightAccentLeftPosition = pickerOuterContainerWidth - ACCENT_LINE_LENGTH - ACCENT_LINE_HORIZONTAL_OFFSET;
+  const rightAccentLeftPosition = pickerOuterContainerActualWidth - ACCENT_LINE_LENGTH - ACCENT_LINE_HORIZONTAL_OFFSET;
 
-  // ピッカーラッパーのスタイル調整
-  const ampmPickerWrapperStyle = useMemo((): ViewStyle => ({
+  const pickerWrapperStyle = useMemo((): ViewStyle => ({
     ...(stylesFromTs.wheelPickerWrapper as ViewStyle),
-    marginRight: Platform.OS === 'ios' ? -5 : -30, // AM/PMピッカーの右マージンを詰めて、時ピッカーを左に寄せる
   }), [stylesFromTs.wheelPickerWrapper]);
 
-  const hourPickerWrapperStyle = useMemo((): ViewStyle => ({
-    ...(stylesFromTs.wheelPickerWrapper as ViewStyle),
-    // 時ピッカーの左右マージンは、コロンの調整とAM/PMピッカーの調整に委ねるか、必要ならここで微調整
-  }), [stylesFromTs.wheelPickerWrapper]);
+  const amPmPickerSpecificWrapperStyle = useMemo((): ViewStyle => ({
+    ...pickerWrapperStyle,
+    marginRight: AMPM_PICKER_WRAPPER_MARGIN_RIGHT_ADJUSTMENT,
+  }), [pickerWrapperStyle, AMPM_PICKER_WRAPPER_MARGIN_RIGHT_ADJUSTMENT]);
 
-  const minutePickerWrapperStyle = useMemo((): ViewStyle => ({
-    ...(stylesFromTs.wheelPickerWrapper as ViewStyle),
-    // 分ピッカーの左右マージンは、コロンの調整に委ねるか、必要ならここで微調整
-  }), [stylesFromTs.wheelPickerWrapper]);
-
+  const hourUnitText = t('common.hour_unit', '時');
+  const minuteUnitText = t('common.minute_unit', '分');
 
   return (
     <Modal
@@ -233,68 +236,74 @@ const TimePickerModalMemo: React.FC<TimePickerModalProps> = ({
                 <Text style={stylesFromTs.headerText}>{t('deadline_modal.specify_time')}</Text>
             </View>
 
-            {stylesFromTs.pickerRowSeparator && <View style={pickerRowSeparatorStyle} />}
+            {stylesFromTs.pickerRowSeparator && 
+              <View style={[
+                stylesFromTs.pickerRowSeparator, 
+                { 
+                  width: windowWidth - (ACCENT_LINE_CONTAINER_HORIZONTAL_PADDING * 2), 
+                  marginHorizontal: ACCENT_LINE_CONTAINER_HORIZONTAL_PADDING 
+                }
+              ]} />
+            }
 
             <View style={timePickerOuterContainerStyle}>
-                <View style={[
-                    selectedItemAccentLineStyle,
-                    {
-                        top: accentLineTopPosition,
-                        left: leftAccentLeftPosition,
-                    }
-                ]} />
-
-                <View style={[
-                    selectedItemAccentLineStyle,
-                    {
-                        top: accentLineTopPosition,
-                        left: rightAccentLeftPosition,
-                    }
-                ]} />
-
-                <View style={ampmPickerWrapperStyle}>
-                    <WheelPicker
-                    options={ampmPickerOptions}
-                    selectedIndex={ampmOptions.findIndex(o => o.value === selectedAmPm)}
-                    onChange={handleAmPmChange}
-                    itemHeight={WHEELY_ITEM_HEIGHT}
-                    itemTextStyle={wheelyItemTextStyle}
-                    containerStyle={{ width: WHEELY_CONTAINER_WIDTH_SHORT, height: PICKER_AREA_TOTAL_HEIGHT }}
-                    selectedIndicatorStyle={wheelySelectedIndicatorStyle}
-                    decelerationRate="fast"
-                    visibleRest={Math.floor(WHEELY_VISIBLE_COUNT / 2)}
-                    />
-                </View>
-                <View style={hourPickerWrapperStyle}>
-                    <WheelPicker
-                    options={hourPickerOptions}
-                    selectedIndex={hourData12.findIndex(o => o.value === selectedHour)}
-                    onChange={handleHourChange}
-                    itemHeight={WHEELY_ITEM_HEIGHT}
-                    itemTextStyle={wheelyItemTextStyle}
-                    containerStyle={{ width: WHEELY_CONTAINER_WIDTH_NORMAL, height: PICKER_AREA_TOTAL_HEIGHT }}
-                    selectedIndicatorStyle={wheelySelectedIndicatorStyle}
-                    decelerationRate="fast"
-                    visibleRest={Math.floor(WHEELY_VISIBLE_COUNT / 2)}
-                    />
-                </View>
-                <Text style={adjustedTimeSeparatorStyle}>:</Text>
-                <View style={minutePickerWrapperStyle}>
-                    <WheelPicker
-                    options={minutePickerOptions}
-                    selectedIndex={minuteDataFull.findIndex(o => o.value === selectedMinute)}
-                    onChange={handleMinuteChange}
-                    itemHeight={WHEELY_ITEM_HEIGHT}
-                    itemTextStyle={wheelyItemTextStyle}
-                    containerStyle={{ width: WHEELY_CONTAINER_WIDTH_NORMAL, height: PICKER_AREA_TOTAL_HEIGHT }}
-                    selectedIndicatorStyle={wheelySelectedIndicatorStyle}
-                    decelerationRate="fast"
-                    visibleRest={Math.floor(WHEELY_VISIBLE_COUNT / 2)}
-                    />
+                <View style={[ selectedItemAccentLineStyle, { top: accentLineTopPosition, left: leftAccentLeftPosition, }]} />
+                <View style={[ selectedItemAccentLineStyle, { top: accentLineTopPosition, left: rightAccentLeftPosition, }]} />
+                
+                <View style={innerPickerContentWrapperStyle}> 
+                    <View style={amPmPickerSpecificWrapperStyle}> 
+                        <WheelPicker
+                        options={ampmPickerOptions}
+                        selectedIndex={ampmOptionsData.findIndex(o => o.value === selectedAmPm)}
+                        onChange={handleAmPmChange}
+                        itemHeight={WHEELY_ITEM_HEIGHT}
+                        itemTextStyle={wheelyItemAmPmTextStyle} 
+                        containerStyle={{ width: WHEELY_CONTAINER_WIDTH_SHORT, height: PICKER_AREA_TOTAL_HEIGHT }}
+                        selectedIndicatorStyle={wheelySelectedIndicatorStyle}
+                        decelerationRate="fast"
+                        visibleRest={Math.floor(WHEELY_VISIBLE_COUNT / 2)}
+                        />
+                    </View>
+                    <View style={pickerWrapperStyle}> 
+                        <WheelPicker
+                        options={hourPickerOptions}
+                        selectedIndex={hourData12.findIndex(o => o.value === selectedHour)}
+                        onChange={handleHourChange}
+                        itemHeight={WHEELY_ITEM_HEIGHT}
+                        itemTextStyle={wheelyItemHourMinuteTextStyle} 
+                        containerStyle={{ width: WHEELY_CONTAINER_WIDTH_NORMAL, height: PICKER_AREA_TOTAL_HEIGHT }}
+                        selectedIndicatorStyle={wheelySelectedIndicatorStyle}
+                        decelerationRate="fast"
+                        visibleRest={Math.floor(WHEELY_VISIBLE_COUNT / 2)}
+                        />
+                    </View>
+                    <Text style={timeUnitLabelStyle}>{hourUnitText}</Text> 
+                    <View style={pickerWrapperStyle}> 
+                        <WheelPicker
+                        options={minutePickerOptions}
+                        selectedIndex={minuteDataFull.findIndex(o => o.value === selectedMinute)}
+                        onChange={handleMinuteChange}
+                        itemHeight={WHEELY_ITEM_HEIGHT}
+                        itemTextStyle={wheelyItemHourMinuteTextStyle} 
+                        containerStyle={{ width: WHEELY_CONTAINER_WIDTH_NORMAL, height: PICKER_AREA_TOTAL_HEIGHT }}
+                        selectedIndicatorStyle={wheelySelectedIndicatorStyle}
+                        decelerationRate="fast"
+                        visibleRest={Math.floor(WHEELY_VISIBLE_COUNT / 2)}
+                        />
+                    </View>
+                    <Text style={timeUnitLabelStyle}>{minuteUnitText}</Text>
                 </View>
             </View>
 
-            {stylesFromTs.pickerRowSeparator && <View style={pickerRowSeparatorStyle} />}
+            {stylesFromTs.pickerRowSeparator && 
+              <View style={[
+                stylesFromTs.pickerRowSeparator, 
+                { 
+                  width: windowWidth - (ACCENT_LINE_CONTAINER_HORIZONTAL_PADDING * 2), 
+                  marginHorizontal: ACCENT_LINE_CONTAINER_HORIZONTAL_PADDING 
+                }
+              ]} />
+            }
 
             <View style={[stylesFromTs.footer, stylesFromTs.timePickerModalFooter]}>
                 <TouchableOpacity style={[stylesFromTs.button, stylesFromTs.timePickerModalButton]} onPress={onClose}>

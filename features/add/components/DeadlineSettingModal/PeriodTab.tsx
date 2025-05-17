@@ -1,26 +1,17 @@
 // app/features/add/components/DeadlineSettingModal/PeriodTab.tsx
 import React, { useState, useMemo, useCallback } from 'react';
 import { ScrollView, View, Text, TouchableOpacity } from 'react-native';
-import { Calendar, CalendarUtils, CalendarProps } from 'react-native-calendars';
 import { useTranslation } from 'react-i18next';
+import { CalendarUtils } from 'react-native-calendars';
+import { Ionicons } from '@expo/vector-icons';
 import { useAppTheme } from '@/hooks/ThemeContext';
-import type { SpecificPeriodTabProps, CalendarFontWeight } from './types';
+import type { SpecificPeriodTabProps } from './types';
+import { DatePickerModal } from './DatePickerModal';
 
-import { LocaleConfig } from 'react-native-calendars';
-import { useEffect } from 'react';
-
-
-
-const todayString = CalendarUtils.getCalendarDateString(new Date());
-
-interface PeriodMarking {
-  color?: string;
-  textColor?: string;
-  startingDay?: boolean;
-  endingDay?: boolean;
-  selected?: boolean;
-  disableTouchEvent?: boolean;
-}
+const formatDateToDisplay = (dateString: string | undefined, t: (key: string, options?: any) => string): string => {
+    if (!dateString) return t('common.select', '選択');
+    return dateString;
+};
 
 const PeriodTabMemo: React.FC<SpecificPeriodTabProps> = ({
   styles,
@@ -32,129 +23,92 @@ const PeriodTabMemo: React.FC<SpecificPeriodTabProps> = ({
   const isDark = colorScheme === 'dark';
   const { t } = useTranslation();
 
-  const [selectingFor, setSelectingFor] = useState<'start' | 'end'>('start');
+  const [isDatePickerVisible, setDatePickerVisible] = useState(false);
+  const [editingDateType, setEditingDateType] = useState<'start' | 'end' | null>(null);
 
-  const onDayPress = useCallback((day: { dateString: string }) => {
-    if (selectingFor === 'start') {
-      updateSettings('periodStartDate', day.dateString);
-      if (periodEndDate && day.dateString > periodEndDate) {
+  const handleOpenDatePicker = useCallback((type: 'start' | 'end') => {
+    setEditingDateType(type);
+    setDatePickerVisible(true);
+  }, []);
+
+  const handleDatePickerClose = useCallback(() => {
+    setDatePickerVisible(false);
+    setEditingDateType(null);
+  }, []);
+
+  const handleDateConfirm = useCallback((newDate: string) => {
+    if (editingDateType === 'start') {
+      updateSettings('periodStartDate', newDate);
+      if (periodEndDate && newDate > periodEndDate) {
         updateSettings('periodEndDate', undefined);
       }
-      setSelectingFor('end');
-    } else {
-      if (periodStartDate && day.dateString < periodStartDate) {
-        updateSettings('periodStartDate', day.dateString);
-        updateSettings('periodEndDate', undefined);
-        setSelectingFor('end');
+    } else if (editingDateType === 'end') {
+      if (periodStartDate && newDate < periodStartDate) {
+        updateSettings('periodEndDate', newDate);
       } else {
-        updateSettings('periodEndDate', day.dateString);
-        setSelectingFor('start');
+        updateSettings('periodEndDate', newDate);
       }
     }
-  }, [selectingFor, periodStartDate, periodEndDate, updateSettings]);
+    handleDatePickerClose();
+  }, [editingDateType, periodStartDate, periodEndDate, updateSettings, handleDatePickerClose]);
 
-  const handleSelectForStart = useCallback(() => setSelectingFor('start'), []);
-  const handleSelectForEnd = useCallback(() => setSelectingFor('end'), []);
-
-
-  const markedDates = useMemo(() => {
-    const marked: { [key: string]: PeriodMarking } = {};
-    if (periodStartDate) {
-      marked[periodStartDate] = {
-        startingDay: true,
-        color: subColor,
-        textColor: isDark ? '#000' : '#FFF',
-        selected: true,
-      };
+  const handleDateClear = useCallback(() => {
+    if (editingDateType === 'start') {
+      updateSettings('periodStartDate', undefined);
+    } else if (editingDateType === 'end') {
+      updateSettings('periodEndDate', undefined);
     }
-    if (periodEndDate) {
-      marked[periodEndDate] = {
-        endingDay: true,
-        color: subColor,
-        textColor: isDark ? '#000' : '#FFF',
-        selected: true,
-        ...(periodStartDate === periodEndDate && { startingDay: true }),
-      };
-    }
-    const startDateToDate = (dateStr: string | undefined): Date | null => {
-        if (!dateStr) return null;
-        const [year, month, day] = dateStr.split('-').map(Number);
-        return new Date(year, month - 1, day);
-    };
+  }, [editingDateType, updateSettings]);
 
-    const startDt = startDateToDate(periodStartDate);
-    const endDt = startDateToDate(periodEndDate);
+  const displayStartDate = useMemo(() => formatDateToDisplay(periodStartDate, t), [periodStartDate, t]);
+  const displayEndDate = useMemo(() => formatDateToDisplay(periodEndDate, t), [periodEndDate, t]);
 
-    if (startDt && endDt && startDt < endDt) {
-      let current = new Date(startDt);
-      current.setDate(current.getDate() + 1);
-      while (current < endDt) {
-        const dateStr = CalendarUtils.getCalendarDateString(current);
-        marked[dateStr] = { color: subColor + '30', textColor: subColor, selected: false, disableTouchEvent: true };
-        current.setDate(current.getDate() + 1);
-      }
-    }
-    return marked;
-  }, [periodStartDate, periodEndDate, subColor, isDark]);
+  const labelFontSize = typeof styles.label.fontSize === 'number' ? styles.label.fontSize : 16;
 
-  const calendarTheme = useMemo((): CalendarProps['theme'] => ({
-    backgroundColor: isDark ? '#000000' : '#FFFFFF',
-    calendarBackground: isDark ? '#000000' : '#FFFFFF',
-    textSectionTitleColor: isDark ? '#A0A0A0' : subColor,
-    selectedDayBackgroundColor: subColor,
-    selectedDayTextColor: isDark ? '#000' : '#FFFFFF',
-    todayTextColor: subColor,
-    dayTextColor: isDark ? '#FFFFFF' : '#2d4150',
-    textDisabledColor: isDark ? '#555555' : '#d9e1e8',
-    arrowColor: subColor,
-    monthTextColor: subColor,
-    indicatorColor: subColor,
-    textDayFontWeight: '400' as CalendarFontWeight,
-    textMonthFontWeight: 'bold' as CalendarFontWeight,
-    textDayHeaderFontWeight: '500' as CalendarFontWeight,
-    textDayFontSize: 15,
-    textMonthFontSize: 18,
-    textDayHeaderFontSize: 13,
-  }), [isDark, subColor]);
-const { i18n } = useTranslation();
-useEffect(() => {
-  LocaleConfig.defaultLocale = i18n.language;
-}, [i18n.language]);
-
-  const periodButtonTextFontSize = (styles.periodButtonText.fontSize as number || 14) - 2;
+  const getInitialPickerDate = () => {
+    if (editingDateType === 'start' && periodStartDate) return periodStartDate;
+    if (editingDateType === 'end' && periodEndDate) return periodEndDate;
+    if (editingDateType === 'end' && periodStartDate && !periodEndDate) return periodStartDate;
+    return CalendarUtils.getCalendarDateString(new Date());
+  };
 
   return (
     <ScrollView style={styles.tabContentContainer} contentContainerStyle={{ paddingBottom: 20 }}>
-      <View style={styles.periodButtonContainer}>
-        <TouchableOpacity
-          style={[styles.periodButton, selectingFor === 'start' && styles.periodButtonSelected]}
-          onPress={handleSelectForStart}
-        >
-          <Text style={[styles.periodButtonText, selectingFor === 'start' && styles.periodButtonTextSelected]}>
-            {t('deadline_modal.start_date')}
+      <TouchableOpacity onPress={() => handleOpenDatePicker('start')} style={styles.settingRow}>
+        <Text style={[styles.label, { marginBottom: 0 }]}>{t('deadline_modal.start_date', '開始日')}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Text style={[styles.pickerText, { marginRight: 4, color: periodStartDate ? subColor : (isDark ? '#A0A0A0' : '#555555')}]}>
+            {displayStartDate}
           </Text>
-          <Text style={[styles.periodButtonText, {opacity:0.7, fontSize: periodButtonTextFontSize }, selectingFor === 'start' && styles.periodButtonTextSelected]}>
-            {periodStartDate ? periodStartDate : t('deadline_modal.not_selected')}
+          <Ionicons
+            name={"chevron-forward"}
+            size={labelFontSize + 2}
+            color={isDark ? '#A0A0A0' : '#555555'}
+          />
+        </View>
+      </TouchableOpacity>
+
+      <TouchableOpacity onPress={() => handleOpenDatePicker('end')} style={[styles.settingRow, { borderTopWidth: 0 /* 連続する場合、上の要素のborderBottomWidthと重複するため0に */}]}>
+        <Text style={[styles.label, { marginBottom: 0 }]}>{t('deadline_modal.end_date', '終了日')}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Text style={[styles.pickerText, { marginRight: 4, color: periodEndDate ? subColor : (isDark ? '#A0A0A0' : '#555555')}]}>
+            {displayEndDate}
           </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.periodButton, selectingFor === 'end' && styles.periodButtonSelected]}
-          onPress={handleSelectForEnd}
-        >
-          <Text style={[styles.periodButtonText, selectingFor === 'end' && styles.periodButtonTextSelected]}>
-            {t('deadline_modal.end_date')}
-          </Text>
-           <Text style={[styles.periodButtonText, {opacity:0.7, fontSize: periodButtonTextFontSize }, selectingFor === 'end' && styles.periodButtonTextSelected]}>
-            {periodEndDate ? periodEndDate : t('deadline_modal.not_selected')}
-          </Text>
-        </TouchableOpacity>
-      </View>
-      <Calendar
-        current={periodStartDate || todayString}
-        onDayPress={onDayPress}
-        markingType={'period'}
-        markedDates={markedDates}
-        theme={calendarTheme}
+          <Ionicons
+            name={"chevron-forward"}
+            size={labelFontSize + 2}
+            color={isDark ? '#A0A0A0' : '#555555'}
+          />
+        </View>
+      </TouchableOpacity>
+
+      <DatePickerModal
+        visible={isDatePickerVisible}
+        initialDate={getInitialPickerDate()}
+        onClose={handleDatePickerClose}
+        onConfirm={handleDateConfirm}
+        onClear={editingDateType ? handleDateClear : undefined}
+        clearButtonText={t(editingDateType === 'start' ? 'common.clear_start_date' : 'common.clear_end_date', '日付をクリア')}
       />
     </ScrollView>
   );
@@ -171,6 +125,5 @@ const arePeriodTabPropsEqual = (
         prevProps.updateSettings === nextProps.updateSettings
     );
 };
-
 
 export const PeriodTab = React.memo(PeriodTabMemo, arePeriodTabPropsEqual);
