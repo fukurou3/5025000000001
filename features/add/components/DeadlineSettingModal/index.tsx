@@ -1,11 +1,11 @@
 // app/features/add/components/DeadlineSettingModal/index.tsx
 
 import React, { useState, useEffect, useCallback, useContext, useMemo } from 'react';
-import { Modal, View, TouchableOpacity, Text, useWindowDimensions, Platform, InteractionManager } from 'react-native';
+import { View, TouchableOpacity, Text, useWindowDimensions, Platform, InteractionManager } from 'react-native';
+import Modal from 'react-native-modal';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { TabView, TabBar, SceneRendererProps } from 'react-native-tab-view';
+import { TabView, SceneRendererProps, TabBarProps } from 'react-native-tab-view'; // TabBar を削除
 import { useTranslation } from 'react-i18next';
-import { CalendarUtils } from 'react-native-calendars';
 
 import { useAppTheme } from '@/hooks/ThemeContext';
 import { FontSizeContext } from '@/context/FontSizeContext';
@@ -22,16 +22,18 @@ import { DeadlineModalHeader } from './DeadlineModalHeader';
 import { DateSelectionTab } from './DateSelectionTab';
 import { RepeatTab } from './RepeatTab';
 import { PeriodTab } from './PeriodTab';
-import { ConfirmModal } from './ConfirmModal'; // 追加
+import { ConfirmModal } from './ConfirmModal';
 
 interface DeadlineSettingModalProps {
   visible: boolean;
   onClose: () => void;
-  onSave: (settings?: DeadlineSettings) => void; // ← 未設定用に?を追加
+  onSave: (settings?: DeadlineSettings) => void;
   initialSettings?: DeadlineSettings;
 }
 
 const defaultTime: DeadlineTime = { hour: 9, minute: 0 };
+const ANIMATION_TIMING = 250;
+const BACKDROP_OPACITY = 0.4;
 
 export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
   visible,
@@ -50,8 +52,10 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
     initialSettings || { date: undefined, isTimeEnabled: false, time: defaultTime, repeatFrequency: 'none' }
   );
 
-  // 確認モーダルの表示状態
   const [isUnsetConfirmVisible, setUnsetConfirmVisible] = useState(false);
+  const [isValidationErrorModalVisible, setValidationErrorModalVisible] = useState(false);
+  const [validationErrorMessage, setValidationErrorMessage] = useState('');
+
 
   useEffect(() => {
     if (visible) {
@@ -61,39 +65,49 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
     }
   }, [visible, initialSettings]);
 
-const updateSettings = useCallback(
-  <K extends keyof DeadlineSettings>(key: K, value: DeadlineSettings[K]) => {
-    setSettings(prev => ({ ...prev, [key]: value }));
-  }, []
-);
-
+  const updateSettings = useCallback(
+    <K extends keyof DeadlineSettings>(key: K, value: DeadlineSettings[K]) => {
+      setSettings(prev => ({ ...prev, [key]: value }));
+    }, []
+  );
 
   const updateFullSettings = useCallback((newSettings: Partial<DeadlineSettings>) => {
     setSettings(prev => ({ ...prev, ...newSettings }));
   }, []);
 
   const handleSave = useCallback(() => {
+    if (activeTabIndex === 2) {
+      if (!settings.periodStartDate && !settings.periodEndDate) {
+        // No validation error here, proceed as header will show "not set"
+      } else if (!settings.periodStartDate && settings.periodEndDate) {
+        setValidationErrorMessage(t('deadline_modal.period_start_date_missing_alert_message', '開始日が未設定です。'));
+        setValidationErrorModalVisible(true);
+        return;
+      }
+    }
+    
     if (activeTabIndex === 2 && settings.periodStartDate && !settings.periodEndDate) {
         onSave({ ...settings, date: settings.periodStartDate, periodEndDate: settings.periodStartDate });
     } else {
         onSave(settings);
     }
-  }, [activeTabIndex, settings, onSave]);
+  }, [activeTabIndex, settings, onSave, t]);
 
-  // 「設定しない」ボタン押下時：まず確認モーダル表示
   const handleUnsetPress = useCallback(() => {
     setUnsetConfirmVisible(true);
   }, []);
 
-  // 確認モーダルのOK時
   const handleConfirmUnset = useCallback(() => {
     setUnsetConfirmVisible(false);
     onSave(undefined);
   }, [onSave]);
 
-  // 確認モーダルのキャンセル時
   const handleCancelUnset = useCallback(() => {
     setUnsetConfirmVisible(false);
+  }, []);
+
+  const handleCloseValidationErrorModal = useCallback(() => {
+    setValidationErrorModalVisible(false);
   }, []);
 
   const routes: DeadlineRoute[] = useMemo(() => [
@@ -102,7 +116,6 @@ const updateSettings = useCallback(
     { key: 'period', title: t('deadline_modal.tab_period') },
   ], [t]);
 
-  // --- タブ固有のPropsを作成 ---
   const dateTabProps = useMemo((): SpecificDateSelectionTabProps => ({
     styles,
     selectedDate: settings.date,
@@ -150,7 +163,6 @@ const updateSettings = useCallback(
     },
   }), [styles, settings.periodStartDate, settings.periodEndDate, updateSettings]);
 
-  // --- カスタム renderScene ---
   const renderScene = useCallback(({ route }: SceneRendererProps & { route: DeadlineRoute }) => {
     switch (route.key) {
       case 'date':
@@ -165,29 +177,58 @@ const updateSettings = useCallback(
   }, [dateTabProps, repeatTabProps, periodTabProps]);
 
   const renderTabBar = useCallback(
-    (props: any) => (
-      <TabBar
-        {...props}
-        indicatorStyle={[styles.tabIndicator, { backgroundColor: subColor }]}
-        style={styles.tabBar}
-        labelStyle={styles.tabLabel as any}
-        activeColor={subColor}
-        inactiveColor={colorScheme === 'dark' ? '#A0A0A0' : '#555555'}
-        pressOpacity={0.8}
-      />
+    (props: TabBarProps<DeadlineRoute>) => (
+      <View style={styles.tabBarContainer}>
+        <View style={styles.tabBar}>
+          {props.navigationState.routes.map((route, i) => {
+            const isActive = props.navigationState.index === i;
+            return (
+              <TouchableOpacity
+                key={route.key}
+                style={[
+                  styles.tabItem,
+                  isActive ? styles.tabItemActive : styles.tabItemInactive,
+                ]}
+                onPress={() => props.jumpTo(route.key as any)}
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={[
+                    styles.tabLabel,
+                    isActive ? styles.tabLabelActive : styles.tabLabelInactive,
+                  ]}
+                >
+                  {route.title}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
     ),
-    [styles.tabIndicator, styles.tabBar, styles.tabLabel, subColor, colorScheme]
+    [styles, subColor, colorScheme]
   );
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
-    >
-      <SafeAreaView style={styles.overlay} edges={['bottom']}>
-        <View style={styles.container}>
+    <>
+      <Modal
+        isVisible={visible}
+        animationIn="slideInUp"
+        animationOut="slideOutDown"
+        animationInTiming={ANIMATION_TIMING}
+        animationOutTiming={ANIMATION_TIMING}
+        backdropTransitionInTiming={ANIMATION_TIMING}
+        backdropTransitionOutTiming={ANIMATION_TIMING}
+        useNativeDriver={true}
+        useNativeDriverForBackdrop={true}
+        backdropColor="#000000"
+        backdropOpacity={BACKDROP_OPACITY}
+        onBackdropPress={onClose}
+        onBackButtonPress={onClose}
+        style={styles.modal}
+        hideModalContentWhileAnimating
+      >
+        <SafeAreaView edges={['bottom']} style={styles.container}>
           <DeadlineModalHeader
             settings={settings}
             styles={styles}
@@ -199,6 +240,7 @@ const updateSettings = useCallback(
             onIndexChange={setActiveTabIndex}
             initialLayout={{ width: layout.width }}
             renderTabBar={renderTabBar}
+            style={{ flex: 1 }}
             swipeEnabled={Platform.OS !== 'web'}
             lazy
             lazyPreloadDistance={0}
@@ -209,7 +251,7 @@ const updateSettings = useCallback(
               flexDirection: 'row',
               justifyContent: 'space-between',
               alignItems: 'center',
-              gap: 8 // React Native >=0.71 なら使える。なければmarginで調整
+              gap: 8
             }
           ]}>
             <TouchableOpacity style={[styles.button, { flex: 1, minWidth: 80 }]} onPress={onClose}>
@@ -231,16 +273,23 @@ const updateSettings = useCallback(
               </Text>
             </TouchableOpacity>
           </View>
-        </View>
-        <ConfirmModal
-          visible={isUnsetConfirmVisible}
-          message={t('deadline_modal.unset_confirm_message')}
-          okText={t('common.ok')}
-          cancelText={t('common.cancel')}
-          onCancel={handleCancelUnset}
-          onConfirm={handleConfirmUnset}
-        />
-      </SafeAreaView>
-    </Modal>
+        </SafeAreaView>
+      </Modal>
+      <ConfirmModal
+        visible={isUnsetConfirmVisible}
+        message={t('deadline_modal.unset_confirm_message')}
+        okText={t('common.ok')}
+        cancelText={t('common.cancel')}
+        onCancel={handleCancelUnset}
+        onConfirm={handleConfirmUnset}
+      />
+      <ConfirmModal
+        visible={isValidationErrorModalVisible}
+        message={validationErrorMessage}
+        okText={t('common.ok')}
+        onConfirm={handleCloseValidationErrorModal}
+        onCancel={handleCloseValidationErrorModal}
+      />
+    </>
   );
 };

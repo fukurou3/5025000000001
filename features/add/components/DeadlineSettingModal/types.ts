@@ -7,7 +7,7 @@ export interface DeadlineTime {
   minute: number;
 }
 
-export interface DatePickerData { // DatePickerModal用に新規追加
+export interface DatePickerData {
   year: number;
   month: number; // 1-12
   day: number;   // 1-31
@@ -22,17 +22,17 @@ export interface RepeatEnds {
 export type RepeatFrequency = 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
 
 export interface DeadlineSettings {
-  date?: string; // YYYY-MM-DD
+  date?: string;
   time?: DeadlineTime;
   isTimeEnabled?: boolean;
   repeatFrequency?: RepeatFrequency;
   repeatInterval?: number;
   repeatDaysOfWeek?: { [key: number]: boolean };
-  repeatOnDate?: { day?: number; month?: number; weekOfMonth?: number; dayOfWeek?: number }; // これは現状あまり使われていない可能性
+  repeatOnDate?: { day?: number; month?: number; weekOfMonth?: number; dayOfWeek?: number };
   repeatEnds?: RepeatEnds;
   isExcludeHolidays?: boolean;
-  periodStartDate?: string; // YYYY-MM-DD
-  periodEndDate?: string;   // YYYY-MM-DD
+  periodStartDate?: string;
+  periodEndDate?: string;
 }
 
 export interface DeadlineRoute {
@@ -52,19 +52,27 @@ export interface DeadlineModalStyles {
   buttonText: TextStyle;
   saveButton: ViewStyle;
   saveButtonText: TextStyle;
-  tabBar: ViewStyle;
-  tabLabel: TextStyle;
-  tabIndicator: ViewStyle;
+  // --- TabBar Styles Start (ここから追加/修正) ---
+  tabBarContainer: ViewStyle; // TabBar全体を囲むコンテナ
+  tabBar: ViewStyle; // TabBar自体のスタイル (react-native-tab-viewのTabBar)
+  tabItem: ViewStyle; // 個々のタブボタンのスタイル
+  tabItemActive: ViewStyle; // アクティブなタブボタンのスタイル
+  tabItemInactive: ViewStyle; // 非アクティブなタブボタンのスタイル
+  tabLabel: TextStyle; // タブラベルの基本スタイル
+  tabLabelActive: TextStyle; // アクティブなタブのテキスト色
+  tabLabelInactive: TextStyle; // 非アクティブなタブのテキスト色
+  tabIndicator: ViewStyle; // インジケータースタイル
+  // --- TabBar Styles End ---
   tabContentContainer: ViewStyle;
   label: TextStyle;
   settingRow: ViewStyle;
   timePickerToggleContainer: ViewStyle;
-  timePickerContainer: ViewStyle; // DatePickerModalでも一部流用想定
-  wheelPickerWrapper: ViewStyle; // DatePickerModalでも流用想定
-  timeSeparator: TextStyle;      // DatePickerModalのセパレータにも流用想定
+  timePickerContainer: ViewStyle;
+  wheelPickerWrapper: ViewStyle;
+  timeSeparator: TextStyle;
   frequencyPickerContainer: ViewStyle;
   intervalContainer: ViewStyle;
-  intervalInput: ViewStyle; // または TextStyle/ViewStyle の組み合わせ
+  intervalInput: ViewStyle;
   intervalText: TextStyle;
   weekDaysContainer: ViewStyle;
   daySelector: ViewStyle;
@@ -83,20 +91,20 @@ export interface DeadlineModalStyles {
   periodButtonText: TextStyle;
   periodButtonTextSelected: TextStyle;
   pickerText: TextStyle;
-  textInput: ViewStyle; // 汎用的なテキスト入力スタイルがあれば
-  modal: ViewStyle; // react-native-modal の style prop 用
+  textInput: ViewStyle;
+  modal: ViewStyle;
 
-  timePickerModalContainer?: ViewStyle; // DatePickerModalでも流用
+  timePickerModalContainer?: ViewStyle;
   timePickerContentContainer?: ViewStyle;
   pickerRowSeparator?: ViewStyle;
-  timePickerModalFooter?: ViewStyle; // DatePickerModalでも流用
-  timePickerModalButton?: ViewStyle; // DatePickerModalでも流用
+  timePickerModalFooter?: ViewStyle;
+  timePickerModalButton?: ViewStyle;
 }
 
 
 export interface SpecificDateSelectionTabProps {
   styles: DeadlineModalStyles;
-  selectedDate?: string; // YYYY-MM-DD
+  selectedDate?: string;
   selectedTime?: DeadlineTime;
   isTimeEnabled?: boolean;
   updateSettings: <K extends keyof Pick<DeadlineSettings, 'date' | 'time' | 'isTimeEnabled'>>(
@@ -114,7 +122,6 @@ export interface SpecificRepeatTabProps {
     | 'repeatDaysOfWeek'
     | 'isExcludeHolidays'
     | 'repeatEnds'
-    // | 'repeatOnDate' // 必要であれば追加
   >;
   updateSettings: <
     K extends keyof Pick<
@@ -124,7 +131,6 @@ export interface SpecificRepeatTabProps {
       | 'repeatDaysOfWeek'
       | 'isExcludeHolidays'
       | 'repeatEnds'
-      // | 'repeatOnDate'
     >
   >(
     key: K,
@@ -135,10 +141,9 @@ export interface SpecificRepeatTabProps {
       | 'repeatDaysOfWeek'
       | 'isExcludeHolidays'
       | 'repeatEnds'
-      // | 'repeatOnDate'
     >[K]
   ) => void;
-  updateFullSettings: ( // 複数の設定を一度に更新する場合
+  updateFullSettings: (
     newSettings: Partial<
       Pick<
         DeadlineSettings,
@@ -147,7 +152,6 @@ export interface SpecificRepeatTabProps {
         | 'repeatDaysOfWeek'
         | 'isExcludeHolidays'
         | 'repeatEnds'
-        // | 'repeatOnDate'
       >
     >
   ) => void;
@@ -155,8 +159,8 @@ export interface SpecificRepeatTabProps {
 
 export interface SpecificPeriodTabProps {
   styles: DeadlineModalStyles;
-  periodStartDate?: string; // YYYY-MM-DD
-  periodEndDate?: string;   // YYYY-MM-DD
+  periodStartDate?: string;
+  periodEndDate?: string;
   updateSettings: <K extends keyof Pick<DeadlineSettings, 'periodStartDate' | 'periodEndDate'>>(
     key: K,
     value: Pick<DeadlineSettings, 'periodStartDate' | 'periodEndDate'>[K]
@@ -173,7 +177,6 @@ export const ampmData: { labelKey: Extract<CommonTranslationKey, 'am' | 'pm'>; v
 
 export const hourData12 = Array.from({ length: 12 }, (_, i) => ({ label: `${i + 1}`, value: i + 1 }));
 
-// 分のデータ生成 (TimePickerModal.tsx から移動・共通化も検討)
 export const createMinuteData = (): Array<{ label: string; value: number }> => {
   const data = [];
   for (let i = 0; i < 60; i++) {
@@ -181,12 +184,10 @@ export const createMinuteData = (): Array<{ label: string; value: number }> => {
   }
   return data;
 };
-export const minuteDataFull = createMinuteData(); // TimePickerModal で使用
+export const minuteDataFull = createMinuteData();
 
 
-// isHoliday は現状使われていないが、将来的に復活する可能性を考慮して残す
 export const isHoliday = (dateString: string): boolean => {
-  // 実際には祝日判定ロジックを実装
   return false;
 };
 
@@ -199,52 +200,59 @@ export type DeadlineModalTranslationKey =
   | 'yearly'
   | 'every_x_days'
   | 'every_x_weeks'
-  // | 'every_x_months' // 翻訳キーが不足していれば追加
-  // | 'every_x_years'
   | 'ends_never'
   | 'ends_on_date'
   | 'ends_after_occurrences'
   | 'repeat_frequency'
   | 'interval'
-  | 'days_of_week' // もし翻訳ファイルにない場合は追加
+  | 'days_of_week'
   | 'exclude_holidays'
   | 'end_repeat_title'
   | 'occurrences_suffix'
   | 'specify_time'
-  | 'specify_date' // 新規追加 (DatePickerModalのヘッダー用)
-  | 'specify_date_label' // 新規追加 (DateSelectionTabのラベル用)
+  | 'specify_date'
+  | 'specify_date_label'
   | 'start_date'
   | 'end_date'
   | 'not_selected'
-  | 'title_display_datetime' // ヘッダー表示用 (日付と時刻)
-  | 'title_display_no_time'  // ヘッダー表示用 (日付のみ)
-  | 'title_display_no_deadline' // ヘッダー表示用 (期限なし)
-  | 'title_display' // 汎用的な日時表示 (settings.date, settings.time を使う)
+  | 'title_display_datetime'
+  | 'title_display_no_time'
+  | 'title_display_no_deadline'
+  | 'title_display'
   | 'tab_date'
   | 'tab_repeat'
   | 'tab_period'
-  | 'period_start_date_display' // ヘッダー表示用 (期間開始日) - 必要なら詳細化
-  | 'period_end_date_display'   // ヘッダー表示用 (期間終了日) - 必要なら詳細化
-  | 'unset_confirm_message';   // 確認モーダルのメッセージ
+  | 'period_start_date_display'
+  | 'period_end_date_display'
+  | 'unset_confirm_message'
+  | 'period_start_label'
+  | 'period_end_label'
+  | 'period_date_missing_alert_title'
+  | 'period_date_missing_alert_message'
+  | 'period_start_date_missing_alert_message'
+  | 'period_end_date_missing_alert_message'
+  | 'date_label_header'
+  | 'time_label_header';
 
 
 export type CommonTranslationKey =
   | 'am'
   | 'pm'
   | 'sun_short' | 'mon_short' | 'tue_short' | 'wed_short' | 'thu_short' | 'fri_short' | 'sat_short'
-  | 'jan_short' | 'feb_short' | 'mar_short' | 'apr_short' | 'may_short' | 'jun_short' // 月の短縮名
+  | 'jan_short' | 'feb_short' | 'mar_short' | 'apr_short' | 'may_short' | 'jun_short'
   | 'jul_short' | 'aug_short' | 'sep_short' | 'oct_short' | 'nov_short' | 'dec_short'
-  | 'year_unit' | 'month_unit' | 'day_unit' // DatePickerModal用
-  | 'none' // 汎用的な「なし」
+  | 'year_unit' | 'month_unit' | 'day_unit'
+  | 'none'
   | 'clear'
-  | 'clear_date' // DatePickerModal用
-  | 'clear_start_date' // PeriodTab -> DatePickerModal用
-  | 'clear_end_date'   // PeriodTab -> DatePickerModal用
+  | 'clear_date'
+  | 'clear_start_date'
+  | 'clear_end_date'
   | 'ok'
   | 'save'
   | 'cancel'
-  | 'select' // 汎用的な「選択」
-  | 'year_month_format' // YYYY年MM月のようなフォーマット (現状カレンダーヘッダでは不使用)
-  | 'all_day' // 終日
-  | 'to'      // 期間表示用 (例: X to Y)
-  | 'unset';  // 設定しない
+  | 'select'
+  | 'year_month_format'
+  | 'all_day'
+  | 'to'
+  | 'unset'
+  | 'not_set';

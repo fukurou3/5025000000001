@@ -1,13 +1,9 @@
 // app/features/add/components/DeadlineSettingModal/RepeatTab.tsx
-
-
-
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { ScrollView, View, Text, TouchableOpacity, Switch, Modal, Pressable, TextInput, Platform } from 'react-native';
 import { Calendar, CalendarUtils, CalendarProps, LocaleConfig } from 'react-native-calendars';
 import { useTranslation } from 'react-i18next';
-import { isEqual } 
-from 'lodash';
+import { isEqual } from 'lodash';
 
 import { useAppTheme } from '@/hooks/ThemeContext';
 import type {
@@ -17,12 +13,11 @@ import type {
     DeadlineModalTranslationKey,
     CommonTranslationKey,
     CalendarFontWeight,
-    DeadlineSettings // settings の型を参照するためにインポート
+    DeadlineSettings
 } from './types';
 
 const todayString = CalendarUtils.getCalendarDateString(new Date());
 
-// frequencyOptions と repeatEndOptions は変更なし
 const frequencyOptions: { labelKey: Extract<DeadlineModalTranslationKey, 'no_repeat' | 'daily' | 'weekly' | 'monthly' | 'yearly'>; value: RepeatFrequency }[] = [
   { labelKey: 'no_repeat', value: 'none' },
   { labelKey: 'daily', value: 'daily' },
@@ -47,8 +42,10 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
   const { t } = useTranslation();
 
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
-  // settings.repeatEnds?.occurrences が string ではないため toString() を使用
   const [occurrences, setOccurrences] = useState<string>(settings.repeatEnds?.occurrences?.toString() || '1');
+  // 繰り返し頻度選択のためのモーダル表示制御などのstateを追加する (UIライブラリや自作ピッカーによる)
+  // const [isFrequencyPickerVisible, setFrequencyPickerVisible] = useState(false);
+
 
   const currentFrequency = settings.repeatFrequency ?? 'none';
   const currentInterval = settings.repeatInterval ?? 1;
@@ -57,7 +54,6 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
   const currentRepeatEnds = settings.repeatEnds ?? { type: 'never' };
 
   const handleFrequencyChange = useCallback((freq: RepeatFrequency) => {
-    //型エラーを避けるため、型アサーションを使用
     const newSettingsUpdate: Partial<Pick<DeadlineSettings, 'repeatFrequency' | 'repeatInterval' | 'repeatDaysOfWeek' | 'isExcludeHolidays' | 'repeatEnds'>> = { repeatFrequency: freq };
 
     if (freq === 'none') {
@@ -69,11 +65,12 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
         newSettingsUpdate.repeatDaysOfWeek = undefined;
     }
     if (freq === 'daily' || freq === 'weekly') {
-        if (!settings.repeatInterval) newSettingsUpdate.repeatInterval = 1;
+        if (!settings.repeatInterval) newSettingsUpdate.repeatInterval = 1; // 既存のIntervalがない場合のみ1を設定
     } else {
-        newSettingsUpdate.repeatInterval = undefined;
+        newSettingsUpdate.repeatInterval = undefined; // daily/weekly以外はinterval不要
     }
     updateFullSettings(newSettingsUpdate);
+    // setFrequencyPickerVisible(false); // ピッカーを閉じる
   }, [updateFullSettings, settings.repeatInterval]);
 
   const handleIntervalChange = useCallback((text: string) => {
@@ -81,7 +78,7 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
     if (!isNaN(num) && num > 0) {
       updateSettings('repeatInterval', num);
     } else if (text === '') {
-      updateSettings('repeatInterval', 1);
+      updateSettings('repeatInterval', 1); // 空の場合は1に戻すなど
     }
   }, [updateSettings]);
 
@@ -103,10 +100,13 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
   }, [currentRepeatEnds, updateSettings]);
 
   const handleOccurrencesChange = useCallback((text: string) => {
-    setOccurrences(text);
+    setOccurrences(text); // まず表示を更新
     const num = parseInt(text, 10);
     if (!isNaN(num) && num > 0) {
       updateSettings('repeatEnds', { ...(currentRepeatEnds || { type: 'after_occurrences' }), occurrences: num, type: 'after_occurrences' });
+    } else if (text === '') {
+        // 空文字の場合の扱い (例: 1に戻す、またはエラー表示など)
+        updateSettings('repeatEnds', { ...(currentRepeatEnds || { type: 'after_occurrences' }), occurrences: 1, type: 'after_occurrences' });
     }
   }, [currentRepeatEnds, updateSettings]);
 
@@ -119,10 +119,9 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
   },[currentRepeatEnds, updateSettings]);
 
   const clearRepeatEndDate = useCallback(() => {
-    // currentRepeatEnds が undefined の可能性を考慮
     const updatedEnds = { ...currentRepeatEnds, date: undefined };
-    if (!currentRepeatEnds) {
-        (updatedEnds as RepeatEnds).type = 'on_date'; // type がない場合を補う
+    if (!currentRepeatEnds || !currentRepeatEnds.type) { // type がない場合を補う
+        (updatedEnds as RepeatEnds).type = 'on_date';
     }
     updateSettings('repeatEnds', updatedEnds as RepeatEnds);
     setShowEndDatePicker(false);
@@ -164,24 +163,52 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
    }), [currentRepeatEnds?.date, subColor]);
 
   const handleFrequencyPickerPress = useCallback(() => {
-    // 実際のピッカー表示ロジックをここに実装
+    // TODO: 繰り返し頻度選択のためのUI（例: ActionSheetIOS, カスタムモーダルなど）を表示
+    // setFrequencyPickerVisible(true);
     console.log("Frequency picker pressed. Implement selection UI.");
   }, []);
 
-const { i18n } = useTranslation();
-useEffect(() => {
-  LocaleConfig.defaultLocale = i18n.language;
-}, [i18n.language]);
+  const { i18n } = useTranslation();
+  useEffect(() => {
+    const lang = i18n.language.split('-')[0]; // 'ja-JP' -> 'ja'
+    if (LocaleConfig.locales[lang]) {
+        LocaleConfig.defaultLocale = lang;
+    } else if (LocaleConfig.locales['en']) { // フォールバック
+        LocaleConfig.defaultLocale = 'en';
+    } else {
+        LocaleConfig.defaultLocale = ''; // デフォルトに戻す
+    }
+  }, [i18n.language]);
 
+  // モーダルの高さが縮小されたため、このタブのコンテンツ量によっては
+  // paddingBottomを調整するか、ScrollView自体の必要性を検討します。
+  // 現状はpaddingBottom: 20のままです。
   return (
     <ScrollView style={styles.tabContentContainer} contentContainerStyle={{ paddingBottom: 20}}>
-      <View style={styles.settingRow}>
+      <TouchableOpacity onPress={handleFrequencyPickerPress} style={styles.settingRow}>
         <Text style={styles.label}>{t('deadline_modal.repeat_frequency')}</Text>
-        {/* TODO: Implement a proper picker for frequency */}
-        <TouchableOpacity onPress={handleFrequencyPickerPress}>
-            <Text style={styles.pickerText}>{t(`deadline_modal.${currentFrequency as 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly'}` as const)}</Text>
-        </TouchableOpacity>
-      </View>
+        <Text style={styles.pickerText}>
+          {t(`deadline_modal.${currentFrequency as 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly'}` as const)}
+        </Text>
+      </TouchableOpacity>
+
+      {/* 繰り返し頻度選択ピッカーの実装 (例: モーダルやActionSheet) */}
+      {/*
+      <Modal visible={isFrequencyPickerVisible} onRequestClose={() => setFrequencyPickerVisible(false)} transparent>
+        <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)'}}>
+          <View style={{backgroundColor: isDark ? '#333' : '#fff', padding: 20, borderRadius: 10}}>
+            {frequencyOptions.map(opt => (
+              <TouchableOpacity key={opt.value} onPress={() => handleFrequencyChange(opt.value)} style={{paddingVertical: 10}}>
+                <Text style={{color: isDark ? '#fff' : '#000', fontSize: styles.label.fontSize}}>
+                  {t(`deadline_modal.${opt.labelKey}` as const)}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      </Modal>
+      */}
+
 
       {(currentFrequency === 'daily' || currentFrequency === 'weekly') && (
         <View style={styles.settingRow}>
@@ -193,6 +220,7 @@ useEffect(() => {
               onChangeText={handleIntervalChange}
               keyboardType="number-pad"
               maxLength={2}
+              selectTextOnFocus // iOSではデフォルトでtrueの場合あり、Android挙動合わせ
             />
             {intervalUnitTranslationKey && (
                 <Text style={styles.intervalText}>
@@ -238,29 +266,32 @@ useEffect(() => {
             {repeatEndOptions.map(opt => (
                 <TouchableOpacity
                     key={opt.value}
-                    style={[styles.repeatEndOption, currentRepeatEnds?.type === opt.value && styles.repeatEndOptionSelected]}
+                    style={[
+                        styles.settingRow, // settingRowのスタイルを基本に
+                        { paddingVertical: 12, borderBottomWidth: 0 }, // 微調整
+                        currentRepeatEnds?.type === opt.value && styles.repeatEndOptionSelected // 選択時スタイル
+                    ]}
                     onPress={() => handleRepeatEndTypeChange(opt.value)}
                 >
-                    <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
-                        <Text style={styles.repeatEndText}>{t(`deadline_modal.${opt.labelKey}` as const)}</Text>
-                        {opt.value === 'on_date' && currentRepeatEnds?.type === 'on_date' && (
-                             <TouchableOpacity onPress={handleShowEndDatePicker}>
-                                <Text style={{color: subColor, fontSize: styles.repeatEndText.fontSize}}>{currentRepeatEnds.date || t('common.select')}</Text>
-                             </TouchableOpacity>
-                        )}
-                        {opt.value === 'after_occurrences' && currentRepeatEnds?.type === 'after_occurrences' && (
-                            <View style={{flexDirection: 'row', alignItems: 'center'}}>
-                                <TextInput
-                                    style={[styles.intervalInput, {width: 50, marginRight: 4}]}
-                                    value={occurrences} // ローカルステートの occurrences を使用
-                                    onChangeText={handleOccurrencesChange}
-                                    keyboardType="number-pad"
-                                    maxLength={3}
-                                />
-                                <Text style={styles.repeatEndText}>{t('deadline_modal.occurrences_suffix')}</Text>
-                            </View>
-                        )}
-                    </View>
+                    <Text style={styles.repeatEndText}>{t(`deadline_modal.${opt.labelKey}` as const)}</Text>
+                    {opt.value === 'on_date' && currentRepeatEnds?.type === 'on_date' && (
+                         <TouchableOpacity onPress={handleShowEndDatePicker}>
+                            <Text style={{color: subColor, fontSize: styles.repeatEndText.fontSize}}>{currentRepeatEnds.date || t('common.select')}</Text>
+                         </TouchableOpacity>
+                    )}
+                    {opt.value === 'after_occurrences' && currentRepeatEnds?.type === 'after_occurrences' && (
+                        <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                            <TextInput
+                                style={[styles.intervalInput, {width: 50, marginRight: 4, paddingVertical: Platform.OS === 'ios' ? 8: 4}]} // 高さ調整
+                                value={occurrences}
+                                onChangeText={handleOccurrencesChange}
+                                keyboardType="number-pad"
+                                maxLength={3}
+                                selectTextOnFocus
+                            />
+                            <Text style={styles.repeatEndText}>{t('deadline_modal.occurrences_suffix')}</Text>
+                        </View>
+                    )}
                 </TouchableOpacity>
             ))}
         </>
@@ -276,16 +307,17 @@ useEffect(() => {
           <Pressable onPress={(e) => e.stopPropagation()} style={styles.calendarInModalContainer}>
             <Calendar
               current={currentRepeatEnds?.date || todayString}
-              minDate={todayString}
+              minDate={todayString} // 過去日は選択不可など
               onDayPress={onEndDayPress}
               markedDates={endPickerMarkedDates}
               theme={calendarTheme}
+              // firstDay={1} // 週の始まりを月曜日にする場合
             />
             <TouchableOpacity
               style={styles.clearRepeatEndDateButton}
               onPress={clearRepeatEndDate}
             >
-              <Text style={{ color: subColor, fontSize: styles.label.fontSize }}>{t('common.clear')}</Text>
+              <Text style={{ color: subColor, fontSize: styles.label.fontSize }}>{t('common.clear_date')}</Text>
             </TouchableOpacity>
           </Pressable>
         </Pressable>
@@ -300,7 +332,7 @@ const areRepeatTabPropsEqual = (
 ): boolean => {
     return (
         prevProps.styles === nextProps.styles &&
-        isEqual(prevProps.settings, nextProps.settings) && // lodash.isEqual でディープ比較
+        isEqual(prevProps.settings, nextProps.settings) &&
         prevProps.updateSettings === nextProps.updateSettings &&
         prevProps.updateFullSettings === nextProps.updateFullSettings
     );

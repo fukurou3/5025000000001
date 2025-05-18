@@ -24,14 +24,13 @@ const createMinuteData = (): Array<{ label: string; value: number }> => {
 const minuteDataFull = createMinuteData();
 
 const WHEELY_ITEM_HEIGHT = Platform.OS === 'ios' ? 80 : 88;
-const TIME_PICKER_BASE_FONT_SIZE_INCREASE = 18; 
-const AMPM_FONT_SIZE_ADJUSTMENT = -4; 
+const TIME_PICKER_BASE_FONT_SIZE_INCREASE = 18;
+const AMPM_FONT_SIZE_ADJUSTMENT = -4;
 
-// ★ AM/PMピッカーと時ピッカーの間隔を詰めるための右マージン調整値
-const AMPM_PICKER_WRAPPER_MARGIN_RIGHT_ADJUSTMENT = Platform.OS === 'ios' ? -12 : -40; // この値を調整
+const AMPM_PICKER_WRAPPER_MARGIN_RIGHT_ADJUSTMENT = Platform.OS === 'ios' ? -12 : -40;
 
 const getAmPmPickerWidth = (baseFontSize: number, ampmFontSizeIncrease: number): number => {
-  const effectiveFontSize = baseFontSize + ampmFontSizeIncrease; 
+  const effectiveFontSize = baseFontSize + ampmFontSizeIncrease;
   if (effectiveFontSize > 38) return Platform.OS === 'ios' ? 130 : 150;
   if (effectiveFontSize > 28) return Platform.OS === 'ios' ? 110 : 130;
   return Platform.OS === 'ios' ? 90 : 110;
@@ -47,10 +46,10 @@ const ANIMATION_TIMING = 300;
 const ACCENT_LINE_THICKNESS = 4;
 const ACCENT_LINE_LENGTH = 30;
 const ACCENT_LINE_BORDER_RADIUS = 2;
-const ACCENT_LINE_CONTAINER_HORIZONTAL_PADDING = 10; 
-const ACCENT_LINE_HORIZONTAL_OFFSET = 5;           
+const ACCENT_LINE_CONTAINER_HORIZONTAL_PADDING = 10;
+const ACCENT_LINE_HORIZONTAL_OFFSET = 5;
 
-const CUSTOM_VISUAL_ALIGNMENT_SHIFT_TIME = -50; // この値はAM/PMと時の間隔調整後、再確認が必要な場合があります
+const CUSTOM_VISUAL_ALIGNMENT_SHIFT_TIME = -50;
 
 interface TimePickerModalProps {
   visible: boolean;
@@ -96,9 +95,10 @@ const TimePickerModalMemo: React.FC<TimePickerModalProps> = ({
   const ampmPickerFontSizeIncrease = TIME_PICKER_BASE_FONT_SIZE_INCREASE + AMPM_FONT_SIZE_ADJUSTMENT;
   const WHEELY_CONTAINER_WIDTH_SHORT = useMemo(() => getAmPmPickerWidth(currentBaseFontSize, ampmPickerFontSizeIncrease), [currentBaseFontSize, ampmPickerFontSizeIncrease]);
 
-  const pickerItemFontSize = currentBaseFontSize + TIME_PICKER_BASE_FONT_SIZE_INCREASE; 
-  const ampmPickerItemFontSize = currentBaseFontSize + ampmPickerFontSizeIncrease;    
+  const pickerItemFontSize = currentBaseFontSize + TIME_PICKER_BASE_FONT_SIZE_INCREASE;
+  const ampmPickerItemFontSize = currentBaseFontSize + ampmPickerFontSizeIncrease;
   const accentLineColorValue = subColor as ColorValue;
+  const baseTextColorForPicker = isDark ? '#FFFFFF' : '#000000'; // ピッカー内テキスト用の基本色
 
   const defaultDisplayTime = useMemo(() => {
     return to12HourFormat(initialTime?.hour ?? 9, initialTime?.minute ?? 0);
@@ -130,17 +130,28 @@ const TimePickerModalMemo: React.FC<TimePickerModalProps> = ({
   const hourPickerOptions = useMemo(() => hourData12.map(opt => opt.label), []);
   const minutePickerOptions = useMemo(() => minuteDataFull.map(opt => opt.label), []);
 
-  const wheelyItemHourMinuteTextStyle = useMemo((): TextStyle => ({ 
-    color: stylesFromTs.label.color,
-    fontSize: pickerItemFontSize,
-    fontWeight: Platform.OS === 'ios' ? '500' : '500', 
-  }), [stylesFromTs.label.color, pickerItemFontSize]);
+  // MODIFIED: ピッカーモーダル内ヘッダーテキストスタイルを明示的に定義
+  const pickerModalHeaderTextStyle = useMemo((): TextStyle => ({
+    fontSize: appFontSizes[fontSizeKey] + 3, // styles.ts の headerBaseFontSize + 3 に相当
+    fontWeight: '600',
+    color: baseTextColorForPicker, // ★通常色を指定
+    textAlign: 'center',
+    lineHeight: appFontSizes[fontSizeKey] + 8, // styles.ts の headerBaseFontSize + 8 に相当
+  }), [fontSizeKey, baseTextColorForPicker]);
 
-  const wheelyItemAmPmTextStyle = useMemo((): TextStyle => ({ 
-    color: stylesFromTs.label.color,
-    fontSize: ampmPickerItemFontSize, 
-    fontWeight: Platform.OS === 'ios' ? '500' : '500', 
-  }), [stylesFromTs.label.color, ampmPickerItemFontSize]);
+  // MODIFIED: 時・分ピッカーアイテムテキストスタイルを明示的に定義
+  const wheelyItemHourMinuteTextStyle = useMemo((): TextStyle => ({
+    color: baseTextColorForPicker, // ★通常色を指定
+    fontSize: pickerItemFontSize,
+    fontWeight: Platform.OS === 'ios' ? '500' : '500',
+  }), [baseTextColorForPicker, pickerItemFontSize]);
+
+  // MODIFIED: AM/PMピッカーアイテムテキストスタイルを明示的に定義
+  const wheelyItemAmPmTextStyle = useMemo((): TextStyle => ({
+    color: baseTextColorForPicker, // ★通常色を指定
+    fontSize: ampmPickerItemFontSize,
+    fontWeight: Platform.OS === 'ios' ? '500' : '500',
+  }), [baseTextColorForPicker, ampmPickerItemFontSize]);
 
   const wheelySelectedIndicatorStyle = useMemo(() => ({
     backgroundColor: 'transparent',
@@ -149,42 +160,43 @@ const TimePickerModalMemo: React.FC<TimePickerModalProps> = ({
     borderColor: 'transparent',
   }), []);
 
+  // MODIFIED: 時刻単位ラベルスタイルを明示的に定義
   const timeUnitLabelStyle = useMemo((): TextStyle => ({
-    ...stylesFromTs.timeSeparator,
-    fontSize: pickerItemFontSize - (Platform.OS === 'ios' ? 7 : 7), 
+    fontSize: pickerItemFontSize - (Platform.OS === 'ios' ? 7 : 7),
     lineHeight: WHEELY_ITEM_HEIGHT,
     textAlignVertical: 'center',
-    marginHorizontal: Platform.OS === 'ios' ? -9 : -9, 
-    color: stylesFromTs.label.color,
-  }), [stylesFromTs.timeSeparator, pickerItemFontSize, WHEELY_ITEM_HEIGHT, stylesFromTs.label.color]);
+    marginHorizontal: Platform.OS === 'ios' ? -9 : -9,
+    color: baseTextColorForPicker, // ★通常色を指定
+    fontWeight: (Platform.OS === 'ios' ? '300' : 'normal') as TextStyle['fontWeight'], // styles.ts の timeSeparator から流用
+  }), [baseTextColorForPicker, pickerItemFontSize]);
 
-  const timePickerAreaPaddingVertical = useMemo((): number => { 
-    const defaultPaddingV = Platform.OS === 'ios' ? 10 : 10; 
+  const timePickerAreaPaddingVertical = useMemo((): number => {
+    const defaultPaddingV = Platform.OS === 'ios' ? 10 : 10;
     const stylePaddingV = (stylesFromTs.timePickerContainer as ViewStyle)?.paddingVertical;
     return typeof stylePaddingV === 'number' ? stylePaddingV : defaultPaddingV;
   }, [stylesFromTs.timePickerContainer]);
 
-  const timePickerOuterContainerStyle = useMemo((): ViewStyle => ({ 
+  const timePickerOuterContainerStyle = useMemo((): ViewStyle => ({
     height: PICKER_AREA_TOTAL_HEIGHT,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: timePickerAreaPaddingVertical,
-    marginHorizontal: ACCENT_LINE_CONTAINER_HORIZONTAL_PADDING, 
+    marginHorizontal: ACCENT_LINE_CONTAINER_HORIZONTAL_PADDING,
     position: 'relative',
   }), [PICKER_AREA_TOTAL_HEIGHT, timePickerAreaPaddingVertical, ACCENT_LINE_CONTAINER_HORIZONTAL_PADDING]);
 
-  const innerPickerContentWrapperStyle = useMemo((): ViewStyle => ({ 
+  const innerPickerContentWrapperStyle = useMemo((): ViewStyle => ({
     flexDirection: 'row',
     alignItems: 'center',
-    marginLeft: CUSTOM_VISUAL_ALIGNMENT_SHIFT_TIME, 
+    marginLeft: CUSTOM_VISUAL_ALIGNMENT_SHIFT_TIME,
   }), [CUSTOM_VISUAL_ALIGNMENT_SHIFT_TIME]);
 
   const adjustedTimePickerModalContainerStyle = useMemo((): ViewStyle => ({
     ...(stylesFromTs.timePickerModalContainer as ViewStyle),
   }), [stylesFromTs.timePickerModalContainer]);
 
-  const selectedItemAccentLineStyle = useMemo((): ViewStyle => ({ 
+  const selectedItemAccentLineStyle = useMemo((): ViewStyle => ({
     position: 'absolute',
     width: ACCENT_LINE_LENGTH,
     height: ACCENT_LINE_THICKNESS,
@@ -233,15 +245,15 @@ const TimePickerModalMemo: React.FC<TimePickerModalProps> = ({
       >
         <View style={stylesFromTs.timePickerContentContainer}>
             <View style={stylesFromTs.headerContainer}>
-                <Text style={stylesFromTs.headerText}>{t('deadline_modal.specify_time')}</Text>
+                <Text style={pickerModalHeaderTextStyle}>{t('deadline_modal.specify_time')}</Text>
             </View>
 
-            {stylesFromTs.pickerRowSeparator && 
+            {stylesFromTs.pickerRowSeparator &&
               <View style={[
-                stylesFromTs.pickerRowSeparator, 
-                { 
-                  width: windowWidth - (ACCENT_LINE_CONTAINER_HORIZONTAL_PADDING * 2), 
-                  marginHorizontal: ACCENT_LINE_CONTAINER_HORIZONTAL_PADDING 
+                stylesFromTs.pickerRowSeparator,
+                {
+                  width: windowWidth - (ACCENT_LINE_CONTAINER_HORIZONTAL_PADDING * 2),
+                  marginHorizontal: ACCENT_LINE_CONTAINER_HORIZONTAL_PADDING
                 }
               ]} />
             }
@@ -250,41 +262,41 @@ const TimePickerModalMemo: React.FC<TimePickerModalProps> = ({
                 <View style={[ selectedItemAccentLineStyle, { top: accentLineTopPosition, left: leftAccentLeftPosition, }]} />
                 <View style={[ selectedItemAccentLineStyle, { top: accentLineTopPosition, left: rightAccentLeftPosition, }]} />
                 
-                <View style={innerPickerContentWrapperStyle}> 
-                    <View style={amPmPickerSpecificWrapperStyle}> 
+                <View style={innerPickerContentWrapperStyle}>
+                    <View style={amPmPickerSpecificWrapperStyle}>
                         <WheelPicker
                         options={ampmPickerOptions}
                         selectedIndex={ampmOptionsData.findIndex(o => o.value === selectedAmPm)}
                         onChange={handleAmPmChange}
                         itemHeight={WHEELY_ITEM_HEIGHT}
-                        itemTextStyle={wheelyItemAmPmTextStyle} 
+                        itemTextStyle={wheelyItemAmPmTextStyle}
                         containerStyle={{ width: WHEELY_CONTAINER_WIDTH_SHORT, height: PICKER_AREA_TOTAL_HEIGHT }}
                         selectedIndicatorStyle={wheelySelectedIndicatorStyle}
                         decelerationRate="fast"
                         visibleRest={Math.floor(WHEELY_VISIBLE_COUNT / 2)}
                         />
                     </View>
-                    <View style={pickerWrapperStyle}> 
+                    <View style={pickerWrapperStyle}>
                         <WheelPicker
                         options={hourPickerOptions}
                         selectedIndex={hourData12.findIndex(o => o.value === selectedHour)}
                         onChange={handleHourChange}
                         itemHeight={WHEELY_ITEM_HEIGHT}
-                        itemTextStyle={wheelyItemHourMinuteTextStyle} 
+                        itemTextStyle={wheelyItemHourMinuteTextStyle}
                         containerStyle={{ width: WHEELY_CONTAINER_WIDTH_NORMAL, height: PICKER_AREA_TOTAL_HEIGHT }}
                         selectedIndicatorStyle={wheelySelectedIndicatorStyle}
                         decelerationRate="fast"
                         visibleRest={Math.floor(WHEELY_VISIBLE_COUNT / 2)}
                         />
                     </View>
-                    <Text style={timeUnitLabelStyle}>{hourUnitText}</Text> 
-                    <View style={pickerWrapperStyle}> 
+                    <Text style={timeUnitLabelStyle}>{hourUnitText}</Text>
+                    <View style={pickerWrapperStyle}>
                         <WheelPicker
                         options={minutePickerOptions}
                         selectedIndex={minuteDataFull.findIndex(o => o.value === selectedMinute)}
                         onChange={handleMinuteChange}
                         itemHeight={WHEELY_ITEM_HEIGHT}
-                        itemTextStyle={wheelyItemHourMinuteTextStyle} 
+                        itemTextStyle={wheelyItemHourMinuteTextStyle}
                         containerStyle={{ width: WHEELY_CONTAINER_WIDTH_NORMAL, height: PICKER_AREA_TOTAL_HEIGHT }}
                         selectedIndicatorStyle={wheelySelectedIndicatorStyle}
                         decelerationRate="fast"
@@ -295,12 +307,12 @@ const TimePickerModalMemo: React.FC<TimePickerModalProps> = ({
                 </View>
             </View>
 
-            {stylesFromTs.pickerRowSeparator && 
+            {stylesFromTs.pickerRowSeparator &&
               <View style={[
-                stylesFromTs.pickerRowSeparator, 
-                { 
-                  width: windowWidth - (ACCENT_LINE_CONTAINER_HORIZONTAL_PADDING * 2), 
-                  marginHorizontal: ACCENT_LINE_CONTAINER_HORIZONTAL_PADDING 
+                stylesFromTs.pickerRowSeparator,
+                {
+                  width: windowWidth - (ACCENT_LINE_CONTAINER_HORIZONTAL_PADDING * 2),
+                  marginHorizontal: ACCENT_LINE_CONTAINER_HORIZONTAL_PADDING
                 }
               ]} />
             }

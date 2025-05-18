@@ -19,7 +19,7 @@ const PeriodTabMemo: React.FC<SpecificPeriodTabProps> = ({
   periodEndDate,
   updateSettings,
 }) => {
-  const { colorScheme, subColor } = useAppTheme();
+  const { colorScheme } = useAppTheme(); // subColor はここでは不要に
   const isDark = colorScheme === 'dark';
   const { t } = useTranslation();
 
@@ -64,6 +64,7 @@ const PeriodTabMemo: React.FC<SpecificPeriodTabProps> = ({
   const displayEndDate = useMemo(() => formatDateToDisplay(periodEndDate, t), [periodEndDate, t]);
 
   const labelFontSize = typeof styles.label.fontSize === 'number' ? styles.label.fontSize : 16;
+  const mutedTextColor = isDark ? '#A0A0A0' : '#555555';
 
   const getInitialPickerDate = () => {
     if (editingDateType === 'start' && periodStartDate) return periodStartDate;
@@ -75,29 +76,33 @@ const PeriodTabMemo: React.FC<SpecificPeriodTabProps> = ({
   return (
     <ScrollView style={styles.tabContentContainer} contentContainerStyle={{ paddingBottom: 20 }}>
       <TouchableOpacity onPress={() => handleOpenDatePicker('start')} style={styles.settingRow}>
-        <Text style={[styles.label, { marginBottom: 0 }]}>{t('deadline_modal.start_date', '開始日')}</Text>
+        {/* ラベルは styles.label でユーザーカラーとfontWeight: '600' が適用される */}
+        <Text style={styles.label}>{t('deadline_modal.start_date', '開始日')}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Text style={[styles.pickerText, { marginRight: 4, color: periodStartDate ? subColor : (isDark ? '#A0A0A0' : '#555555')}]}>
+          {/* pickerText の color は常に styles.pickerText.color (baseTextColor) を使用 */}
+          <Text style={[styles.pickerText, { marginRight: 4 }]}>
             {displayStartDate}
           </Text>
           <Ionicons
             name={"chevron-forward"}
             size={labelFontSize + 2}
-            color={isDark ? '#A0A0A0' : '#555555'}
+            color={mutedTextColor}
           />
         </View>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => handleOpenDatePicker('end')} style={[styles.settingRow, { borderTopWidth: 0 /* 連続する場合、上の要素のborderBottomWidthと重複するため0に */}]}>
-        <Text style={[styles.label, { marginBottom: 0 }]}>{t('deadline_modal.end_date', '終了日')}</Text>
+      <TouchableOpacity onPress={() => handleOpenDatePicker('end')} style={[styles.settingRow, { borderTopWidth: 0 }]}>
+        {/* ラベルは styles.label でユーザーカラーとfontWeight: '600' が適用される */}
+        <Text style={styles.label}>{t('deadline_modal.end_date', '終了日')}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Text style={[styles.pickerText, { marginRight: 4, color: periodEndDate ? subColor : (isDark ? '#A0A0A0' : '#555555')}]}>
+          {/* pickerText の color は常に styles.pickerText.color (baseTextColor) を使用 */}
+          <Text style={[styles.pickerText, { marginRight: 4 }]}>
             {displayEndDate}
           </Text>
           <Ionicons
             name={"chevron-forward"}
             size={labelFontSize + 2}
-            color={isDark ? '#A0A0A0' : '#555555'}
+            color={mutedTextColor}
           />
         </View>
       </TouchableOpacity>

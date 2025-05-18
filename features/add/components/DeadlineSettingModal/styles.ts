@@ -11,39 +11,41 @@ export const createDeadlineModalStyles = (
 ): DeadlineModalStyles => {
   const fontSizes = appFontSizes;
   const baseTextColor = isDark ? '#FFFFFF' : '#000000';
-  const backgroundColor = isDark ? '#1C1C1E' : '#F2F2F7';
-  const contentBackgroundColor = isDark ? '#000000' : '#FFFFFF';
-  const iosModalContentBackgroundColor = isDark ? '#1A1A1A' : '#F0F0F0'; // (前回と同様)
-  const iosSeparatorColor = isDark ? '#38383A' : '#C7C7CC'; // (前回と同様)
+  const backgroundColor = isDark ? '#1C1C1E' : '#ededed'; // タブバーの背景色として使用
+  const contentBackgroundColor = isDark ? '#000000' : '#FFFFFF'; // アクティブタブの背景色やモーダル全体の背景
+  const iosModalContentBackgroundColor = isDark ? '#000000' : '#FFFFFF';
+  const iosSeparatorColor = isDark ? '#000000' : '#FFFFFF';
 
   const baseButtonFontSize = fontSizes[fsKey];
+  const headerBaseFontSize = fontSizes[fsKey];
 
   return StyleSheet.create<DeadlineModalStyles>({
-    // ... (overlay, container, headerContainer, headerText, footer, button, buttonText, saveButton, saveButtonText, tabBar, tabLabel, tabIndicator, tabContentContainer は前回と同様) ...
     overlay: {
       flex: 1,
       justifyContent: 'flex-end',
       backgroundColor: 'rgba(0,0,0,0.5)',
     },
     container: {
-      height: '90%',
-      backgroundColor: backgroundColor,
+      height: '65%',
+      backgroundColor: iosModalContentBackgroundColor,
       borderTopLeftRadius: 16,
       borderTopRightRadius: 16,
       overflow: 'hidden',
     },
     headerContainer: {
-      paddingHorizontal: 16,
-      paddingVertical: 12,
+      paddingHorizontal: 20,
+      paddingVertical: 20,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderColor: iosSeparatorColor,
       alignItems: 'center',
       backgroundColor: iosModalContentBackgroundColor,
     },
     headerText: {
-      fontSize: fontSizes[fsKey] - 1,
+      fontSize: headerBaseFontSize + 3,
       fontWeight: '600',
-      color: baseTextColor,
+      color: subColor,
+      textAlign: 'center',
+      lineHeight: headerBaseFontSize + 8,
     },
     footer: {
       flexDirection: 'row',
@@ -82,36 +84,61 @@ export const createDeadlineModalStyles = (
       fontWeight: '600',
       textAlign: 'center',
     },
+    // --- TabBar Styles Start ---
+    tabBarContainer: { // このコンテナは残しつつ、パディングやマージンでタブバーの位置を調整
+      paddingHorizontal: 16, // 画面左右の余白
+      paddingVertical: 8, // 上下の余白
+      backgroundColor: iosModalContentBackgroundColor, // モーダル全体の背景色と同じにする
+    },
     tabBar: {
-      backgroundColor: backgroundColor,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderColor: iosSeparatorColor,
+      flexDirection: 'row',
+      justifyContent: 'space-around',
+      backgroundColor: backgroundColor, // ユーザー指定のグレー背景
+      borderRadius: 20,
+      padding: 4,
       elevation: 0,
       shadowOpacity: 0,
+    },
+    tabItem: {
+      flex: 1,
+      alignItems: 'center',
+      paddingVertical: 8,
+      borderRadius: 18,
+      marginHorizontal: 2,
+    },
+    tabItemActive: {
+      backgroundColor: contentBackgroundColor, // アクティブタブは白または黒の背景
+    },
+    tabItemInactive: {
+      backgroundColor: 'transparent',
     },
     tabLabel: {
       fontSize: fontSizes[fsKey] - 1,
       fontWeight: '600',
       textTransform: 'none',
-      paddingHorizontal: 0,
+      textAlign: 'center',
     } as TextStyle,
-    tabIndicator: {
-      backgroundColor: subColor,
-      height: 2,
+    tabLabelActive: {
+        color: subColor,
     },
+    tabLabelInactive: {
+        color: baseTextColor, // 非アクティブ時のテキスト色はベースのテキスト色
+    },
+    tabIndicator: {
+      height: 0,
+      backgroundColor: 'transparent',
+    },
+    // --- TabBar Styles End ---
     tabContentContainer: {
       flex: 1,
       backgroundColor: contentBackgroundColor,
     },
-
-
-    label: { // ピッカー内のラベルなど
-      fontSize: fontSizes[fsKey], // このlabelは汎用的なので、ピッカー専用の文字サイズは TimePickerModal で調整
-      color: baseTextColor,
-      marginBottom: 2,
-      fontWeight: '500',
+    label: {
+      fontSize: fontSizes[fsKey],
+      color: subColor,
+      marginBottom: 0,
+      fontWeight: '600',
     },
-    // ... (settingRow, timePickerToggleContainer, pickerText は前回と同様) ...
     settingRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
@@ -137,58 +164,50 @@ export const createDeadlineModalStyles = (
         color: baseTextColor,
         paddingVertical: Platform.OS === 'ios' ? 2 : 0,
     },
-
-    modal: { // react-native-modal の style prop 用
+    modal: {
       justifyContent: 'flex-end',
       margin: 0,
     },
-    timePickerModalContainer: { // TimePickerModal のコンテナ (SafeAreaViewに適用)
-        width: '100%', 
+    timePickerModalContainer: {
+        width: '100%',
         alignSelf: 'stretch',
         backgroundColor: iosModalContentBackgroundColor,
         borderTopLeftRadius: 16,
         borderTopRightRadius: 16,
         overflow: 'hidden',
-        paddingBottom: Platform.OS === 'ios' ? 0 : 10, // Android向けSafeArea代替
+        paddingBottom: Platform.OS === 'ios' ? 0 : 10,
     },
-    timePickerContentContainer: { // ヘッダー、ピッカー、フッターを実際に含むコンテナ
-      // paddingHorizontal は TimePickerModal.tsx で動的に設定して線を端まで引けるようにする
+    timePickerContentContainer: {
     },
-    pickerRowSeparator: { // ピッカーの選択行の上下に引く線
+    pickerRowSeparator: {
         height: StyleSheet.hairlineWidth,
         backgroundColor: iosSeparatorColor,
-        // width は TimePickerModal.tsx で画面幅 - padding で計算
-        // marginHorizontal は TimePickerModal.tsx で適用
     },
-    timePickerContainer: { // ホイールピッカー全体を囲むView
+    timePickerContainer: {
       flexDirection: 'row',
       justifyContent: 'center',
       alignItems: 'center',
-      paddingVertical: Platform.OS === 'ios' ? 10 : 8, // 上下の余白を少し詰める
-      // paddingHorizontal は pickerRowSeparator との兼ね合いで調整
+      paddingVertical: Platform.OS === 'ios' ? 10 : 8,
     },
     wheelPickerWrapper: {
       marginHorizontal: Platform.OS === 'ios' ? 0 : 1,
     },
     timeSeparator: {
-      color: baseTextColor,
       fontWeight: (Platform.OS === 'ios' ? '300' : 'normal') as TextStyle['fontWeight'],
-      marginHorizontal: Platform.OS === 'ios' ? -3 : -1, // iOSではコロンをさらにホイールに近づける
+      marginHorizontal: Platform.OS === 'ios' ? -3 : -1,
       textAlignVertical: 'center',
     },
     timePickerModalFooter: {
         paddingTop: 10,
         paddingBottom: Platform.OS === 'ios' ? 10 : 16,
-        paddingHorizontal: 16, // フッター内の左右パディングは維持
+        paddingHorizontal: 16,
         borderTopWidth: StyleSheet.hairlineWidth,
         borderColor: iosSeparatorColor,
         flexDirection: 'row',
         gap: 8,
     },
     timePickerModalButton: {
-        // 'button' スタイルを継承
     },
-    // ... (残りのスタイルは前回と同様) ...
     frequencyPickerContainer: {
     },
     intervalContainer: {

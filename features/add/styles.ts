@@ -34,7 +34,7 @@ export function createStyles(
       backgroundColor: isDark ? '#121212' : '#ffffff',
     },
     appBarTitle: {
-      fontSize: fontSizes[fsKey] + 4,
+      fontSize: fontSizes[fsKey] + 6,
       fontWeight: 'bold',
       color: isDark ? '#fff' : '#000',
     },

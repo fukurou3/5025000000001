@@ -20,10 +20,10 @@ const DATE_PICKER_HORIZONTAL_SEPARATOR_PADDING = 5;
 const ACCENT_LINE_THICKNESS = 4;
 const ACCENT_LINE_LENGTH = 30;
 const ACCENT_LINE_BORDER_RADIUS = 2;
-const ACCENT_LINE_CONTAINER_HORIZONTAL_PADDING = 10; 
-const ACCENT_LINE_HORIZONTAL_OFFSET = 5;          
+const ACCENT_LINE_CONTAINER_HORIZONTAL_PADDING = 10;
+const ACCENT_LINE_HORIZONTAL_OFFSET = 5;
 
-const CUSTOM_VISUAL_ALIGNMENT_SHIFT = -28; 
+const CUSTOM_VISUAL_ALIGNMENT_SHIFT = -28;
 
 const WHEELY_CONTAINER_WIDTH_YEAR = Platform.OS === 'ios' ? 120 : 120;
 const WHEELY_CONTAINER_WIDTH_MONTH = Platform.OS === 'ios' ? 80 : 80;
@@ -77,6 +77,15 @@ interface DatePickerModalProps {
   clearButtonText?: string;
 }
 
+const getInitialPickerDateValues = (initialDateProp?: string) => {
+  const now = new Date();
+  if (initialDateProp) {
+    const [year, month, day] = initialDateProp.split('-').map(Number);
+    return { year, month, day };
+  }
+  return { year: now.getFullYear(), month: now.getMonth() + 1, day: now.getDate() };
+};
+
 export const DatePickerModal: React.FC<DatePickerModalProps> = React.memo(({
   visible,
   initialDate,
@@ -91,46 +100,54 @@ export const DatePickerModal: React.FC<DatePickerModalProps> = React.memo(({
   const { fontSizeKey } = useContext(FontSizeContext);
   const { width: windowWidth } = useWindowDimensions();
 
+  // stylesFromTs は createDeadlineModalStyles から生成されるが、ピッカーモーダル内の特定要素は色を直接指定するため、
+  // stylesFromTs の headerText や label の color はここでは使用しない。
   const stylesFromTs: DeadlineModalStyles = useMemo(() => createDeadlineModalStyles(isDark, subColor, fontSizeKey), [isDark, subColor, fontSizeKey]);
   const currentBaseFontSize = appFontSizes[fontSizeKey];
   const pickerItemFontSize = currentBaseFontSize + BASE_PICKER_FONT_SIZE_INCREASE;
   const accentLineColorValue = subColor as ColorValue;
+  const baseTextColorForPicker = isDark ? '#FFFFFF' : '#000000'; // ピッカー内テキスト用の基本色
 
-  const today = new Date();
-  const initialDateObj = useMemo(() => {
-    if (initialDate) {
-      const [year, month, day] = initialDate.split('-').map(Number);
-      return { year, month, day };
-    }
-    return { year: today.getFullYear(), month: today.getMonth() + 1, day: today.getDate() };
-  }, [initialDate, today]);
+  const initialPickerValues = getInitialPickerDateValues(initialDate);
+  const [selectedYear, setSelectedYear] = useState<number>(initialPickerValues.year);
+  const [selectedMonth, setSelectedMonth] = useState<number>(initialPickerValues.month);
+  const [selectedDay, setSelectedDay] = useState<number>(initialPickerValues.day);
 
-  const [selectedYear, setSelectedYear] = useState<number>(initialDateObj.year);
-  const [selectedMonth, setSelectedMonth] = useState<number>(initialDateObj.month);
-  const [selectedDay, setSelectedDay] = useState<number>(initialDateObj.day);
-
-  const yearData = useMemo(() => createYearData(today.getFullYear()), [today]);
+  const yearData = useMemo(() => createYearData(new Date().getFullYear()), []);
   const monthData = useMemo(() => createMonthData(t), [t]);
   const dayData = useMemo(() => createDayData(selectedYear, selectedMonth), [selectedYear, selectedMonth]);
 
   useEffect(() => {
     if (visible) {
-      const newInitial = initialDate
-        ? { year: parseInt(initialDate.substring(0, 4), 10), month: parseInt(initialDate.substring(5, 7), 10), day: parseInt(initialDate.substring(8, 10), 10) }
-        : { year: today.getFullYear(), month: today.getMonth() + 1, day: today.getDate() };
-      setSelectedYear(newInitial.year);
-      setSelectedMonth(newInitial.month);
-      const daysInNewMonth = getDaysInMonth(newInitial.year, newInitial.month);
-      setSelectedDay(Math.min(newInitial.day, daysInNewMonth));
+      const currentDate = new Date();
+      let yearToSet: number, monthToSet: number, dayToSet: number;
+
+      if (initialDate) {
+        const [year, month, day] = initialDate.split('-').map(Number);
+        yearToSet = year;
+        monthToSet = month;
+        dayToSet = day;
+      } else {
+        yearToSet = currentDate.getFullYear();
+        monthToSet = currentDate.getMonth() + 1;
+        dayToSet = currentDate.getDate();
+      }
+      
+      setSelectedYear(yearToSet);
+      setSelectedMonth(monthToSet);
+      const daysInNewMonth = getDaysInMonth(yearToSet, monthToSet);
+      setSelectedDay(Math.min(dayToSet, daysInNewMonth));
     }
-  }, [visible, initialDate, today]);
+  }, [visible, initialDate]);
 
   useEffect(() => {
-    const daysInCurrentMonth = getDaysInMonth(selectedYear, selectedMonth);
-    if (selectedDay > daysInCurrentMonth) {
-      setSelectedDay(daysInCurrentMonth);
+    if (visible) {
+        const daysInCurrentMonth = getDaysInMonth(selectedYear, selectedMonth);
+        if (selectedDay > daysInCurrentMonth) {
+            setSelectedDay(daysInCurrentMonth);
+        }
     }
-  }, [selectedYear, selectedMonth, selectedDay]);
+  }, [selectedYear, selectedMonth, selectedDay, visible]);
 
   const handleConfirm = useCallback(() => {
     const finalDate = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`;
@@ -145,11 +162,21 @@ export const DatePickerModal: React.FC<DatePickerModalProps> = React.memo(({
   const monthPickerOptions = useMemo(() => monthData.map(opt => opt.label), [monthData]);
   const dayPickerOptions = useMemo(() => dayData.map(opt => opt.label), [dayData]);
 
+  // MODIFIED: ピッカーモーダル内ヘッダーテキストスタイルを明示的に定義
+  const pickerModalHeaderTextStyle = useMemo((): TextStyle => ({
+    fontSize: appFontSizes[fontSizeKey] + 3, // styles.ts の headerBaseFontSize + 3 に相当
+    fontWeight: '600',
+    color: baseTextColorForPicker, // ★通常色を指定
+    textAlign: 'center',
+    lineHeight: appFontSizes[fontSizeKey] + 8, // styles.ts の headerBaseFontSize + 8 に相当
+  }), [fontSizeKey, baseTextColorForPicker]);
+
+  // MODIFIED: ピッカーアイテムテキストスタイルを明示的に定義
   const wheelyItemTextStyle = useMemo((): TextStyle => ({
-    color: stylesFromTs.label.color,
+    color: baseTextColorForPicker, // ★通常色を指定
     fontSize: pickerItemFontSize,
     fontWeight: Platform.OS === 'ios' ? '500' : '500',
-  }), [stylesFromTs.label.color, pickerItemFontSize]);
+  }), [baseTextColorForPicker, pickerItemFontSize]);
 
   const wheelySelectedIndicatorStyle = useMemo(() => ({
     backgroundColor: 'transparent',
@@ -158,14 +185,15 @@ export const DatePickerModal: React.FC<DatePickerModalProps> = React.memo(({
     borderColor: 'transparent',
   }), []);
 
+  // MODIFIED: 日付区切り文字スタイルを明示的に定義
   const dateSeparatorStyle = useMemo((): TextStyle => ({
-    ...stylesFromTs.timeSeparator,
     fontSize: pickerItemFontSize - (Platform.OS === 'ios' ? 7 : 7),
     lineHeight: WHEELY_ITEM_HEIGHT,
     textAlignVertical: 'center',
-    marginHorizontal: Platform.OS === 'ios' ? -9 : -9, // ★ 年月日テキストの間隔を狭める
-    color: stylesFromTs.label.color,
-  }), [stylesFromTs.timeSeparator, stylesFromTs.label.color, pickerItemFontSize]);
+    marginHorizontal: Platform.OS === 'ios' ? -9 : -9,
+    color: baseTextColorForPicker, // ★通常色を指定
+    fontWeight: (Platform.OS === 'ios' ? '300' : 'normal') as TextStyle['fontWeight'], // styles.ts の timeSeparator から流用
+  }), [baseTextColorForPicker, pickerItemFontSize]);
 
   const pickerAreaPaddingVertical = useMemo((): number => {
     const defaultPaddingV = Platform.OS === 'ios' ? 10 : 10;
@@ -181,14 +209,13 @@ export const DatePickerModal: React.FC<DatePickerModalProps> = React.memo(({
     marginHorizontal: ACCENT_LINE_CONTAINER_HORIZONTAL_PADDING,
     paddingVertical: pickerAreaPaddingVertical,
     position: 'relative',
-  }), [PICKER_AREA_TOTAL_HEIGHT, pickerAreaPaddingVertical, ACCENT_LINE_CONTAINER_HORIZONTAL_PADDING]);
+  }), [pickerAreaPaddingVertical, ACCENT_LINE_CONTAINER_HORIZONTAL_PADDING]);
 
   const innerPickerContentWrapperStyle = useMemo((): ViewStyle => ({
     flexDirection: 'row',
     alignItems: 'center',
-    marginLeft: CUSTOM_VISUAL_ALIGNMENT_SHIFT, 
-  }), [CUSTOM_VISUAL_ALIGNMENT_SHIFT]);
-
+    marginLeft: CUSTOM_VISUAL_ALIGNMENT_SHIFT,
+  }), []);
 
   const adjustedDatePickerModalContainerStyle = useMemo((): ViewStyle => ({
     ...(stylesFromTs.timePickerModalContainer as ViewStyle),
@@ -211,11 +238,16 @@ export const DatePickerModal: React.FC<DatePickerModalProps> = React.memo(({
   }), [accentLineColorValue]);
 
   const accentLineTopPosition = pickerAreaPaddingVertical + WHEELY_ITEM_HEIGHT + (WHEELY_ITEM_HEIGHT / 2) - (ACCENT_LINE_THICKNESS / 2);
-  
+
   const pickerOuterContainerActualWidth = windowWidth - 2 * ACCENT_LINE_CONTAINER_HORIZONTAL_PADDING;
 
   const leftAccentLeftPosition = ACCENT_LINE_HORIZONTAL_OFFSET;
   const rightAccentLeftPosition = pickerOuterContainerActualWidth - ACCENT_LINE_LENGTH - ACCENT_LINE_HORIZONTAL_OFFSET;
+
+  const yearSelectedIndex = useMemo(() => yearData.findIndex(o => o.value === selectedYear), [yearData, selectedYear]);
+  const monthSelectedIndex = useMemo(() => monthData.findIndex(o => o.value === selectedMonth), [monthData, selectedMonth]);
+  const daySelectedIndex = useMemo(() => dayData.findIndex(o => o.value === selectedDay), [dayData, selectedDay]);
+
 
   return (
     <Modal
@@ -241,7 +273,7 @@ export const DatePickerModal: React.FC<DatePickerModalProps> = React.memo(({
       >
         <View style={stylesFromTs.timePickerContentContainer}>
           <View style={stylesFromTs.headerContainer}>
-            <Text style={stylesFromTs.headerText}>{t('deadline_modal.specify_date', '日付を指定')}</Text>
+            <Text style={pickerModalHeaderTextStyle}>{t('deadline_modal.specify_date', '日付を指定')}</Text>
           </View>
 
           {stylesFromTs.pickerRowSeparator &&
@@ -258,8 +290,9 @@ export const DatePickerModal: React.FC<DatePickerModalProps> = React.memo(({
             <View style={innerPickerContentWrapperStyle}>
               <View style={pickerWrapperStyle}>
                 <WheelPicker
+                  key={`year-${yearSelectedIndex}`}
                   options={yearPickerOptions}
-                  selectedIndex={yearData.findIndex(o => o.value === selectedYear)}
+                  selectedIndex={yearSelectedIndex}
                   onChange={handleYearChange}
                   itemHeight={WHEELY_ITEM_HEIGHT}
                   itemTextStyle={wheelyItemTextStyle}
@@ -272,8 +305,9 @@ export const DatePickerModal: React.FC<DatePickerModalProps> = React.memo(({
               <Text style={dateSeparatorStyle}>{yearUnitText}</Text>
               <View style={pickerWrapperStyle}>
                 <WheelPicker
+                  key={`month-${monthSelectedIndex}`}
                   options={monthPickerOptions}
-                  selectedIndex={monthData.findIndex(o => o.value === selectedMonth)}
+                  selectedIndex={monthSelectedIndex}
                   onChange={handleMonthChange}
                   itemHeight={WHEELY_ITEM_HEIGHT}
                   itemTextStyle={wheelyItemTextStyle}
@@ -286,8 +320,9 @@ export const DatePickerModal: React.FC<DatePickerModalProps> = React.memo(({
               <Text style={dateSeparatorStyle}>{monthUnitText}</Text>
               <View style={pickerWrapperStyle}>
                 <WheelPicker
+                  key={`day-${daySelectedIndex}`}
                   options={dayPickerOptions}
-                  selectedIndex={dayData.findIndex(o => o.value === selectedDay)}
+                  selectedIndex={daySelectedIndex}
                   onChange={handleDayChange}
                   itemHeight={WHEELY_ITEM_HEIGHT}
                   itemTextStyle={wheelyItemTextStyle}
