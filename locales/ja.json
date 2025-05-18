@@ -13,6 +13,7 @@
     "select_language": "言語を選択してください",
     "language_ja": "日本語",
     "language_en": "English",
+    "language_ko": "한국어",
     "display_mode": "表示モード",
     "sub_color": "サブカラーを選択",
     "theme_system": "システムに従う",
@@ -68,7 +69,14 @@
     "hours": "時間前",
     "days": "日前",
     "today": "今日",
-    "settings_not_implemented": "の詳細設定は現在実装されていません。"
+    "settings_not_implemented": "の詳細設定は現在実装されていません。",
+    "notification_title": "お知らせ",
+    "minutes_unit_after": "分",
+    "hours_unit_after": "時間",
+    "days_unit_after": "日",
+    "months_unit_after": "ヶ月",
+    "years_unit_after": "年",
+    "clear_duration": "所要時間クリア"
   },
   "add_task": {
     "title": "タスク追加",
@@ -281,6 +289,11 @@
     "section_task_addition": "タスク追加",
     "section_repeat_settings": "繰り返し 有効期間",
     "date_label_header": "日付",
-    "time_label_header": "時刻"
+    "time_label_header": "時刻",
+    "task_duration_label": "所要時間",
+    "set_task_duration_title": "所要時間設定",
+    "date_missing_for_time_alert_message": "時刻を設定する場合は日付も選択してください。",
+    "weekly_day_missing_alert_message": "繰り返す曜日を少なくとも1つ選択してください。",
+    "period_start_must_be_before_end_alert_message": "期間の開始日は終了日より前に設定してください。"
   }
 }

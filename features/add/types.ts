@@ -1,21 +1,27 @@
+// app/features/add/types.ts
 import { ViewStyle, TextStyle, ImageStyle, StyleProp } from 'react-native';
+// DeadlineSettings 型は、モーダルコンポーネントの型定義ファイルからインポートする
+import type { DeadlineSettings } from './components/DeadlineSettingModal/types';
 
+// Task や Draft はこのファイルで定義して OK
 export interface Task {
   id: string;
   title: string;
   memo: string;
-  deadline: string;
+  deadline: string; // 簡易表示用。詳細な期限は deadlineDetails に。
   imageUris: string[];
   notifyEnabled: boolean;
   customUnit: 'minutes' | 'hours' | 'days';
   customAmount: number;
   folder: string;
+  deadlineDetails?: DeadlineSettings; // インポートした DeadlineSettings 型を使用
 }
 
 export type Draft = Task;
 
+// AddTaskScreen 固有のスタイル型 (これはここで定義して OK)
 export type AddTaskStyles = {
-  folderInput: ViewStyle; 
+  folderInput: ViewStyle;
   container: ViewStyle;
   appBar: ViewStyle;
   appBarTitle: TextStyle;

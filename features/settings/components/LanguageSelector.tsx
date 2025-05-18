@@ -33,6 +33,10 @@ export default function LanguageScreen() {
           <Text style={styles.optionText}>{t('settings.language_en')}</Text>
           {currentLang.startsWith('en') && <Text style={styles.checkmark}>☑</Text>}
         </TouchableOpacity>
+                <TouchableOpacity style={styles.optionRow} onPress={() => changeLanguage('ko')}>
+          <Text style={styles.optionText}>{t('settings.language_ko')}</Text>
+          {currentLang.startsWith('ko') && <Text style={styles.checkmark}>☑</Text>}
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   )

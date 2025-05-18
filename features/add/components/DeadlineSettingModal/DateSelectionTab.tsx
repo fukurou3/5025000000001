@@ -20,7 +20,7 @@ const formatTimeToDisplay = (time: DeadlineTime, t: (key: string, options?: any)
 };
 
 const formatDateToDisplay = (dateString: string | undefined, t: (key: string, options?: any) => string): string => {
-    if (!dateString) return t('common.select', '選択');
+    if (!dateString) return t('common.select');
     return dateString;
 };
 
@@ -88,7 +88,7 @@ const DateSelectionTabMemo: React.FC<SpecificDateSelectionTabProps> = ({
     if (isTimeEnabled && selectedTime) {
       return formatTimeToDisplay(selectedTime, t);
     }
-    return t('common.select', '選択');
+    return t('common.select');
   }, [isTimeEnabled, selectedTime, t]);
 
   const labelFontSize = typeof styles.label.fontSize === 'number' ? styles.label.fontSize : 16;
@@ -97,7 +97,7 @@ const DateSelectionTabMemo: React.FC<SpecificDateSelectionTabProps> = ({
   return (
     <ScrollView style={styles.tabContentContainer} contentContainerStyle={{ paddingBottom: 20 }}>
       <TouchableOpacity onPress={handleDateSectionPress} style={styles.settingRow}>
-        <Text style={styles.label}>{t('deadline_modal.specify_date_label', '日付')}</Text>
+        <Text style={styles.label}>{t('deadline_modal.specify_date_label')}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <Text style={[styles.pickerText, { marginRight: 4 }]}>
             {displayDate}
@@ -111,8 +111,7 @@ const DateSelectionTabMemo: React.FC<SpecificDateSelectionTabProps> = ({
       </TouchableOpacity>
 
       <TouchableOpacity onPress={handleTimeSectionPress} style={styles.settingRow}>
-        {/* timePickerToggleContainer から settingRow に変更し、区切り線は styles.settingRow の定義に依存 */}
-        <Text style={styles.label}>{t('deadline_modal.specify_time', '時刻を指定')}</Text>
+        <Text style={styles.label}>{t('deadline_modal.specify_time')}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <Text style={[styles.pickerText, { marginRight: 4 }]}>
             {displayTime}
@@ -131,7 +130,7 @@ const DateSelectionTabMemo: React.FC<SpecificDateSelectionTabProps> = ({
         onClose={handleDatePickerClose}
         onConfirm={handleDateConfirm}
         onClear={handleDateClear}
-        clearButtonText={t('common.clear_date', '日付をクリア')}
+        clearButtonText={t('common.clear_date')}
       />
 
       <TimePickerModal

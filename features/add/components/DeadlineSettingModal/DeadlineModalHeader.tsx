@@ -5,19 +5,18 @@ import { useTranslation } from 'react-i18next';
 import type { DeadlineSettings, DeadlineModalStyles } from './types';
 
 interface DeadlineModalHeaderProps {
-  settings: DeadlineSettings; // settings は将来的に使う可能性を考慮し残します
+  settings: DeadlineSettings;
   styles: DeadlineModalStyles;
-  activeTabIndex: number; // activeTabIndex は将来的に使う可能性を考慮し残します
+  activeTabIndex: number;
 }
 
 const DeadlineModalHeaderLogic: React.FC<DeadlineModalHeaderProps> = ({ settings, styles, activeTabIndex }) => {
   const { t } = useTranslation();
 
   const headerContent = useMemo(() => {
-    // 常に固定のタイトルを表示します
     return (
       <Text style={styles.headerText} numberOfLines={1} ellipsizeMode="tail">
-        {t('deadline_modal.title_display_no_deadline', '期限設定')}
+        {t('deadline_modal.title_display_no_deadline')}
       </Text>
     );
   }, [t, styles.headerText]);

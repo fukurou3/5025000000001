@@ -14,8 +14,11 @@ import { FontSizeContext } from '@/context/FontSizeContext';
 import { fontSizes } from '@/constants/fontSizes';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import type { AddTaskStyles, Task } from './types';
-import { createStyles } from './styles';
+// AddTaskScreen 固有の型とスタイルをインポート
+import type { AddTaskStyles, Task } from './types'; // これは OK (app/features/add/types.ts を指す)
+import { createStyles } from './styles'; // これも OK (app/features/add/styles.ts を指す)
+
+// AddTaskScreen で使用するカスタムフックとコンポーネントをインポート
 import { useFolders } from './hooks/useFolders';
 import { useSaveTask } from './hooks/useSaveTask';
 import { TitleField } from './components/TitleField';
@@ -26,8 +29,14 @@ import { FolderSelectorModal } from './components/FolderSelectorModal';
 import { WheelPickerModal } from './components/WheelPickerModal';
 import { LIGHT_PLACEHOLDER, DARK_PLACEHOLDER } from './constants';
 
-import { DeadlineSettingModal } from './components/DeadlineSettingModal';
-import type { DeadlineSettings } from './components/DeadlineSettingModal/types';
+// DeadlineSettingModal コンポーネントと、それに関連する型を正しいパスからインポート
+import { DeadlineSettingModal } from './components/DeadlineSettingModal'; // モーダル本体
+import type {
+    DeadlineSettings,
+    DeadlineTime,
+    RepeatFrequency,
+    // DurationUnit, // formatDeadlineForDisplay で直接使わないなら不要になる可能性も
+} from './components/DeadlineSettingModal/types'; // モーダルとのやり取りに必要な型
 
 type NotificationUnit = 'minutes' | 'hours' | 'days';
 
@@ -40,49 +49,68 @@ type TabParamList = {
 
 const INITIAL_INPUT_HEIGHT = 60;
 
-const getDeadlineForSaveTask = (settings?: DeadlineSettings): Date | undefined => {
-  if (!settings?.date) {
-    return undefined;
-  }
-  const datePart = settings.date;
-  const [year, month, day] = datePart.split('-').map(Number);
-
-  if (settings.isTimeEnabled && settings.time) {
-    return new Date(year, month - 1, day, settings.time.hour, settings.time.minute);
-  } else {
-    return new Date(year, month - 1, day);
-  }
+const formatDateForDisplayInternal = (dateString: string | undefined, t: Function, i18nLanguage: string): string => {
+    if (!dateString) return '';
+    try {
+        const [year, month, day] = dateString.split('-').map(Number);
+        return `${year}/${String(month).padStart(2, '0')}/${String(day).padStart(2, '0')}`;
+    } catch (e) {
+        return dateString;
+    }
 };
 
-const formatDeadlineForDisplay = (settings: DeadlineSettings | undefined, t: Function): string => {
-    if (!settings || (!settings.date && !settings.periodStartDate)) {
+const formatTimeForDisplayInternal = (time: DeadlineTime, t: Function): string => {
+    const hour12 = time.hour % 12 === 0 ? 12 : time.hour % 12;
+    const ampmKey = (time.hour < 12 || time.hour === 24 || time.hour === 0) ? 'am' : 'pm';
+    const ampm = t(`common.${ampmKey}`);
+    return `${ampm} ${hour12}:${String(time.minute).padStart(2, '0')}`;
+};
+
+const formatDeadlineForDisplay = (settings: DeadlineSettings | undefined, t: Function, i18nLanguage: string): string => {
+    if (!settings) {
       return t('add_task.no_deadline_set', '期限未設定');
     }
 
-    let displayDate = '';
-    let displayTime = '';
-    let isPeriod = false;
+    const {
+        date,
+        isTimeEnabled,
+        time,
+        periodStartDate,
+        periodEndDate,
+        repeatFrequency,
+    } = settings;
 
-    if (settings.periodStartDate) {
-      isPeriod = true;
-      displayDate = settings.periodStartDate;
-      if (settings.periodEndDate && settings.periodStartDate !== settings.periodEndDate) {
-        displayDate += ` ${t('common.to', '～')} ${settings.periodEndDate}`;
-      }
-    } else if (settings.date) {
-      displayDate = settings.date;
+    if (repeatFrequency) {
+        const frequencyKeyMap: Record<RepeatFrequency, string> = {
+            daily: 'deadline_modal.daily',
+            weekly: 'deadline_modal.weekly',
+            monthly: 'deadline_modal.monthly',
+            yearly: 'deadline_modal.yearly',
+            custom: 'deadline_modal.custom',
+        };
+        const frequencyText = t(frequencyKeyMap[repeatFrequency]);
+        return frequencyText;
+    } else if (periodStartDate) {
+        let startDateText = formatDateForDisplayInternal(periodStartDate, t, i18nLanguage);
+        let endDateText = periodEndDate ? formatDateForDisplayInternal(periodEndDate, t, i18nLanguage) : null;
+
+        if (endDateText && startDateText !== endDateText) {
+            return `${startDateText} ${t('common.to', '～')} ${endDateText}`;
+        } else {
+            return startDateText;
+        }
+    } else if (date) {
+        let mainDisplay = formatDateForDisplayInternal(date, t, i18nLanguage);
+        if (isTimeEnabled && time) {
+            mainDisplay += ` ${formatTimeForDisplayInternal(time, t)}`;
+        } else {
+            mainDisplay += ` ${t('common.all_day', '終日')}`;
+        }
+        return mainDisplay;
     }
 
-    if (!isPeriod && settings.isTimeEnabled && settings.time && settings.date) {
-      const hour12 = settings.time.hour % 12 === 0 ? 12 : settings.time.hour % 12;
-      const ampmKey = (settings.time.hour < 12 || settings.time.hour === 24) ? 'am' : 'pm';
-      const ampm = t(`common.${ampmKey}`, ampmKey.toUpperCase());
-      displayTime = ` ${ampm} ${hour12}:${String(settings.time.minute).padStart(2, '0')}`;
-    } else if (!isPeriod && settings.date && !settings.isTimeEnabled) {
-      displayTime = ` ${t('common.all_day', '終日')}`;
-    }
-    return `${displayDate}${displayTime}`;
-  };
+    return t('add_task.no_deadline_set', '期限未設定');
+};
 
 
 export default function AddTaskScreen() {
@@ -90,7 +118,7 @@ export default function AddTaskScreen() {
   const isDark = colorScheme === 'dark';
   const { fontSizeKey } = useContext(FontSizeContext);
   const fsKey = fontSizeKey;
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigation = useNavigation<BottomTabNavigationProp<TabParamList>>();
   const router = useRouter();
   const { draftId } = useLocalSearchParams<{ draftId?: string }>();
@@ -99,7 +127,7 @@ export default function AddTaskScreen() {
   const setUnsaved = useUnsavedStore((state) => state.setUnsaved);
   const resetUnsaved = useUnsavedStore((state) => state.reset);
 
-  const styles = createStyles(isDark, subColor, fsKey);
+  const styles = createStyles(isDark, subColor, fsKey); // AddTaskScreen 用のスタイル
 
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const isLandscape = screenWidth > screenHeight;
@@ -109,7 +137,6 @@ export default function AddTaskScreen() {
   const H_PADDING_CONTENT_AREA = 8 * 2;
   const ITEM_MARGIN = 8;
   const previewSize = (screenWidth - 16 - H_PADDING_CONTENT_AREA - ITEM_MARGIN * (previewCount - 1)) / previewCount;
-
 
   const initialFormState = useMemo(() => ({
     title: '',
@@ -157,23 +184,22 @@ export default function AddTaskScreen() {
 
   useEffect(() => {
     let formChanged = false;
+    // この比較ロジックは、下書き読み込み時の値との比較など、より詳細なものが必要になる場合があります
     if (currentDraftId) {
-      formChanged =
-        title !== (AsyncStorage.getItem(currentDraftId + '_title') || initialFormState.title) ||
-        title !== initialFormState.title ||
-        memo !== initialFormState.memo ||
-        selectedUris.length !== initialFormState.selectedUris.length ||
-        folder !== initialFormState.folder ||
-        JSON.stringify(currentDeadlineSettings) !== JSON.stringify(initialFormState.currentDeadlineSettings) ||
-        notificationActive !== initialFormState.notificationActive ||
-        customAmount !== initialFormState.customAmount ||
-        customUnit !== initialFormState.customUnit;
-
+         formChanged =
+            title !== initialFormState.title || // 仮: 実際は読み込んだ下書きの値と比較
+            memo !== initialFormState.memo || // 仮
+            !selectedUris.every((uri, index) => uri === (initialFormState.selectedUris[index])) || selectedUris.length !== initialFormState.selectedUris.length || // 仮
+            folder !== initialFormState.folder || // 仮
+            JSON.stringify(currentDeadlineSettings) !== JSON.stringify(initialFormState.currentDeadlineSettings) || // 仮
+            notificationActive !== initialFormState.notificationActive || // 仮
+            customAmount !== initialFormState.customAmount || // 仮
+            customUnit !== initialFormState.customUnit; // 仮
     } else {
       formChanged =
         title !== initialFormState.title ||
         memo !== initialFormState.memo ||
-        selectedUris.length !== initialFormState.selectedUris.length ||
+        !selectedUris.every((uri, index) => uri === (initialFormState.selectedUris[index])) || selectedUris.length !== initialFormState.selectedUris.length ||
         folder !== initialFormState.folder ||
         JSON.stringify(currentDeadlineSettings) !== JSON.stringify(initialFormState.currentDeadlineSettings) ||
         notificationActive !== initialFormState.notificationActive ||
@@ -188,6 +214,7 @@ export default function AddTaskScreen() {
     notificationActive, customAmount, customUnit,
     initialFormState, currentDraftId, setUnsaved
   ]);
+
 
   useEffect(() => {
     const unsub = navigation.addListener('beforeRemove', (e: any) => {
@@ -225,7 +252,6 @@ export default function AddTaskScreen() {
   const { saveTask, saveDraft } = useSaveTask({
     title,
     memo,
-    deadline: getDeadlineForSaveTask(currentDeadlineSettings),
     imageUris: selectedUris,
     notifyEnabled: notificationActive,
     customUnit: notificationActive ? customUnit : undefined,
@@ -234,9 +260,9 @@ export default function AddTaskScreen() {
     currentDraftId,
     clearForm: () => {
       clearForm();
-      router.replace('/(tabs)/tasks');
     },
     t,
+    deadlineDetails: currentDeadlineSettings,
   });
 
   useEffect(() => {
@@ -246,7 +272,7 @@ export default function AddTaskScreen() {
           const storedDrafts = await AsyncStorage.getItem('TASK_DRAFTS');
           if (storedDrafts) {
             const draftsArray: Task[] = JSON.parse(storedDrafts);
-            const draftToLoad = draftsArray.find(d => d.id === draftId) as (Task & { deadlineDetails?: DeadlineSettings });
+            const draftToLoad = draftsArray.find(d => d.id === draftId);
             if (draftToLoad) {
               setCurrentDraftId(draftToLoad.id);
               setTitle(draftToLoad.title || initialFormState.title);
@@ -259,7 +285,7 @@ export default function AddTaskScreen() {
               setFolder(draftToLoad.folder || initialFormState.folder);
 
               setTimeout(() => {
-                setUnsaved(false);
+                setUnsaved(false); // 下書き読み込み直後は未保存状態ではない
               }, 0);
             } else {
               clearForm();
@@ -312,7 +338,7 @@ export default function AddTaskScreen() {
       >
         <View
           style={{
-            backgroundColor: isDark ? '#121212' : '#FFFFFF', // Modified: Deepest background color
+            backgroundColor: isDark ? '#121212' : '#FFFFFF',
             borderRadius: 12,
             overflow: 'hidden',
             marginBottom: 24,
@@ -326,7 +352,7 @@ export default function AddTaskScreen() {
               placeholder={t('add_task.input_title_placeholder')}
               placeholderTextColor={isDark ? DARK_PLACEHOLDER : LIGHT_PLACEHOLDER}
               labelStyle={[styles.label, { color: subColor }]}
-              inputStyle={[styles.input, { minHeight: INITIAL_INPUT_HEIGHT, backgroundColor: isDark ? '#2C2C2E' : '#F0F0F0' }]} // Modified: Original container background color
+              inputStyle={[styles.input, { minHeight: INITIAL_INPUT_HEIGHT, backgroundColor: isDark ? '#2C2C2E' : '#F0F0F0' }]}
             />
           </View>
           <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: isDark ? '#444' : '#DDD', marginHorizontal: 8 }} />
@@ -339,7 +365,7 @@ export default function AddTaskScreen() {
               placeholder={t('add_task.memo_placeholder')}
               placeholderTextColor={isDark ? DARK_PLACEHOLDER : LIGHT_PLACEHOLDER}
               labelStyle={[styles.label, { color: subColor }]}
-              inputStyle={[styles.input, { minHeight: INITIAL_INPUT_HEIGHT, backgroundColor: isDark ? '#2C2C2E' : '#F0F0F0' }]} // Modified: Original container background color
+              inputStyle={[styles.input, { minHeight: INITIAL_INPUT_HEIGHT, backgroundColor: isDark ? '#2C2C2E' : '#F0F0F0', textAlignVertical: 'top' }]}
             />
           </View>
           <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: isDark ? '#444' : '#DDD', marginHorizontal: 8 }} />
@@ -392,9 +418,9 @@ export default function AddTaskScreen() {
           <TouchableOpacity onPress={() => setShowDeadlineModal(true)} style={{ paddingVertical: 14, paddingHorizontal: 8 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <Text style={[styles.label, { color: subColor, marginBottom: 0 }]}>{t('add_task.deadline')}</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={{ color: isDark ? '#FFF' : '#000', fontSize: fontSizes[fsKey], fontWeight: '400', marginRight: 4, maxWidth: screenWidth * 0.55 }} numberOfLines={1} ellipsizeMode="tail">
-                  {formatDeadlineForDisplay(currentDeadlineSettings, t)}
+              <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 1 }}>
+                <Text style={{ color: isDark ? '#FFF' : '#000', fontSize: fontSizes[fsKey], fontWeight: '400', marginRight: 4, textAlign: 'right' }} numberOfLines={1} ellipsizeMode="tail">
+                  {formatDeadlineForDisplay(currentDeadlineSettings, t, i18n.language)}
                 </Text>
                 <Ionicons name="chevron-forward" size={fontSizes[fsKey]} color={isDark ? '#A0A0A0' : '#555555'} />
               </View>

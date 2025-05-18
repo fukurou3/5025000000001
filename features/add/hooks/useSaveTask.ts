@@ -7,19 +7,21 @@ import Toast from 'react-native-toast-message';
 import { useRouter } from 'expo-router';
 import type { Task, Draft } from '../types';
 import { STORAGE_KEY, DRAFTS_KEY } from '../constants';
+import type { DeadlineSettings } from '../components/DeadlineSettingModal/types'; // ★ 追加
 
 interface SaveTaskParams {
   title: string;
   memo: string;
-  deadline?: Date; // 期限がオプショナルであることを明示
+  deadline?: Date;
   imageUris: string[];
   notifyEnabled: boolean;
-  customUnit?: 'minutes' | 'hours' | 'days'; // 通知が無効な場合はundefinedになる可能性
-  customAmount?: number; // 通知が無効な場合はundefinedになる可能性
+  customUnit?: 'minutes' | 'hours' | 'days';
+  customAmount?: number;
   folder: string;
   currentDraftId: string | null;
   clearForm: () => void;
-  t: (key: string, options?: any) => string; // t関数の型をより正確に
+  t: (key: string, options?: any) => string;
+  deadlineDetails?: DeadlineSettings; // ★ 追加
 }
 
 export const useSaveTask = ({
@@ -34,6 +36,7 @@ export const useSaveTask = ({
   currentDraftId,
   clearForm,
   t,
+  deadlineDetails, // ★ 追加
 }: SaveTaskParams) => {
   const router = useRouter();
 
@@ -46,14 +49,13 @@ export const useSaveTask = ({
       id: uuid.v4() as string,
       title: title.trim(),
       memo,
-      deadline: deadline ? deadline.toISOString() : '', // 期限が存在すればISO文字列に、なければ空文字列
+      deadline: deadlineDetails?.date || (deadline ? deadline.toISOString() : ''), // deadlineDetailsを優先
       imageUris,
       notifyEnabled,
-      // notifyEnabledがfalseの場合、customUnitとcustomAmountはTask型に含まれていても実際には使われない想定
-      // もしTask型でこれらがオプショナルなら、以下のようにundefinedを許容する
-      customUnit: notifyEnabled ? customUnit! : 'hours', // notifyEnabledがfalseならデフォルトまたは型に合わせた値
-      customAmount: notifyEnabled ? customAmount! : 1, // notifyEnabledがfalseならデフォルトまたは型に合わせた値
+      customUnit: notifyEnabled ? customUnit! : 'hours',
+      customAmount: notifyEnabled ? customAmount! : 1,
       folder,
+      deadlineDetails, // ★ 追加
     };
     try {
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
@@ -62,9 +64,9 @@ export const useSaveTask = ({
         STORAGE_KEY,
         JSON.stringify([...tasks, newTask])
       );
-      Toast.show({ type: 'success', text1: t('add_task.task_added_successfully') }); // より具体的な成功メッセージ
+      Toast.show({ type: 'success', text1: t('add_task.task_added_successfully') });
       clearForm();
-      router.replace('/(tabs)/tasks'); // (tabs) を含めたパスに修正
+      router.replace('/(tabs)/tasks');
     } catch (error) {
       console.error("Failed to save task:", error);
       Toast.show({ type: 'error', text1: t('add_task.error_saving_task') });
@@ -81,6 +83,7 @@ export const useSaveTask = ({
     clearForm,
     router,
     t,
+    deadlineDetails, // ★ 追加
   ]);
 
   const saveDraft = useCallback(async () => {
@@ -89,30 +92,30 @@ export const useSaveTask = ({
       return;
     }
     const id = currentDraftId || (uuid.v4() as string);
-    const draftTask: Draft = { // Task型とDraft型が同じなのでDraftのエイリアスTaskを使用
+    const draftTask: Draft = {
       id,
       title: title.trim(),
       memo,
-      deadline: deadline ? deadline.toISOString() : '', // 期限が存在すればISO文字列に、なければ空文字列
+      deadline: deadlineDetails?.date || (deadline ? deadline.toISOString() : ''), // deadlineDetailsを優先
       imageUris,
       notifyEnabled,
       customUnit: notifyEnabled ? customUnit! : 'hours',
       customAmount: notifyEnabled ? customAmount! : 1,
       folder,
-      // deadlineDetails: deadline ? currentDeadlineSettings : undefined, // これはindex.tsx側のロジックで、ここでは不要
+      deadlineDetails, // ★ 追加
     };
     try {
       const raw = await AsyncStorage.getItem(DRAFTS_KEY);
       const drafts: Draft[] = raw ? JSON.parse(raw) : [];
       const newDrafts = drafts.filter(d => d.id !== id);
-      newDrafts.push(draftTask); // 既存のものを削除した後、新しいものを追加 (または更新)
+      newDrafts.push(draftTask);
       await AsyncStorage.setItem(
         DRAFTS_KEY,
         JSON.stringify(newDrafts)
       );
       Toast.show({
         type: 'success',
-        text1: t('add_task.draft_saved_successfully'), // より具体的な成功メッセージ
+        text1: t('add_task.draft_saved_successfully'),
       });
       clearForm();
     } catch (error) {
@@ -130,8 +133,8 @@ export const useSaveTask = ({
     folder,
     currentDraftId,
     clearForm,
-    // router, // saveDraft後の画面遷移は一旦保留
     t,
+    deadlineDetails, // ★ 追加
   ]);
 
   return { saveTask, saveDraft };

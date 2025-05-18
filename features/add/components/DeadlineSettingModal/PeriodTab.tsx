@@ -9,7 +9,7 @@ import type { SpecificPeriodTabProps } from './types';
 import { DatePickerModal } from './DatePickerModal';
 
 const formatDateToDisplay = (dateString: string | undefined, t: (key: string, options?: any) => string): string => {
-    if (!dateString) return t('common.select', '選択');
+    if (!dateString) return t('common.select');
     return dateString;
 };
 
@@ -70,9 +70,9 @@ const PeriodTabMemo: React.FC<SpecificPeriodTabProps> = ({
     <ScrollView style={styles.tabContentContainer} contentContainerStyle={{ paddingBottom: 20 }}>
       <TouchableOpacity
         onPress={() => handleOpenDatePicker('start')}
-        style={styles.settingRow} // 区切り線なしスタイルを使用
+        style={styles.settingRow}
       >
-        <Text style={styles.label}>{t('deadline_modal.start_date', '開始日')}</Text>
+        <Text style={styles.label}>{t('deadline_modal.start_date')}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <Text style={[styles.pickerText, { marginRight: 4 }]}>
             {displayStartDate}
@@ -87,9 +87,9 @@ const PeriodTabMemo: React.FC<SpecificPeriodTabProps> = ({
 
       <TouchableOpacity
         onPress={() => handleOpenDatePicker('end')}
-        style={styles.settingRow} // 区切り線なしスタイルを使用
+        style={styles.settingRow}
       >
-        <Text style={styles.label}>{t('deadline_modal.end_date', '終了日')}</Text>
+        <Text style={styles.label}>{t('deadline_modal.end_date')}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <Text style={[styles.pickerText, { marginRight: 4 }]}>
             {displayEndDate}
@@ -108,7 +108,7 @@ const PeriodTabMemo: React.FC<SpecificPeriodTabProps> = ({
         onClose={handleDatePickerClose}
         onConfirm={handleDateConfirm}
         onClear={editingDateType ? handleDateClear : undefined}
-        clearButtonText={t(editingDateType === 'start' ? 'common.clear_start_date' : 'common.clear_end_date', '日付をクリア')}
+        clearButtonText={t(editingDateType === 'start' ? 'common.clear_start_date' : 'common.clear_end_date')}
       />
     </ScrollView>
   );

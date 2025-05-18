@@ -9,8 +9,8 @@ export interface DeadlineTime {
 
 export interface DatePickerData {
   year: number;
-  month: number; // 1-12
-  day: number;   // 1-31
+  month: number;
+  day: number;
 }
 
 export interface RepeatEnds {
@@ -20,10 +20,8 @@ export interface RepeatEnds {
 
 export type RepeatFrequency = 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom';
 
-// 新しい型定義: 期間の単位
 export type DurationUnit = 'minutes' | 'hours' | 'days' | 'months' | 'years';
 
-// 新しい型定義: 期間の量と単位
 export interface AmountAndUnit {
   amount: number;
   unit: DurationUnit;
@@ -36,7 +34,7 @@ export interface DeadlineSettings {
 
   taskStartTime?: DeadlineTime;
   isTaskStartTimeEnabled?: boolean;
-  taskDuration?: AmountAndUnit; // ★ 新しいプロパティ: タスクの所要時間
+  taskDuration?: AmountAndUnit;
 
   repeatFrequency?: RepeatFrequency;
   repeatStartDate?: string;
@@ -137,7 +135,7 @@ export interface SpecificRepeatTabProps {
     DeadlineSettings,
     | 'taskStartTime'
     | 'isTaskStartTimeEnabled'
-    | 'taskDuration' // ★ 追加
+    | 'taskDuration'
     | 'repeatFrequency'
     | 'repeatStartDate'
     | 'repeatDaysOfWeek'
@@ -149,7 +147,7 @@ export interface SpecificRepeatTabProps {
       DeadlineSettings,
       | 'taskStartTime'
       | 'isTaskStartTimeEnabled'
-      | 'taskDuration' // ★ 追加
+      | 'taskDuration'
       | 'repeatFrequency'
       | 'repeatStartDate'
       | 'repeatDaysOfWeek'
@@ -162,7 +160,7 @@ export interface SpecificRepeatTabProps {
       DeadlineSettings,
       | 'taskStartTime'
       | 'isTaskStartTimeEnabled'
-      | 'taskDuration' // ★ 追加
+      | 'taskDuration'
       | 'repeatFrequency'
       | 'repeatStartDate'
       | 'repeatDaysOfWeek'
@@ -176,7 +174,7 @@ export interface SpecificRepeatTabProps {
         DeadlineSettings,
         | 'taskStartTime'
         | 'isTaskStartTimeEnabled'
-        | 'taskDuration' // ★ 追加
+        | 'taskDuration'
         | 'repeatFrequency'
         | 'repeatStartDate'
         | 'repeatDaysOfWeek'
@@ -197,7 +195,6 @@ export interface SpecificPeriodTabProps {
   ) => void;
 }
 
-// WheelPickerModal (DurationPickerModal) 用の型
 export interface DurationOption {
   label: string;
   value: number;
@@ -236,8 +233,8 @@ export type DeadlineModalTranslationKey =
   | 'ends_on_date'
   | 'repeat_frequency'
   | 'task_start_time_label'
-  | 'task_duration_label' // ★ 追加: タスクの期限ラベル
-  | 'set_task_duration_title' // ★ 追加: 期間ピッカーのタイトル
+  | 'task_duration_label'
+  | 'set_task_duration_title'
   | 'days_of_week'
   | 'weekdays'
   | 'exclude_holidays'
@@ -271,7 +268,10 @@ export type DeadlineModalTranslationKey =
   | 'date_label_header'
   | 'time_label_header'
   | 'section_task_addition'
-  | 'section_repeat_settings';
+  | 'section_repeat_settings'
+  | 'date_missing_for_time_alert_message'
+  | 'weekly_day_missing_alert_message'
+  | 'period_start_must_be_before_end_alert_message';
 
 export type CommonTranslationKey =
   | 'am'
@@ -281,16 +281,16 @@ export type CommonTranslationKey =
   | 'jan_short' | 'feb_short' | 'mar_short' | 'apr_short' | 'may_short' | 'jun_short'
   | 'jul_short' | 'aug_short' | 'sep_short' | 'oct_short' | 'nov_short' | 'dec_short'
   | 'year_unit' | 'month_unit' | 'day_unit' | 'hour_unit' | 'minute_unit'
-  | 'years_unit_after' // ★ 追加
-  | 'months_unit_after' // ★ 追加
-  | 'days_unit_after' // ★ 追加
-  | 'hours_unit_after' // ★ 追加
-  | 'minutes_unit_after' // ★ 追加
+  | 'years_unit_after'
+  | 'months_unit_after'
+  | 'days_unit_after'
+  | 'hours_unit_after'
+  | 'minutes_unit_after'
   | 'clear'
   | 'clear_date'
   | 'clear_start_date'
   | 'clear_end_date'
-  | 'clear_duration' // ★ 追加: 「期限なし」ボタン用
+  | 'clear_duration'
   | 'ok'
   | 'save'
   | 'cancel'
@@ -301,4 +301,5 @@ export type CommonTranslationKey =
   | 'year_month_format'
   | 'all_day'
   | 'to'
-  | 'unset';
+  | 'unset'
+  | 'notification_title';

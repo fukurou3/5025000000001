@@ -18,11 +18,9 @@ export const createDeadlineModalStyles = (
   const baseButtonFontSize = fontSizes[fsKey];
   const headerBaseFontSize = fontSizes[fsKey];
 
-  // react-native-elements の Switch で使用する色
-  const switchTrackColorTrue = isDark ? '#30D158' : '#34C759'; // ON時のトラック背景色 (緑)
-  const switchTrackColorFalse = isDark ? '#2C2C2E' : '#E9E9EA'; // OFF時のトラック背景色 (薄いグレー)
-  const switchThumbColorValue = '#FFFFFF'; // つまみは常に白
-  // OFF時の枠線として使う色（トラック背景より少し濃いめ）
+  const switchTrackColorTrue = isDark ? '#30D158' : '#34C759';
+  const switchTrackColorFalse = isDark ? '#2C2C2E' : '#E9E9EA';
+  const switchThumbColorValue = '#FFFFFF';
   const switchTrackBorderColorFalse = isDark ? '#555557' : '#BDBDC2';
 
 
@@ -367,14 +365,12 @@ export const createDeadlineModalStyles = (
     pickerContainer: {},
     pickerColumn: {},
     pickerLabel: {},
-    // react-native-elements Switch のためのスタイル定義 (もし必要なら)
-    switchContainer: { // スイッチを囲むコンテナ (枠線用)
-      width: 51, // iOS標準の幅
-      height: 31, // iOS標準の高さ
+    switchContainer: {
+      width: 51,
+      height: 31,
       borderRadius: 31 / 2,
       justifyContent: 'center',
       alignItems: 'center',
-      // 枠線の色は動的に変更するため、ここでは共通スタイルのみ
     },
   };
   return StyleSheet.create(stylesObject as any);

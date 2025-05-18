@@ -1,5 +1,4 @@
 // app/features/add/components/DeadlineSettingModal/index.tsx
-
 import React, { useState, useEffect, useCallback, useContext, useMemo } from 'react';
 import { View, TouchableOpacity, Text, useWindowDimensions, Platform, InteractionManager } from 'react-native';
 import Modal from 'react-native-modal';
@@ -17,7 +16,6 @@ import type {
     SpecificDateSelectionTabProps,
     SpecificRepeatTabProps,
     SpecificPeriodTabProps,
-    AmountAndUnit, // ★ 追加
 } from './types';
 import { createDeadlineModalStyles } from './styles';
 import { DeadlineModalHeader } from './DeadlineModalHeader';
@@ -45,7 +43,7 @@ const getDefaultInitialSettings = (): DeadlineSettings => ({
 
   taskStartTime: defaultTime,
   isTaskStartTimeEnabled: false,
-  taskDuration: undefined, // ★ 初期値は undefined (期限なし)
+  taskDuration: undefined,
 
   repeatFrequency: undefined,
   repeatStartDate: todayString,
@@ -83,9 +81,18 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
   useEffect(() => {
     if (visible) {
       InteractionManager.runAfterInteractions(() => {
-        setSettings(
-          initialSettings ? { ...getDefaultInitialSettings(), ...initialSettings } : getDefaultInitialSettings()
-        );
+        const currentInitialSettings = initialSettings ? { ...getDefaultInitialSettings(), ...initialSettings } : getDefaultInitialSettings();
+        setSettings(currentInitialSettings);
+
+        if (currentInitialSettings.repeatFrequency) {
+            setActiveTabIndex(1);
+        } else if (currentInitialSettings.periodStartDate || currentInitialSettings.periodEndDate) {
+            setActiveTabIndex(2);
+        } else if (currentInitialSettings.date) {
+            setActiveTabIndex(0);
+        } else {
+            setActiveTabIndex(0);
+        }
       });
     }
   }, [visible, initialSettings]);
@@ -101,46 +108,91 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
   }, []);
 
   const handleSave = useCallback(() => {
-    if (activeTabIndex === 1 && settings.repeatFrequency) {
+    if (activeTabIndex === 0) {
+        if (settings.isTimeEnabled && settings.time && !settings.date) {
+            setValidationErrorMessage(t('deadline_modal.date_missing_for_time_alert_message'));
+            setValidationErrorModalVisible(true);
+            return;
+        }
+    } else if (activeTabIndex === 1 && settings.repeatFrequency) {
         if (!settings.repeatStartDate) {
-            setValidationErrorMessage(t('deadline_modal.repeat_start_date_missing_alert_message', '繰り返しの開始日が設定されていません。'));
+            setValidationErrorMessage(t('deadline_modal.repeat_start_date_missing_alert_message'));
             setValidationErrorModalVisible(true);
             return;
         }
-        if (settings.repeatEnds?.date && settings.repeatStartDate > settings.repeatEnds.date) {
-            setValidationErrorMessage(t('deadline_modal.repeat_start_must_be_before_end_alert_message', '繰り返しの開始日は、終了日より前の日付である必要があります。'));
+        if (settings.repeatEnds?.date && settings.repeatStartDate && settings.repeatStartDate > settings.repeatEnds.date) {
+            setValidationErrorMessage(t('deadline_modal.repeat_start_must_be_before_end_alert_message'));
             setValidationErrorModalVisible(true);
             return;
         }
-    }
-
-    if (activeTabIndex === 2) {
-      if (!settings.periodStartDate && !settings.periodEndDate) {
-        // 両方未設定はOK
-      } else if (!settings.periodStartDate && settings.periodEndDate) {
-        setValidationErrorMessage(t('deadline_modal.period_start_date_missing_alert_message', '開始日が未設定です。'));
+        if (settings.repeatFrequency === 'weekly' && (!settings.repeatDaysOfWeek || Object.values(settings.repeatDaysOfWeek).every(day => !day))) {
+            setValidationErrorMessage(t('deadline_modal.weekly_day_missing_alert_message'));
+            setValidationErrorModalVisible(true);
+            return;
+        }
+    } else if (activeTabIndex === 2) {
+      if (settings.periodStartDate && !settings.periodEndDate) {
+        setValidationErrorMessage(t('deadline_modal.period_end_date_missing_alert_message'));
+        setValidationErrorModalVisible(true);
+        return;
+      }
+      if (!settings.periodStartDate && settings.periodEndDate) {
+         setValidationErrorMessage(t('deadline_modal.period_start_date_missing_alert_message'));
+         setValidationErrorModalVisible(true);
+         return;
+      }
+      if (settings.periodStartDate && settings.periodEndDate && settings.periodStartDate > settings.periodEndDate) {
+        setValidationErrorMessage(t('deadline_modal.period_start_must_be_before_end_alert_message'));
         setValidationErrorModalVisible(true);
         return;
       }
     }
-    
-    let finalSettings = { ...settings };
 
-    if (!finalSettings.repeatFrequency) {
-        finalSettings.taskStartTime = undefined;
-        finalSettings.isTaskStartTimeEnabled = undefined;
-        finalSettings.taskDuration = undefined; // ★ 繰り返し頻度がない場合は期限もクリア
-        finalSettings.repeatStartDate = undefined;
-        finalSettings.repeatDaysOfWeek = undefined;
-        finalSettings.repeatEnds = undefined;
-        finalSettings.isExcludeHolidays = undefined;
+    let finalSettingsOutput: DeadlineSettings | undefined;
+    const defaultValues = getDefaultInitialSettings();
+
+    if (activeTabIndex === 0) {
+        if (settings.date) {
+            finalSettingsOutput = {
+                ...defaultValues,
+                date: settings.date,
+                time: settings.isTimeEnabled ? settings.time : undefined,
+                isTimeEnabled: settings.isTimeEnabled,
+            };
+        } else {
+            finalSettingsOutput = undefined;
+        }
+    } else if (activeTabIndex === 1) {
+        if (settings.repeatFrequency && settings.repeatStartDate) {
+            finalSettingsOutput = {
+                ...defaultValues,
+                repeatFrequency: settings.repeatFrequency,
+                repeatStartDate: settings.repeatStartDate,
+                repeatDaysOfWeek: settings.repeatDaysOfWeek,
+                repeatEnds: settings.repeatEnds,
+                isExcludeHolidays: settings.isExcludeHolidays,
+                taskStartTime: settings.taskStartTime,
+                isTaskStartTimeEnabled: settings.isTaskStartTimeEnabled,
+                taskDuration: settings.taskDuration,
+            };
+        } else {
+            finalSettingsOutput = undefined;
+        }
+    } else if (activeTabIndex === 2) {
+        if (settings.periodStartDate && settings.periodEndDate) {
+            finalSettingsOutput = {
+                ...defaultValues,
+                periodStartDate: settings.periodStartDate,
+                periodEndDate: settings.periodEndDate,
+            };
+        } else {
+             finalSettingsOutput = undefined;
+        }
+    } else {
+        finalSettingsOutput = undefined;
     }
-    
-    if (activeTabIndex === 2 && finalSettings.periodStartDate && !finalSettings.periodEndDate) {
-        finalSettings = { ...finalSettings, date: finalSettings.periodStartDate, periodEndDate: finalSettings.periodStartDate };
-    }
-    
-    onSave(finalSettings);
+
+    onSave(finalSettingsOutput);
 
   }, [activeTabIndex, settings, onSave, t]);
 
@@ -150,6 +202,7 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
 
   const handleConfirmUnset = useCallback(() => {
     setUnsetConfirmVisible(false);
+    setSettings(getDefaultInitialSettings());
     onSave(undefined);
   }, [onSave]);
 
@@ -184,7 +237,7 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
     settings: {
         taskStartTime: settings.taskStartTime,
         isTaskStartTimeEnabled: settings.isTaskStartTimeEnabled,
-        taskDuration: settings.taskDuration, // ★ 追加
+        taskDuration: settings.taskDuration,
         repeatFrequency: settings.repeatFrequency,
         repeatStartDate: settings.repeatStartDate,
         repeatDaysOfWeek: settings.repeatDaysOfWeek,
@@ -199,7 +252,7 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
     styles,
     settings.taskStartTime,
     settings.isTaskStartTimeEnabled,
-    settings.taskDuration, // ★ 追加
+    settings.taskDuration,
     settings.repeatFrequency,
     settings.repeatStartDate,
     settings.repeatDaysOfWeek,
@@ -247,8 +300,7 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
                   isActive ? styles.tabItemActive : styles.tabItemInactive,
                 ]}
                 onPress={() => {
-                  setActiveTabIndex(i); // setActiveTabIndex を使用
-                  // props.jumpTo(route.key as any) は TabView 内部で処理される
+                  setActiveTabIndex(i);
                 }}
                 activeOpacity={0.7}
               >
@@ -266,7 +318,7 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
         </View>
       </View>
     ),
-    [styles, setActiveTabIndex] // setActiveTabIndex を依存配列に追加
+    [styles, setActiveTabIndex]
   );
 
   return (
@@ -321,7 +373,7 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
             </TouchableOpacity>
             <TouchableOpacity style={[styles.button, { flex: 1, minWidth: 80 }]} onPress={handleUnsetPress}>
               <Text style={styles.buttonText} numberOfLines={1} adjustsFontSizeToFit>
-                {t('common.unset') || '設定しない'}
+                {t('common.unset')}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -339,7 +391,6 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
         visible={isUnsetConfirmVisible}
         message={t('deadline_modal.unset_confirm_message')}
         okText={t('common.ok')}
-        cancelText={t('common.cancel')}
         onCancel={handleCancelUnset}
         onConfirm={handleConfirmUnset}
       />
@@ -348,7 +399,7 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
         message={validationErrorMessage}
         okText={t('common.ok')}
         onConfirm={handleCloseValidationErrorModal}
-        onCancel={handleCloseValidationErrorModal} // OKと同じ動作で閉じる
+        onCancel={handleCloseValidationErrorModal}
       />
     </>
   );

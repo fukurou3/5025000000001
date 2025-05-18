@@ -34,13 +34,13 @@ const formatTimeToDisplay = (time: DeadlineTime, t: (key: string, options?: any)
 };
 
 const formatDateToDisplay = (dateString: string | undefined, t: (key: string, options?: any) => string, defaultText?: string): string => {
-    if (!dateString) return defaultText || t('common.select', '選択');
+    if (!dateString) return defaultText || t('common.select');
     return dateString;
 };
 
 const formatDurationToDisplay = (duration: AmountAndUnit | undefined, t: (key: string, options?: any) => string): string => {
     if (!duration || !duration.amount || !duration.unit) {
-        return t('common.not_set', '未設定');
+        return t('common.not_set');
     }
     const unitKeyMap: Record<DurationUnit, CommonTranslationKey> = {
         minutes: 'minutes_unit_after',
@@ -111,13 +111,12 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
             }, {} as Record<number, boolean>);
         }
     }
-    // 繰り返し頻度を設定したら、追加時刻もデフォルトで有効にする (任意で無効化も可能)
     if (freq && !currentIsTaskStartTimeEnabled) {
         newSettingsUpdate.isTaskStartTimeEnabled = true;
-        if (!currentTaskStartTime) { // もし既存の時刻がなければデフォルトをセット
+        if (!currentTaskStartTime) {
             newSettingsUpdate.taskStartTime = { hour: 9, minute: 0 };
         }
-    } else if (!freq) { // 繰り返し頻度を解除したら追加時刻と期限もクリア
+    } else if (!freq) {
         newSettingsUpdate.isTaskStartTimeEnabled = false;
         newSettingsUpdate.taskStartTime = undefined;
         newSettingsUpdate.taskDuration = undefined;
@@ -154,11 +153,9 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
   const handleRepeatEndDatePickerPress = useCallback(() => setRepeatEndDatePickerVisible(true), []);
   const handleTaskStartTimePickerPress = useCallback(() => setTaskStartTimePickerVisible(true), []);
   const handleDurationPickerPress = useCallback(() => {
-    // 追加時刻が有効な場合のみ期限ピッカーを開く
     if (currentIsTaskStartTimeEnabled) {
         setDurationPickerVisible(true);
     }
-    // 必要であれば、ここでユーザーに「追加時刻を設定してください」というアラートを出すことも可能
   }, [currentIsTaskStartTimeEnabled]);
 
   const handleRepeatStartDatePickerClose = useCallback(() => setRepeatStartDatePickerVisible(false), []);
@@ -188,11 +185,10 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
   }, [updateFullSettings]);
 
   const handleTaskStartTimeClear = useCallback(() => {
-    // 追加時刻をクリアしたら、タスクの期限もクリアする
     updateFullSettings({
         taskStartTime: undefined,
         isTaskStartTimeEnabled: false,
-        taskDuration: undefined // ★ 期限もクリア
+        taskDuration: undefined
     });
     setTaskStartTimePickerVisible(false);
   }, [updateFullSettings]);
@@ -209,16 +205,16 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
 
 
   const displayFrequency = useMemo(() => {
-    if (!currentFrequency) return t('common.select', '選択');
+    if (!currentFrequency) return t('common.select');
     const option = frequencyOptions.find(opt => opt.value === currentFrequency);
-    return option ? t(`deadline_modal.${option.labelKey}` as const, option.value) : t('common.select', '選択');
+    return option ? t(`deadline_modal.${option.labelKey}` as const) : t('common.select');
   }, [currentFrequency, t]);
 
   const displayRepeatStartDate = useMemo(() => {
     if (!currentRepeatStartDate) return t('common.not_set');
     const formattedDate = formatDateToDisplay(currentRepeatStartDate, t);
     if (currentRepeatStartDate === todayString) {
-      return `${formattedDate} (${t('common.today', '今日')})`;
+      return `${formattedDate} (${t('common.today')})`;
     }
     return formattedDate;
   }, [currentRepeatStartDate, t]);
@@ -227,17 +223,16 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
     if (currentIsTaskStartTimeEnabled && currentTaskStartTime) {
       return formatTimeToDisplay(currentTaskStartTime, t);
     }
-    return t('common.select', '選択');
+    return t('common.select');
   }, [currentIsTaskStartTimeEnabled, currentTaskStartTime, t]);
 
   const displayTaskDuration = useMemo(() => {
-    // 追加時刻が有効な場合のみ期限を表示（そうでなければ「未設定」と同じ扱い）
-    if (!currentIsTaskStartTimeEnabled) return t('common.not_set', '未設定');
+    if (!currentIsTaskStartTimeEnabled) return t('common.not_set');
     return formatDurationToDisplay(currentTaskDuration, t);
   }, [currentTaskDuration, t, currentIsTaskStartTimeEnabled]);
 
   const displayRepeatEndDate = useMemo(() => {
-    return formatDateToDisplay(currentRepeatEndsDate, t, t('common.not_set', '未設定'));
+    return formatDateToDisplay(currentRepeatEndsDate, t, t('common.not_set'));
   }, [currentRepeatEndsDate, t]);
 
   const labelFontSize = typeof styles.label?.fontSize === 'number' ? styles.label.fontSize : 16;
@@ -266,11 +261,11 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
   return (
     <ScrollView style={styles.tabContentContainer} contentContainerStyle={{ paddingBottom: 20 }}>
       <Text style={sectionHeaderTextStyleWithFallback}>
-        {t('deadline_modal.section_task_addition', 'タスク追加')}
+        {t('deadline_modal.section_task_addition')}
       </Text>
 
       <TouchableOpacity onPress={handleFrequencyPickerPress} style={styles.settingRow}>
-        <Text style={styles.label}>{t('deadline_modal.repeat_frequency', '繰り返し頻度')}</Text>
+        <Text style={styles.label}>{t('deadline_modal.repeat_frequency')}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <Text style={[styles.pickerText, { marginRight: 4 }]}>
             {displayFrequency}
@@ -279,26 +274,24 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
         </View>
       </TouchableOpacity>
 
-      {/* 繰り返し頻度が設定されている場合のみ以下の設定項目を表示 */}
       {currentFrequency && (
         <>
           <TouchableOpacity onPress={handleTaskStartTimePickerPress} style={styles.settingRow}>
-            <Text style={styles.label}>{t('deadline_modal.task_start_time_label', '追加時刻')}</Text>
+            <Text style={styles.label}>{t('deadline_modal.task_start_time_label')}</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Text style={[styles.pickerText, { marginRight: 4 }]}>{displayTaskStartTime}</Text>
               <Ionicons name="chevron-forward" size={labelFontSize + 2} color={mutedTextColor} />
             </View>
           </TouchableOpacity>
 
-          {/* 追加時刻が有効な場合のみ「期限」の行を表示・操作可能にする */}
           {currentIsTaskStartTimeEnabled && (
             <TouchableOpacity
                 onPress={handleDurationPickerPress}
                 style={styles.settingRow}
-                disabled={!currentIsTaskStartTimeEnabled} // disabled属性も活用
+                disabled={!currentIsTaskStartTimeEnabled}
             >
               <Text style={[styles.label, !currentIsTaskStartTimeEnabled && { color: mutedTextColor } ]}>
-                {t('deadline_modal.task_duration_label', '期限')}
+                {t('deadline_modal.task_duration_label')}
               </Text>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Text style={[styles.pickerText, { marginRight: 4 }, !currentIsTaskStartTimeEnabled && { color: mutedTextColor }]}>
@@ -307,7 +300,7 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
                 <Ionicons
                     name="chevron-forward"
                     size={labelFontSize + 2}
-                    color={!currentIsTaskStartTimeEnabled ? styles.tabContentContainer?.backgroundColor || mutedTextColor : mutedTextColor} // 非アクティブ時は背景色と同化させるか、より薄い色に
+                    color={!currentIsTaskStartTimeEnabled ? styles.tabContentContainer?.backgroundColor || mutedTextColor : mutedTextColor}
                 />
               </View>
             </TouchableOpacity>
@@ -316,7 +309,7 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
           {isJapanese && (currentFrequency === 'daily' || currentFrequency === 'weekly' || currentFrequency === 'monthly' || currentFrequency === 'yearly') && (
             <View style={styles.exclusionSettingRow}>
               <Text style={styles.label}>
-                {t('deadline_modal.exclude_holidays', '祝日を除く')}
+                {t('deadline_modal.exclude_holidays')}
               </Text>
               <View
                 style={[
@@ -347,14 +340,14 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
       {currentFrequency && (
         <>
           <Text style={sectionHeaderTextStyleWithFallback}>
-            {t('deadline_modal.section_repeat_settings', '繰り返し')}
+            {t('deadline_modal.section_repeat_settings')}
           </Text>
 
           <TouchableOpacity
             onPress={handleRepeatStartDatePickerPress}
             style={styles.settingRow}
           >
-            <Text style={styles.label}>{t('deadline_modal.repeat_start_date_label', '開始日')}</Text>
+            <Text style={styles.label}>{t('deadline_modal.repeat_start_date_label')}</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Text style={[styles.pickerText, { marginRight: 4 }]}>{displayRepeatStartDate}</Text>
               <Ionicons name="chevron-forward" size={labelFontSize + 2} color={mutedTextColor} />
@@ -362,7 +355,7 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
           </TouchableOpacity>
 
           <TouchableOpacity onPress={handleRepeatEndDatePickerPress} style={styles.settingRow}>
-              <Text style={styles.label}>{t('deadline_modal.end_repeat_title', '終了日')}</Text>
+              <Text style={styles.label}>{t('deadline_modal.end_repeat_title')}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Text style={[styles.pickerText, { marginRight: 4 }]}>
                   {displayRepeatEndDate}
@@ -392,7 +385,7 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
           { (currentFrequency === 'monthly' || currentFrequency === 'yearly' || currentFrequency === 'custom') && (
             <View style={{ paddingHorizontal: 16, paddingVertical:10, backgroundColor: (styles.settingRow as ViewStyle)?.backgroundColor }}>
                 <Text style={{color: mutedTextColor, fontSize: labelFontSize-2}}>
-                    {t(`deadline_modal.${currentFrequency}` as const)} {t('common.settings_not_implemented', 'の詳細設定は現在実装されていません。')}
+                    {t(`deadline_modal.${currentFrequency}` as const)} {t('common.settings_not_implemented')}
                 </Text>
             </View>
           )}
@@ -412,7 +405,7 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
                 ]}
               >
                 <Text style={[styles.modalOptionText, currentFrequency === opt.value && { color: subColor, fontWeight: 'bold' }]}>
-                  {t(`deadline_modal.${opt.labelKey}` as const, opt.value)}
+                  {t(`deadline_modal.${opt.labelKey}` as const)}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -442,7 +435,7 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
         onClose={handleRepeatStartDatePickerClose}
         onConfirm={handleRepeatStartDateConfirm}
         onClear={undefined}
-        clearButtonText={t('common.clear_date', '日付をクリア')}
+        clearButtonText={t('common.clear_date')}
       />
 
       <DatePickerModal
@@ -451,7 +444,7 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
         onClose={handleRepeatEndDatePickerClose}
         onConfirm={handleRepeatEndDateConfirm}
         onClear={handleRepeatEndDateClear}
-        clearButtonText={t('common.clear_date', '日付をクリア')}
+        clearButtonText={t('common.clear_date')}
       />
     </ScrollView>
   );
