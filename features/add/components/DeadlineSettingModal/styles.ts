@@ -8,21 +8,16 @@ export const createDeadlineModalStyles = (
   isDark: boolean,
   subColor: string,
   fsKey: FontSizeKey,
+  windowHeight: number // ★ 画面の高さを引数として受け取る
 ): DeadlineModalStyles => {
   const fontSizes = appFontSizes;
   const baseTextColor = isDark ? '#FFFFFF' : '#000000';
-  const backgroundColor = isDark ? '#1C1C1E' : '#FFFFFF';
+  const backgroundColor = isDark ? '#000000' : '#FFFFFF';
   const contentBackgroundColor = isDark ? '#000000' : '#FFFFFF';
   const iosSeparatorColor = isDark ? '#3A3A3C' : '#C6C6C8';
 
   const baseButtonFontSize = fontSizes[fsKey];
   const headerBaseFontSize = fontSizes[fsKey];
-
-  const switchTrackColorTrue = isDark ? '#30D158' : '#34C759';
-  const switchTrackColorFalse = isDark ? '#2C2C2E' : '#E9E9EA';
-  const switchThumbColorValue = '#FFFFFF';
-  const switchTrackBorderColorFalse = isDark ? '#555557' : '#BDBDC2';
-
 
   const stylesObject: DeadlineModalStyles = {
     overlay: {
@@ -31,7 +26,7 @@ export const createDeadlineModalStyles = (
       backgroundColor: 'rgba(0,0,0,0.5)',
     },
     container: {
-      height: '70%',
+      height: Math.round(windowHeight * 0.7), // ★ 画面の高さの80%に設定
       backgroundColor: contentBackgroundColor,
       borderTopLeftRadius: 16,
       borderTopRightRadius: 16,
@@ -39,22 +34,22 @@ export const createDeadlineModalStyles = (
     },
     headerContainer: {
       paddingHorizontal: 20,
-      paddingVertical: 20,
+      paddingVertical: 16,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderColor: iosSeparatorColor,
       alignItems: 'center',
       backgroundColor: contentBackgroundColor,
     },
     headerText: {
-      fontSize: headerBaseFontSize + 2,
+      fontSize: headerBaseFontSize + 1,
       fontWeight: '600',
       color: baseTextColor,
       textAlign: 'center',
-      lineHeight: headerBaseFontSize + 7,
+      lineHeight: headerBaseFontSize + 6,
     },
     footer: {
       flexDirection: 'row',
-      paddingVertical: Platform.OS === 'ios' ? 12 : 16,
+      paddingVertical: Platform.OS === 'ios' ? 10 : 12,
       paddingHorizontal: 16,
       paddingBottom: Platform.OS === 'ios' ? 28 : 16,
       borderTopWidth: StyleSheet.hairlineWidth,
@@ -148,7 +143,8 @@ export const createDeadlineModalStyles = (
       alignItems: 'center',
       paddingHorizontal: 16,
       paddingVertical: 14,
-      borderBottomWidth: 0,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderColor: iosSeparatorColor,
       backgroundColor: contentBackgroundColor,
     },
     settingRowNoBottomBorder: {
@@ -181,7 +177,7 @@ export const createDeadlineModalStyles = (
     timePickerModalContainer: {
         width: '100%',
         alignSelf: 'stretch',
-        backgroundColor: contentBackgroundColor,
+        backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
         borderTopLeftRadius: 16,
         borderTopRightRadius: 16,
         overflow: 'hidden',
@@ -192,6 +188,7 @@ export const createDeadlineModalStyles = (
     pickerRowSeparator: {
         height: StyleSheet.hairlineWidth,
         backgroundColor: iosSeparatorColor,
+        marginHorizontal: 0,
     },
     timePickerContainer: {
       flexDirection: 'row',
@@ -372,6 +369,25 @@ export const createDeadlineModalStyles = (
       justifyContent: 'center',
       alignItems: 'center',
     },
+    customIntervalModalContainer: {
+      backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
+    },
+    customIntervalPickerContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 20,
+      paddingHorizontal: 16,
+    },
+    customIntervalInput: {
+      borderWidth: 1,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: Platform.OS === 'ios' ? 12 : 8,
+      textAlign: 'center',
+      minWidth: 60,
+      marginRight: 10,
+    } as TextStyle,
   };
   return StyleSheet.create(stylesObject as any);
 };

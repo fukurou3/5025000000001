@@ -21,6 +21,8 @@ export interface RepeatEnds {
 export type RepeatFrequency = 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom';
 
 export type DurationUnit = 'minutes' | 'hours' | 'days' | 'months' | 'years';
+export type CustomIntervalUnit = 'hours' | 'days';
+
 
 export interface AmountAndUnit {
   amount: number;
@@ -41,6 +43,9 @@ export interface DeadlineSettings {
   repeatDaysOfWeek?: { [key: number]: boolean };
   repeatEnds?: RepeatEnds;
   isExcludeHolidays?: boolean;
+
+  customIntervalValue?: number;
+  customIntervalUnit?: CustomIntervalUnit;
 
   periodStartDate?: string;
   periodEndDate?: string;
@@ -115,6 +120,10 @@ export interface DeadlineModalStyles {
   pickerContainer?: ViewStyle;
   pickerColumn?: ViewStyle;
   pickerLabel?: TextStyle;
+
+  customIntervalModalContainer?: ViewStyle;
+  customIntervalPickerContainer?: ViewStyle;
+  customIntervalInput?: TextStyle;
 }
 
 
@@ -141,6 +150,8 @@ export interface SpecificRepeatTabProps {
     | 'repeatDaysOfWeek'
     | 'isExcludeHolidays'
     | 'repeatEnds'
+    | 'customIntervalValue'
+    | 'customIntervalUnit'
   >;
   updateSettings: <
     K extends keyof Pick<
@@ -153,6 +164,8 @@ export interface SpecificRepeatTabProps {
       | 'repeatDaysOfWeek'
       | 'isExcludeHolidays'
       | 'repeatEnds'
+      | 'customIntervalValue'
+      | 'customIntervalUnit'
     >
   >(
     key: K,
@@ -166,6 +179,8 @@ export interface SpecificRepeatTabProps {
       | 'repeatDaysOfWeek'
       | 'isExcludeHolidays'
       | 'repeatEnds'
+      | 'customIntervalValue'
+      | 'customIntervalUnit'
     >[K]
   ) => void;
   updateFullSettings: (
@@ -180,9 +195,12 @@ export interface SpecificRepeatTabProps {
         | 'repeatDaysOfWeek'
         | 'isExcludeHolidays'
         | 'repeatEnds'
+        | 'customIntervalValue'
+        | 'customIntervalUnit'
       >
     >
   ) => void;
+  showErrorAlert: (message: string) => void;
 }
 
 export interface SpecificPeriodTabProps {
@@ -271,7 +289,15 @@ export type DeadlineModalTranslationKey =
   | 'section_repeat_settings'
   | 'date_missing_for_time_alert_message'
   | 'weekly_day_missing_alert_message'
-  | 'period_start_must_be_before_end_alert_message';
+  | 'period_start_must_be_before_end_alert_message'
+  | 'custom_interval'
+  | 'set_custom_interval'
+  | 'enter_interval_value'
+  | 'select_interval_unit'
+  | 'error_invalid_interval_value'
+  | 'interval_not_set'
+  | 'every_x_hours'
+  | 'every_x_days';
 
 export type CommonTranslationKey =
   | 'am'
@@ -302,4 +328,6 @@ export type CommonTranslationKey =
   | 'all_day'
   | 'to'
   | 'unset'
-  | 'notification_title';
+  | 'notification_title'
+  | 'hours'
+  | 'days';

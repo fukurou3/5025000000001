@@ -50,6 +50,9 @@ const getDefaultInitialSettings = (): DeadlineSettings => ({
   repeatDaysOfWeek: undefined,
   repeatEnds: undefined,
   isExcludeHolidays: false,
+  customIntervalValue: 1,
+  customIntervalUnit: 'days',
+
 
   periodStartDate: undefined,
   periodEndDate: undefined,
@@ -63,10 +66,12 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
   initialSettings,
 }) => {
   const { colorScheme, subColor } = useAppTheme();
+  const isDark = colorScheme === 'dark';
   const { fontSizeKey } = useContext(FontSizeContext);
-  const styles = useMemo(() => createDeadlineModalStyles(colorScheme === 'dark', subColor, fontSizeKey), [colorScheme, subColor, fontSizeKey]);
+  const layout = useWindowDimensions(); // ★ useWindowDimensions をここで呼び出す
+  const styles = useMemo(() => createDeadlineModalStyles(isDark, subColor, fontSizeKey, layout.height), [isDark, subColor, fontSizeKey, layout.height]); // ★ layout.height を渡す
   const { t } = useTranslation();
-  const layout = useWindowDimensions();
+
 
   const [activeTabIndex, setActiveTabIndex] = useState(0);
   const [settings, setSettings] = useState<DeadlineSettings>(
@@ -94,6 +99,9 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
             setActiveTabIndex(0);
         }
       });
+    } else {
+        setValidationErrorModalVisible(false);
+        setValidationErrorMessage('');
     }
   }, [visible, initialSettings]);
 
@@ -107,43 +115,47 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
     setSettings(prev => ({ ...prev, ...newSettings }));
   }, []);
 
+  const showErrorAlert = useCallback((message: string) => {
+    setValidationErrorMessage(message);
+    setValidationErrorModalVisible(true);
+  }, []);
+
   const handleSave = useCallback(() => {
     if (activeTabIndex === 0) {
         if (settings.isTimeEnabled && settings.time && !settings.date) {
-            setValidationErrorMessage(t('deadline_modal.date_missing_for_time_alert_message'));
-            setValidationErrorModalVisible(true);
+            showErrorAlert(t('deadline_modal.date_missing_for_time_alert_message'));
             return;
         }
     } else if (activeTabIndex === 1 && settings.repeatFrequency) {
         if (!settings.repeatStartDate) {
-            setValidationErrorMessage(t('deadline_modal.repeat_start_date_missing_alert_message'));
-            setValidationErrorModalVisible(true);
+            showErrorAlert(t('deadline_modal.repeat_start_date_missing_alert_message'));
             return;
         }
         if (settings.repeatEnds?.date && settings.repeatStartDate && settings.repeatStartDate > settings.repeatEnds.date) {
-            setValidationErrorMessage(t('deadline_modal.repeat_start_must_be_before_end_alert_message'));
-            setValidationErrorModalVisible(true);
+            showErrorAlert(t('deadline_modal.repeat_start_must_be_before_end_alert_message'));
             return;
         }
         if (settings.repeatFrequency === 'weekly' && (!settings.repeatDaysOfWeek || Object.values(settings.repeatDaysOfWeek).every(day => !day))) {
-            setValidationErrorMessage(t('deadline_modal.weekly_day_missing_alert_message'));
-            setValidationErrorModalVisible(true);
+            showErrorAlert(t('deadline_modal.weekly_day_missing_alert_message'));
             return;
+        }
+        if (settings.repeatFrequency === 'custom') {
+            if (!settings.customIntervalValue || settings.customIntervalValue <= 0 || !settings.customIntervalUnit || !Number.isInteger(settings.customIntervalValue)) {
+                showErrorAlert(t('deadline_modal.error_invalid_interval_value'));
+                return;
+            }
         }
     } else if (activeTabIndex === 2) {
       if (settings.periodStartDate && !settings.periodEndDate) {
-        setValidationErrorMessage(t('deadline_modal.period_end_date_missing_alert_message'));
-        setValidationErrorModalVisible(true);
+        showErrorAlert(t('deadline_modal.period_end_date_missing_alert_message'));
         return;
       }
       if (!settings.periodStartDate && settings.periodEndDate) {
-         setValidationErrorMessage(t('deadline_modal.period_start_date_missing_alert_message'));
-         setValidationErrorModalVisible(true);
+         showErrorAlert(t('deadline_modal.period_start_date_missing_alert_message'));
          return;
       }
       if (settings.periodStartDate && settings.periodEndDate && settings.periodStartDate > settings.periodEndDate) {
-        setValidationErrorMessage(t('deadline_modal.period_start_must_be_before_end_alert_message'));
-        setValidationErrorModalVisible(true);
+        showErrorAlert(t('deadline_modal.period_start_must_be_before_end_alert_message'));
         return;
       }
     }
@@ -158,6 +170,9 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
                 date: settings.date,
                 time: settings.isTimeEnabled ? settings.time : undefined,
                 isTimeEnabled: settings.isTimeEnabled,
+                repeatFrequency: undefined,
+                periodStartDate: undefined,
+                periodEndDate: undefined,
             };
         } else {
             finalSettingsOutput = undefined;
@@ -168,12 +183,19 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
                 ...defaultValues,
                 repeatFrequency: settings.repeatFrequency,
                 repeatStartDate: settings.repeatStartDate,
-                repeatDaysOfWeek: settings.repeatDaysOfWeek,
+                repeatDaysOfWeek: settings.repeatFrequency === 'weekly' ? settings.repeatDaysOfWeek : undefined,
                 repeatEnds: settings.repeatEnds,
                 isExcludeHolidays: settings.isExcludeHolidays,
                 taskStartTime: settings.taskStartTime,
                 isTaskStartTimeEnabled: settings.isTaskStartTimeEnabled,
                 taskDuration: settings.taskDuration,
+                customIntervalValue: settings.repeatFrequency === 'custom' ? settings.customIntervalValue : undefined,
+                customIntervalUnit: settings.repeatFrequency === 'custom' ? settings.customIntervalUnit : undefined,
+                date: undefined,
+                isTimeEnabled: false,
+                time: defaultTime,
+                periodStartDate: undefined,
+                periodEndDate: undefined,
             };
         } else {
             finalSettingsOutput = undefined;
@@ -184,6 +206,10 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
                 ...defaultValues,
                 periodStartDate: settings.periodStartDate,
                 periodEndDate: settings.periodEndDate,
+                date: undefined,
+                isTimeEnabled: false,
+                time: defaultTime,
+                repeatFrequency: undefined,
             };
         } else {
              finalSettingsOutput = undefined;
@@ -193,8 +219,9 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
     }
 
     onSave(finalSettingsOutput);
+    // onClose();
 
-  }, [activeTabIndex, settings, onSave, t]);
+  }, [activeTabIndex, settings, onSave, t, showErrorAlert]);
 
   const handleUnsetPress = useCallback(() => {
     setUnsetConfirmVisible(true);
@@ -204,6 +231,7 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
     setUnsetConfirmVisible(false);
     setSettings(getDefaultInitialSettings());
     onSave(undefined);
+    // onClose();
   }, [onSave]);
 
   const handleCancelUnset = useCallback(() => {
@@ -243,11 +271,14 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
         repeatDaysOfWeek: settings.repeatDaysOfWeek,
         isExcludeHolidays: settings.isExcludeHolidays,
         repeatEnds: settings.repeatEnds,
+        customIntervalValue: settings.customIntervalValue,
+        customIntervalUnit: settings.customIntervalUnit,
     },
     updateSettings: (key, value) => {
         updateSettings(key as any, value as any);
     },
     updateFullSettings,
+    showErrorAlert,
   }), [
     styles,
     settings.taskStartTime,
@@ -258,8 +289,11 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
     settings.repeatDaysOfWeek,
     settings.isExcludeHolidays,
     settings.repeatEnds,
+    settings.customIntervalValue,
+    settings.customIntervalUnit,
     updateSettings,
     updateFullSettings,
+    showErrorAlert,
   ]);
 
   const periodTabProps = useMemo((): SpecificPeriodTabProps => ({

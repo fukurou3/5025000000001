@@ -17,10 +17,13 @@ import type {
     DeadlineTime,
     AmountAndUnit,
     DurationUnit,
+    CustomIntervalUnit,
 } from './types';
 import { DatePickerModal } from './DatePickerModal';
 import { TimePickerModal } from './TimePickerModal';
 import { DurationPickerModal } from './DurationPickerModal';
+import { CustomIntervalModal } from './CustomIntervalModal';
+
 
 const todayString = CalendarUtils.getCalendarDateString(new Date());
 
@@ -53,6 +56,23 @@ const formatDurationToDisplay = (duration: AmountAndUnit | undefined, t: (key: s
     return `${duration.amount}${unitStr}`;
 };
 
+const formatCustomIntervalToDisplay = (
+    value: number | undefined,
+    unit: CustomIntervalUnit | undefined,
+    t: (key: string, options?: any) => string
+): string => {
+    if (value === undefined || unit === undefined || value <=0) {
+        return t('deadline_modal.interval_not_set');
+    }
+    if (unit === 'hours') {
+        return t('deadline_modal.every_x_hours', { count: value });
+    }
+    if (unit === 'days') {
+        return t('deadline_modal.every_x_days', { count: value });
+    }
+    return t('deadline_modal.interval_not_set');
+};
+
 
 const frequencyOptions: { labelKey: Extract<DeadlineModalTranslationKey, 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom'>; value: RepeatFrequency }[] = [
   { labelKey: 'daily', value: 'daily' },
@@ -73,7 +93,7 @@ const weekdayKeys: { key: Extract<CommonTranslationKey, 'sun_short' | 'mon_short
 ];
 
 
-const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, updateSettings, updateFullSettings }) => {
+const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, updateSettings, updateFullSettings, showErrorAlert }) => {
   const { colorScheme, subColor } = useAppTheme();
   const isDark = colorScheme === 'dark';
   const { t, i18n } = useTranslation();
@@ -84,6 +104,8 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
   const [isRepeatEndDatePickerVisible, setRepeatEndDatePickerVisible] = useState(false);
   const [isTaskStartTimePickerVisible, setTaskStartTimePickerVisible] = useState(false);
   const [isDurationPickerVisible, setDurationPickerVisible] = useState(false);
+  const [isCustomIntervalModalVisible, setCustomIntervalModalVisible] = useState(false);
+
 
   const currentFrequency = settings.repeatFrequency;
   const currentRepeatStartDate = settings.repeatStartDate;
@@ -93,6 +115,9 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
   const currentDaysOfWeek = settings.repeatDaysOfWeek ?? weekdayKeys.reduce((acc, curr) => ({ ...acc, [curr.dayIndex]: false }), {});
   const currentExcludeHolidays = settings.isExcludeHolidays ?? false;
   const currentRepeatEndsDate = settings.repeatEnds?.date;
+  const currentCustomIntervalValue = settings.customIntervalValue;
+  const currentCustomIntervalUnit = settings.customIntervalUnit;
+
 
   const switchTrackColorTrue = isDark ? '#30D158' : '#34C759';
   const switchTrackColorFalse = isDark ? '#2C2C2E' : '#E9E9EA';
@@ -120,10 +145,23 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
         newSettingsUpdate.isTaskStartTimeEnabled = false;
         newSettingsUpdate.taskStartTime = undefined;
         newSettingsUpdate.taskDuration = undefined;
+        newSettingsUpdate.customIntervalValue = undefined;
+        newSettingsUpdate.customIntervalUnit = undefined;
     }
+
+    if (freq !== 'custom') {
+        newSettingsUpdate.customIntervalValue = undefined;
+        newSettingsUpdate.customIntervalUnit = undefined;
+    } else {
+        if (!currentCustomIntervalValue || !currentCustomIntervalUnit) {
+            newSettingsUpdate.customIntervalValue = 1;
+            newSettingsUpdate.customIntervalUnit = 'days';
+        }
+    }
+
     updateFullSettings(newSettingsUpdate);
     setFrequencyPickerVisible(false);
-  }, [updateFullSettings, settings.repeatDaysOfWeek, currentIsTaskStartTimeEnabled, currentTaskStartTime]);
+  }, [updateFullSettings, settings.repeatDaysOfWeek, currentIsTaskStartTimeEnabled, currentTaskStartTime, currentCustomIntervalValue, currentCustomIntervalUnit]);
 
   const toggleWeekday = useCallback((dayIndex: number) => {
     const currentSelection = settings.repeatDaysOfWeek || {};
@@ -157,11 +195,14 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
         setDurationPickerVisible(true);
     }
   }, [currentIsTaskStartTimeEnabled]);
+  const handleCustomIntervalModalPress = useCallback(() => setCustomIntervalModalVisible(true), []);
+
 
   const handleRepeatStartDatePickerClose = useCallback(() => setRepeatStartDatePickerVisible(false), []);
   const handleRepeatEndDatePickerClose = useCallback(() => setRepeatEndDatePickerVisible(false), []);
   const handleTaskStartTimePickerClose = useCallback(() => setTaskStartTimePickerVisible(false), []);
   const handleDurationPickerClose = useCallback(() => setDurationPickerVisible(false), []);
+  const handleCustomIntervalModalClose = useCallback(() => setCustomIntervalModalVisible(false), []);
 
 
   const handleRepeatStartDateConfirm = useCallback((newDate: string) => {
@@ -203,6 +244,11 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
     setDurationPickerVisible(false);
   }, [updateSettings]);
 
+  const handleCustomIntervalConfirm = useCallback((value: number, unit: CustomIntervalUnit) => {
+    updateFullSettings({ customIntervalValue: value, customIntervalUnit: unit });
+    setCustomIntervalModalVisible(false);
+  }, [updateFullSettings]);
+
 
   const displayFrequency = useMemo(() => {
     if (!currentFrequency) return t('common.select');
@@ -234,6 +280,11 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
   const displayRepeatEndDate = useMemo(() => {
     return formatDateToDisplay(currentRepeatEndsDate, t, t('common.not_set'));
   }, [currentRepeatEndsDate, t]);
+
+  const displayCustomInterval = useMemo(() => {
+    return formatCustomIntervalToDisplay(currentCustomIntervalValue, currentCustomIntervalUnit, t);
+  }, [currentCustomIntervalValue, currentCustomIntervalUnit, t]);
+
 
   const labelFontSize = typeof styles.label?.fontSize === 'number' ? styles.label.fontSize : 16;
   const mutedTextColor = isDark ? '#A0A0A0' : '#555555';
@@ -273,6 +324,19 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
             <Ionicons name="chevron-forward" size={labelFontSize + 2} color={mutedTextColor} />
         </View>
       </TouchableOpacity>
+
+      {currentFrequency === 'custom' && (
+        <TouchableOpacity onPress={handleCustomIntervalModalPress} style={styles.settingRow}>
+          <Text style={styles.label}>{t('deadline_modal.custom_interval')}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={[styles.pickerText, { marginRight: 4 }]}>
+              {displayCustomInterval}
+            </Text>
+            <Ionicons name="chevron-forward" size={labelFontSize + 2} color={mutedTextColor} />
+          </View>
+        </TouchableOpacity>
+      )}
+
 
       {currentFrequency && (
         <>
@@ -382,7 +446,7 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
             </>
           )}
 
-          { (currentFrequency === 'monthly' || currentFrequency === 'yearly' || currentFrequency === 'custom') && (
+          { (currentFrequency === 'monthly' || currentFrequency === 'yearly') && (
             <View style={{ paddingHorizontal: 16, paddingVertical:10, backgroundColor: (styles.settingRow as ViewStyle)?.backgroundColor }}>
                 <Text style={{color: mutedTextColor, fontSize: labelFontSize-2}}>
                     {t(`deadline_modal.${currentFrequency}` as const)} {t('common.settings_not_implemented')}
@@ -446,6 +510,15 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
         onClear={handleRepeatEndDateClear}
         clearButtonText={t('common.clear_date')}
       />
+      <CustomIntervalModal
+        visible={isCustomIntervalModalVisible}
+        initialValue={currentCustomIntervalValue}
+        initialUnit={currentCustomIntervalUnit}
+        onClose={handleCustomIntervalModalClose}
+        onConfirm={handleCustomIntervalConfirm}
+        styles={styles}
+        showErrorAlert={showErrorAlert}
+      />
     </ScrollView>
   );
 };
@@ -458,7 +531,8 @@ const areRepeatTabPropsEqual = (
         prevProps.styles === nextProps.styles &&
         isEqual(prevProps.settings, nextProps.settings) &&
         prevProps.updateSettings === nextProps.updateSettings &&
-        prevProps.updateFullSettings === nextProps.updateFullSettings
+        prevProps.updateFullSettings === nextProps.updateFullSettings &&
+        prevProps.showErrorAlert === nextProps.showErrorAlert
     );
 };
 

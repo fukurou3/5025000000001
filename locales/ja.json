@@ -66,17 +66,17 @@
     "to": "～",
     "unset": "設定しない",
     "minutes": "分前",
-    "hours": "時間前",
-    "days": "日前",
+    "hours": "時間",
+    "days": "日",
     "today": "今日",
-    "settings_not_implemented": "の詳細設定は現在実装されていません。",
     "notification_title": "お知らせ",
     "minutes_unit_after": "分",
     "hours_unit_after": "時間",
     "days_unit_after": "日",
     "months_unit_after": "ヶ月",
     "years_unit_after": "年",
-    "clear_duration": "所要時間クリア"
+    "clear_duration": "所要時間クリア",
+    "settings_not_implemented": "この設定は現在利用できません。"
   },
   "add_task": {
     "title": "タスク追加",
@@ -286,14 +286,21 @@
     "select_start_date": "開始日を選択",
     "select_end_date": "終了日を選択",
     "unset_confirm_message": "タスクの期限が設定されません。本当によろしいですか？",
-    "section_task_addition": "タスク追加",
-    "section_repeat_settings": "繰り返し 有効期間",
+    "section_task_addition": "タスク追加設定",
+    "section_repeat_settings": "繰り返し期間設定",
     "date_label_header": "日付",
     "time_label_header": "時刻",
     "task_duration_label": "所要時間",
     "set_task_duration_title": "所要時間設定",
     "date_missing_for_time_alert_message": "時刻を設定する場合は日付も選択してください。",
     "weekly_day_missing_alert_message": "繰り返す曜日を少なくとも1つ選択してください。",
-    "period_start_must_be_before_end_alert_message": "期間の開始日は終了日より前に設定してください。"
+    "period_start_must_be_before_end_alert_message": "期間の開始日は終了日より前に設定してください。",
+    "custom_interval": "間隔設定",
+    "set_custom_interval": "間隔を設定",
+    "enter_interval_value": "数値を入力",
+    "select_interval_unit": "単位を選択",
+    "error_invalid_interval_value": "1以上の半角整数で入力してください。",
+    "interval_not_set": "未設定",
+    "every_x_hours": "{{count}}時間ごと"
   }
 }
