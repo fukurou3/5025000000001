@@ -32,7 +32,7 @@ const DateSelectionTabMemo: React.FC<SpecificDateSelectionTabProps> = ({
   isTimeEnabled,
   updateSettings,
 }) => {
-  const { colorScheme } = useAppTheme(); // subColor はここでは不要に
+  const { colorScheme } = useAppTheme();
   const isDark = colorScheme === 'dark';
   const { t } = useTranslation();
 
@@ -88,39 +88,32 @@ const DateSelectionTabMemo: React.FC<SpecificDateSelectionTabProps> = ({
     if (isTimeEnabled && selectedTime) {
       return formatTimeToDisplay(selectedTime, t);
     }
-    // 時刻指定が無効、または時刻が未選択の場合は「選択」と表示
     return t('common.select', '選択');
   }, [isTimeEnabled, selectedTime, t]);
 
-  // label の fontSize は styles.label から取得される
   const labelFontSize = typeof styles.label.fontSize === 'number' ? styles.label.fontSize : 16;
-  // pickerText の color は styles.pickerText.color から取得される (baseTextColor)
-  // 未選択時のグレーアウト用の色は styles.ts で mutedTextColorとして定義可能 (ここでは使用しない)
-  const mutedTextColor = isDark ? '#A0A0A0' : '#555555'; // アイコンの色などには引き続き使用
+  const mutedTextColor = isDark ? '#A0A0A0' : '#555555';
 
   return (
     <ScrollView style={styles.tabContentContainer} contentContainerStyle={{ paddingBottom: 20 }}>
       <TouchableOpacity onPress={handleDateSectionPress} style={styles.settingRow}>
-        {/* ラベルは styles.label でユーザーカラーとfontWeight: '600' が適用される */}
         <Text style={styles.label}>{t('deadline_modal.specify_date_label', '日付')}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          {/* pickerText の color は常に styles.pickerText.color (baseTextColor) を使用 */}
           <Text style={[styles.pickerText, { marginRight: 4 }]}>
             {displayDate}
           </Text>
           <Ionicons
             name={"chevron-forward"}
-            size={labelFontSize + 2} // アイコンサイズはラベルのフォントサイズに連動
-            color={mutedTextColor} // アイコンの色は未選択時などに使う色
+            size={labelFontSize + 2}
+            color={mutedTextColor}
           />
         </View>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={handleTimeSectionPress} style={styles.timePickerToggleContainer}>
-        {/* ラベルは styles.label でユーザーカラーとfontWeight: '600' が適用される */}
+      <TouchableOpacity onPress={handleTimeSectionPress} style={styles.settingRow}>
+        {/* timePickerToggleContainer から settingRow に変更し、区切り線は styles.settingRow の定義に依存 */}
         <Text style={styles.label}>{t('deadline_modal.specify_time', '時刻を指定')}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          {/* pickerText の color は常に styles.pickerText.color (baseTextColor) を使用 */}
           <Text style={[styles.pickerText, { marginRight: 4 }]}>
             {displayTime}
           </Text>

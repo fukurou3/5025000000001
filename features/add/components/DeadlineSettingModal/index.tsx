@@ -4,8 +4,9 @@ import React, { useState, useEffect, useCallback, useContext, useMemo } from 're
 import { View, TouchableOpacity, Text, useWindowDimensions, Platform, InteractionManager } from 'react-native';
 import Modal from 'react-native-modal';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { TabView, SceneRendererProps, TabBarProps } from 'react-native-tab-view'; // TabBar を削除
+import { TabView, SceneRendererProps, TabBarProps } from 'react-native-tab-view';
 import { useTranslation } from 'react-i18next';
+import { CalendarUtils } from 'react-native-calendars';
 
 import { useAppTheme } from '@/hooks/ThemeContext';
 import { FontSizeContext } from '@/context/FontSizeContext';
@@ -15,7 +16,8 @@ import type {
     DeadlineRoute,
     SpecificDateSelectionTabProps,
     SpecificRepeatTabProps,
-    SpecificPeriodTabProps
+    SpecificPeriodTabProps,
+    AmountAndUnit, // ★ 追加
 } from './types';
 import { createDeadlineModalStyles } from './styles';
 import { DeadlineModalHeader } from './DeadlineModalHeader';
@@ -32,8 +34,29 @@ interface DeadlineSettingModalProps {
 }
 
 const defaultTime: DeadlineTime = { hour: 9, minute: 0 };
+const todayString = CalendarUtils.getCalendarDateString(new Date());
 const ANIMATION_TIMING = 250;
 const BACKDROP_OPACITY = 0.4;
+
+const getDefaultInitialSettings = (): DeadlineSettings => ({
+  date: undefined,
+  isTimeEnabled: false,
+  time: defaultTime,
+
+  taskStartTime: defaultTime,
+  isTaskStartTimeEnabled: false,
+  taskDuration: undefined, // ★ 初期値は undefined (期限なし)
+
+  repeatFrequency: undefined,
+  repeatStartDate: todayString,
+  repeatDaysOfWeek: undefined,
+  repeatEnds: undefined,
+  isExcludeHolidays: false,
+
+  periodStartDate: undefined,
+  periodEndDate: undefined,
+});
+
 
 export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
   visible,
@@ -49,7 +72,7 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
 
   const [activeTabIndex, setActiveTabIndex] = useState(0);
   const [settings, setSettings] = useState<DeadlineSettings>(
-    initialSettings || { date: undefined, isTimeEnabled: false, time: defaultTime, repeatFrequency: 'none' }
+    initialSettings ? { ...getDefaultInitialSettings(), ...initialSettings } : getDefaultInitialSettings()
   );
 
   const [isUnsetConfirmVisible, setUnsetConfirmVisible] = useState(false);
@@ -60,7 +83,9 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
   useEffect(() => {
     if (visible) {
       InteractionManager.runAfterInteractions(() => {
-        setSettings(initialSettings || { date: undefined, isTimeEnabled: false, time: defaultTime, repeatFrequency: 'none' });
+        setSettings(
+          initialSettings ? { ...getDefaultInitialSettings(), ...initialSettings } : getDefaultInitialSettings()
+        );
       });
     }
   }, [visible, initialSettings]);
@@ -76,9 +101,22 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
   }, []);
 
   const handleSave = useCallback(() => {
+    if (activeTabIndex === 1 && settings.repeatFrequency) {
+        if (!settings.repeatStartDate) {
+            setValidationErrorMessage(t('deadline_modal.repeat_start_date_missing_alert_message', '繰り返しの開始日が設定されていません。'));
+            setValidationErrorModalVisible(true);
+            return;
+        }
+        if (settings.repeatEnds?.date && settings.repeatStartDate > settings.repeatEnds.date) {
+            setValidationErrorMessage(t('deadline_modal.repeat_start_must_be_before_end_alert_message', '繰り返しの開始日は、終了日より前の日付である必要があります。'));
+            setValidationErrorModalVisible(true);
+            return;
+        }
+    }
+
     if (activeTabIndex === 2) {
       if (!settings.periodStartDate && !settings.periodEndDate) {
-        // No validation error here, proceed as header will show "not set"
+        // 両方未設定はOK
       } else if (!settings.periodStartDate && settings.periodEndDate) {
         setValidationErrorMessage(t('deadline_modal.period_start_date_missing_alert_message', '開始日が未設定です。'));
         setValidationErrorModalVisible(true);
@@ -86,11 +124,24 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
       }
     }
     
-    if (activeTabIndex === 2 && settings.periodStartDate && !settings.periodEndDate) {
-        onSave({ ...settings, date: settings.periodStartDate, periodEndDate: settings.periodStartDate });
-    } else {
-        onSave(settings);
+    let finalSettings = { ...settings };
+
+    if (!finalSettings.repeatFrequency) {
+        finalSettings.taskStartTime = undefined;
+        finalSettings.isTaskStartTimeEnabled = undefined;
+        finalSettings.taskDuration = undefined; // ★ 繰り返し頻度がない場合は期限もクリア
+        finalSettings.repeatStartDate = undefined;
+        finalSettings.repeatDaysOfWeek = undefined;
+        finalSettings.repeatEnds = undefined;
+        finalSettings.isExcludeHolidays = undefined;
     }
+    
+    if (activeTabIndex === 2 && finalSettings.periodStartDate && !finalSettings.periodEndDate) {
+        finalSettings = { ...finalSettings, date: finalSettings.periodStartDate, periodEndDate: finalSettings.periodStartDate };
+    }
+    
+    onSave(finalSettings);
+
   }, [activeTabIndex, settings, onSave, t]);
 
   const handleUnsetPress = useCallback(() => {
@@ -131,8 +182,11 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
   const repeatTabProps = useMemo((): SpecificRepeatTabProps => ({
     styles,
     settings: {
+        taskStartTime: settings.taskStartTime,
+        isTaskStartTimeEnabled: settings.isTaskStartTimeEnabled,
+        taskDuration: settings.taskDuration, // ★ 追加
         repeatFrequency: settings.repeatFrequency,
-        repeatInterval: settings.repeatInterval,
+        repeatStartDate: settings.repeatStartDate,
         repeatDaysOfWeek: settings.repeatDaysOfWeek,
         isExcludeHolidays: settings.isExcludeHolidays,
         repeatEnds: settings.repeatEnds,
@@ -140,11 +194,14 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
     updateSettings: (key, value) => {
         updateSettings(key as any, value as any);
     },
-    updateFullSettings: (newPartialSettings) => updateFullSettings(newPartialSettings),
+    updateFullSettings,
   }), [
     styles,
+    settings.taskStartTime,
+    settings.isTaskStartTimeEnabled,
+    settings.taskDuration, // ★ 追加
     settings.repeatFrequency,
-    settings.repeatInterval,
+    settings.repeatStartDate,
     settings.repeatDaysOfWeek,
     settings.isExcludeHolidays,
     settings.repeatEnds,
@@ -189,7 +246,10 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
                   styles.tabItem,
                   isActive ? styles.tabItemActive : styles.tabItemInactive,
                 ]}
-                onPress={() => props.jumpTo(route.key as any)}
+                onPress={() => {
+                  setActiveTabIndex(i); // setActiveTabIndex を使用
+                  // props.jumpTo(route.key as any) は TabView 内部で処理される
+                }}
                 activeOpacity={0.7}
               >
                 <Text
@@ -206,7 +266,7 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
         </View>
       </View>
     ),
-    [styles, subColor, colorScheme]
+    [styles, setActiveTabIndex] // setActiveTabIndex を依存配列に追加
   );
 
   return (
@@ -288,7 +348,7 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
         message={validationErrorMessage}
         okText={t('common.ok')}
         onConfirm={handleCloseValidationErrorModal}
-        onCancel={handleCloseValidationErrorModal}
+        onCancel={handleCloseValidationErrorModal} // OKと同じ動作で閉じる
       />
     </>
   );

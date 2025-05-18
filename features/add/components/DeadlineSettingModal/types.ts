@@ -14,23 +14,36 @@ export interface DatePickerData {
 }
 
 export interface RepeatEnds {
-  type: 'never' | 'on_date' | 'after_occurrences';
+  type: 'on_date';
   date?: string;
-  occurrences?: number;
 }
 
-export type RepeatFrequency = 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
+export type RepeatFrequency = 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom';
+
+// 新しい型定義: 期間の単位
+export type DurationUnit = 'minutes' | 'hours' | 'days' | 'months' | 'years';
+
+// 新しい型定義: 期間の量と単位
+export interface AmountAndUnit {
+  amount: number;
+  unit: DurationUnit;
+}
 
 export interface DeadlineSettings {
   date?: string;
   time?: DeadlineTime;
   isTimeEnabled?: boolean;
+
+  taskStartTime?: DeadlineTime;
+  isTaskStartTimeEnabled?: boolean;
+  taskDuration?: AmountAndUnit; // ★ 新しいプロパティ: タスクの所要時間
+
   repeatFrequency?: RepeatFrequency;
-  repeatInterval?: number;
+  repeatStartDate?: string;
   repeatDaysOfWeek?: { [key: number]: boolean };
-  repeatOnDate?: { day?: number; month?: number; weekOfMonth?: number; dayOfWeek?: number };
   repeatEnds?: RepeatEnds;
   isExcludeHolidays?: boolean;
+
   periodStartDate?: string;
   periodEndDate?: string;
 }
@@ -52,35 +65,29 @@ export interface DeadlineModalStyles {
   buttonText: TextStyle;
   saveButton: ViewStyle;
   saveButtonText: TextStyle;
-  // --- TabBar Styles Start (ここから追加/修正) ---
-  tabBarContainer: ViewStyle; // TabBar全体を囲むコンテナ
-  tabBar: ViewStyle; // TabBar自体のスタイル (react-native-tab-viewのTabBar)
-  tabItem: ViewStyle; // 個々のタブボタンのスタイル
-  tabItemActive: ViewStyle; // アクティブなタブボタンのスタイル
-  tabItemInactive: ViewStyle; // 非アクティブなタブボタンのスタイル
-  tabLabel: TextStyle; // タブラベルの基本スタイル
-  tabLabelActive: TextStyle; // アクティブなタブのテキスト色
-  tabLabelInactive: TextStyle; // 非アクティブなタブのテキスト色
-  tabIndicator: ViewStyle; // インジケータースタイル
-  // --- TabBar Styles End ---
+  tabBarContainer: ViewStyle;
+  tabBar: ViewStyle;
+  tabItem: ViewStyle;
+  tabItemActive: ViewStyle;
+  tabItemInactive: ViewStyle;
+  tabLabel: TextStyle;
+  tabLabelActive: TextStyle;
+  tabLabelInactive: TextStyle;
+  tabIndicator: ViewStyle;
   tabContentContainer: ViewStyle;
   label: TextStyle;
   settingRow: ViewStyle;
+  settingRowNoBottomBorder?: ViewStyle;
   timePickerToggleContainer: ViewStyle;
   timePickerContainer: ViewStyle;
   wheelPickerWrapper: ViewStyle;
   timeSeparator: TextStyle;
   frequencyPickerContainer: ViewStyle;
-  intervalContainer: ViewStyle;
-  intervalInput: ViewStyle;
-  intervalText: TextStyle;
-  weekDaysContainer: ViewStyle;
+  weekdaySelectorContainer?: ViewStyle;
   daySelector: ViewStyle;
   daySelectorSelected: ViewStyle;
   daySelectorText: TextStyle;
   daySelectorTextSelected: TextStyle;
-  repeatEndOption: ViewStyle;
-  repeatEndOptionSelected: ViewStyle;
   repeatEndText: TextStyle;
   calendarOverlay: ViewStyle;
   calendarInModalContainer: ViewStyle;
@@ -93,12 +100,23 @@ export interface DeadlineModalStyles {
   pickerText: TextStyle;
   textInput: ViewStyle;
   modal: ViewStyle;
-
   timePickerModalContainer?: ViewStyle;
   timePickerContentContainer?: ViewStyle;
   pickerRowSeparator?: ViewStyle;
   timePickerModalFooter?: ViewStyle;
   timePickerModalButton?: ViewStyle;
+  sectionTitle?: TextStyle;
+  sectionHeaderText?: TextStyle;
+  settingRowLabelNormalColor?: TextStyle;
+  exclusionSettingRow?: ViewStyle;
+  exclusionValueText?: TextStyle;
+  switchContainer?: ViewStyle;
+  modalContent?: ViewStyle;
+  modalOptionButton?: ViewStyle;
+  modalOptionText?: TextStyle;
+  pickerContainer?: ViewStyle;
+  pickerColumn?: ViewStyle;
+  pickerLabel?: TextStyle;
 }
 
 
@@ -117,8 +135,11 @@ export interface SpecificRepeatTabProps {
   styles: DeadlineModalStyles;
   settings: Pick<
     DeadlineSettings,
+    | 'taskStartTime'
+    | 'isTaskStartTimeEnabled'
+    | 'taskDuration' // ★ 追加
     | 'repeatFrequency'
-    | 'repeatInterval'
+    | 'repeatStartDate'
     | 'repeatDaysOfWeek'
     | 'isExcludeHolidays'
     | 'repeatEnds'
@@ -126,8 +147,11 @@ export interface SpecificRepeatTabProps {
   updateSettings: <
     K extends keyof Pick<
       DeadlineSettings,
+      | 'taskStartTime'
+      | 'isTaskStartTimeEnabled'
+      | 'taskDuration' // ★ 追加
       | 'repeatFrequency'
-      | 'repeatInterval'
+      | 'repeatStartDate'
       | 'repeatDaysOfWeek'
       | 'isExcludeHolidays'
       | 'repeatEnds'
@@ -136,8 +160,11 @@ export interface SpecificRepeatTabProps {
     key: K,
     value: Pick<
       DeadlineSettings,
+      | 'taskStartTime'
+      | 'isTaskStartTimeEnabled'
+      | 'taskDuration' // ★ 追加
       | 'repeatFrequency'
-      | 'repeatInterval'
+      | 'repeatStartDate'
       | 'repeatDaysOfWeek'
       | 'isExcludeHolidays'
       | 'repeatEnds'
@@ -147,8 +174,11 @@ export interface SpecificRepeatTabProps {
     newSettings: Partial<
       Pick<
         DeadlineSettings,
+        | 'taskStartTime'
+        | 'isTaskStartTimeEnabled'
+        | 'taskDuration' // ★ 追加
         | 'repeatFrequency'
-        | 'repeatInterval'
+        | 'repeatStartDate'
         | 'repeatDaysOfWeek'
         | 'isExcludeHolidays'
         | 'repeatEnds'
@@ -167,6 +197,11 @@ export interface SpecificPeriodTabProps {
   ) => void;
 }
 
+// WheelPickerModal (DurationPickerModal) 用の型
+export interface DurationOption {
+  label: string;
+  value: number;
+}
 
 export type AmPm = 'AM' | 'PM';
 
@@ -193,22 +228,22 @@ export const isHoliday = (dateString: string): boolean => {
 
 
 export type DeadlineModalTranslationKey =
-  | 'no_repeat'
   | 'daily'
   | 'weekly'
   | 'monthly'
   | 'yearly'
-  | 'every_x_days'
-  | 'every_x_weeks'
-  | 'ends_never'
+  | 'custom'
   | 'ends_on_date'
-  | 'ends_after_occurrences'
   | 'repeat_frequency'
-  | 'interval'
+  | 'task_start_time_label'
+  | 'task_duration_label' // ★ 追加: タスクの期限ラベル
+  | 'set_task_duration_title' // ★ 追加: 期間ピッカーのタイトル
   | 'days_of_week'
+  | 'weekdays'
   | 'exclude_holidays'
+  | 'exclude_holidays_jp_only'
   | 'end_repeat_title'
-  | 'occurrences_suffix'
+  | 'repeat_start_date_label'
   | 'specify_time'
   | 'specify_date'
   | 'specify_date_label'
@@ -231,28 +266,39 @@ export type DeadlineModalTranslationKey =
   | 'period_date_missing_alert_message'
   | 'period_start_date_missing_alert_message'
   | 'period_end_date_missing_alert_message'
+  | 'repeat_start_date_missing_alert_message'
+  | 'repeat_start_must_be_before_end_alert_message'
   | 'date_label_header'
-  | 'time_label_header';
-
+  | 'time_label_header'
+  | 'section_task_addition'
+  | 'section_repeat_settings';
 
 export type CommonTranslationKey =
   | 'am'
   | 'pm'
   | 'sun_short' | 'mon_short' | 'tue_short' | 'wed_short' | 'thu_short' | 'fri_short' | 'sat_short'
+  | 'sunday' | 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday'
   | 'jan_short' | 'feb_short' | 'mar_short' | 'apr_short' | 'may_short' | 'jun_short'
   | 'jul_short' | 'aug_short' | 'sep_short' | 'oct_short' | 'nov_short' | 'dec_short'
-  | 'year_unit' | 'month_unit' | 'day_unit'
-  | 'none'
+  | 'year_unit' | 'month_unit' | 'day_unit' | 'hour_unit' | 'minute_unit'
+  | 'years_unit_after' // ★ 追加
+  | 'months_unit_after' // ★ 追加
+  | 'days_unit_after' // ★ 追加
+  | 'hours_unit_after' // ★ 追加
+  | 'minutes_unit_after' // ★ 追加
   | 'clear'
   | 'clear_date'
   | 'clear_start_date'
   | 'clear_end_date'
+  | 'clear_duration' // ★ 追加: 「期限なし」ボタン用
   | 'ok'
   | 'save'
   | 'cancel'
   | 'select'
+  | 'not_set'
+  | 'today'
+  | 'settings_not_implemented'
   | 'year_month_format'
   | 'all_day'
   | 'to'
-  | 'unset'
-  | 'not_set';
+  | 'unset';

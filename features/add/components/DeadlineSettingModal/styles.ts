@@ -1,5 +1,5 @@
 // app/features/add/components/DeadlineSettingModal/styles.ts
-import { StyleSheet, Platform, TextStyle } from 'react-native';
+import { StyleSheet, Platform, TextStyle, ViewStyle } from 'react-native';
 import type { DeadlineModalStyles } from './types';
 import { fontSizes as appFontSizes } from '@/constants/fontSizes';
 import type { FontSizeKey } from '@/context/FontSizeContext';
@@ -11,23 +11,30 @@ export const createDeadlineModalStyles = (
 ): DeadlineModalStyles => {
   const fontSizes = appFontSizes;
   const baseTextColor = isDark ? '#FFFFFF' : '#000000';
-  const backgroundColor = isDark ? '#1C1C1E' : '#ededed'; // タブバーの背景色として使用
-  const contentBackgroundColor = isDark ? '#000000' : '#FFFFFF'; // アクティブタブの背景色やモーダル全体の背景
-  const iosModalContentBackgroundColor = isDark ? '#000000' : '#FFFFFF';
-  const iosSeparatorColor = isDark ? '#000000' : '#FFFFFF';
+  const backgroundColor = isDark ? '#1C1C1E' : '#FFFFFF';
+  const contentBackgroundColor = isDark ? '#000000' : '#FFFFFF';
+  const iosSeparatorColor = isDark ? '#3A3A3C' : '#C6C6C8';
 
   const baseButtonFontSize = fontSizes[fsKey];
   const headerBaseFontSize = fontSizes[fsKey];
 
-  return StyleSheet.create<DeadlineModalStyles>({
+  // react-native-elements の Switch で使用する色
+  const switchTrackColorTrue = isDark ? '#30D158' : '#34C759'; // ON時のトラック背景色 (緑)
+  const switchTrackColorFalse = isDark ? '#2C2C2E' : '#E9E9EA'; // OFF時のトラック背景色 (薄いグレー)
+  const switchThumbColorValue = '#FFFFFF'; // つまみは常に白
+  // OFF時の枠線として使う色（トラック背景より少し濃いめ）
+  const switchTrackBorderColorFalse = isDark ? '#555557' : '#BDBDC2';
+
+
+  const stylesObject: DeadlineModalStyles = {
     overlay: {
       flex: 1,
       justifyContent: 'flex-end',
       backgroundColor: 'rgba(0,0,0,0.5)',
     },
     container: {
-      height: '65%',
-      backgroundColor: iosModalContentBackgroundColor,
+      height: '70%',
+      backgroundColor: contentBackgroundColor,
       borderTopLeftRadius: 16,
       borderTopRightRadius: 16,
       overflow: 'hidden',
@@ -38,14 +45,14 @@ export const createDeadlineModalStyles = (
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderColor: iosSeparatorColor,
       alignItems: 'center',
-      backgroundColor: iosModalContentBackgroundColor,
+      backgroundColor: contentBackgroundColor,
     },
     headerText: {
-      fontSize: headerBaseFontSize + 3,
+      fontSize: headerBaseFontSize + 2,
       fontWeight: '600',
-      color: subColor,
+      color: baseTextColor,
       textAlign: 'center',
-      lineHeight: headerBaseFontSize + 8,
+      lineHeight: headerBaseFontSize + 7,
     },
     footer: {
       flexDirection: 'row',
@@ -54,7 +61,7 @@ export const createDeadlineModalStyles = (
       paddingBottom: Platform.OS === 'ios' ? 28 : 16,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderColor: iosSeparatorColor,
-      backgroundColor: iosModalContentBackgroundColor,
+      backgroundColor: contentBackgroundColor,
       gap: 8,
     },
     button: {
@@ -84,16 +91,16 @@ export const createDeadlineModalStyles = (
       fontWeight: '600',
       textAlign: 'center',
     },
-    // --- TabBar Styles Start ---
-    tabBarContainer: { // このコンテナは残しつつ、パディングやマージンでタブバーの位置を調整
-      paddingHorizontal: 16, // 画面左右の余白
-      paddingVertical: 8, // 上下の余白
-      backgroundColor: iosModalContentBackgroundColor, // モーダル全体の背景色と同じにする
+    tabBarContainer: {
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      backgroundColor: contentBackgroundColor,
+      borderBottomWidth: 0,
     },
     tabBar: {
       flexDirection: 'row',
       justifyContent: 'space-around',
-      backgroundColor: backgroundColor, // ユーザー指定のグレー背景
+      backgroundColor: isDark? '#1C1C1E' : '#E0E0E0',
       borderRadius: 20,
       padding: 4,
       elevation: 0,
@@ -107,7 +114,7 @@ export const createDeadlineModalStyles = (
       marginHorizontal: 2,
     },
     tabItemActive: {
-      backgroundColor: contentBackgroundColor, // アクティブタブは白または黒の背景
+      backgroundColor: contentBackgroundColor,
     },
     tabItemInactive: {
       backgroundColor: 'transparent',
@@ -122,21 +129,19 @@ export const createDeadlineModalStyles = (
         color: subColor,
     },
     tabLabelInactive: {
-        color: baseTextColor, // 非アクティブ時のテキスト色はベースのテキスト色
+        color: baseTextColor,
     },
     tabIndicator: {
       height: 0,
       backgroundColor: 'transparent',
     },
-    // --- TabBar Styles End ---
     tabContentContainer: {
       flex: 1,
-      backgroundColor: contentBackgroundColor,
+      backgroundColor: backgroundColor,
     },
     label: {
       fontSize: fontSizes[fsKey],
       color: subColor,
-      marginBottom: 0,
       fontWeight: '600',
     },
     settingRow: {
@@ -145,19 +150,26 @@ export const createDeadlineModalStyles = (
       alignItems: 'center',
       paddingHorizontal: 16,
       paddingVertical: 14,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderColor: iosSeparatorColor,
+      borderBottomWidth: 0,
+      backgroundColor: contentBackgroundColor,
     },
+    settingRowNoBottomBorder: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      borderBottomWidth: 0,
+      backgroundColor: contentBackgroundColor,
+    } as ViewStyle,
     timePickerToggleContainer: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
       paddingHorizontal: 16,
-      paddingVertical: 12,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderColor: iosSeparatorColor,
-      marginTop: 8,
+      paddingVertical: 14,
+      borderBottomWidth: 0,
+      backgroundColor: contentBackgroundColor,
     },
     pickerText: {
         fontSize: fontSizes[fsKey],
@@ -171,7 +183,7 @@ export const createDeadlineModalStyles = (
     timePickerModalContainer: {
         width: '100%',
         alignSelf: 'stretch',
-        backgroundColor: iosModalContentBackgroundColor,
+        backgroundColor: contentBackgroundColor,
         borderTopLeftRadius: 16,
         borderTopRightRadius: 16,
         overflow: 'hidden',
@@ -196,6 +208,7 @@ export const createDeadlineModalStyles = (
       fontWeight: (Platform.OS === 'ios' ? '300' : 'normal') as TextStyle['fontWeight'],
       marginHorizontal: Platform.OS === 'ios' ? -3 : -1,
       textAlignVertical: 'center',
+      color: baseTextColor,
     },
     timePickerModalFooter: {
         paddingTop: 10,
@@ -210,36 +223,18 @@ export const createDeadlineModalStyles = (
     },
     frequencyPickerContainer: {
     },
-    intervalContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    intervalInput: {
-      borderWidth: 1,
-      borderColor: iosSeparatorColor,
-      borderRadius: 6,
-      paddingHorizontal: 10,
-      paddingVertical: Platform.OS === 'ios' ? 10 : 6,
-      width: 60,
-      textAlign: 'center',
-      fontSize: fontSizes[fsKey],
-      color: baseTextColor,
-      marginRight: 8,
-    },
-    intervalText: {
-        fontSize: fontSizes[fsKey],
-        color: baseTextColor,
-    },
-    weekDaysContainer: {
+    weekdaySelectorContainer: {
       flexDirection: 'row',
       justifyContent: 'space-around',
-      paddingVertical: 10,
+      paddingVertical: 12,
       paddingHorizontal: 16,
+      backgroundColor: contentBackgroundColor,
+      borderBottomWidth: 0,
     },
     daySelector: {
-      width: 38,
-      height: 38,
-      borderRadius: 19,
+      width: 40,
+      height: 40,
+      borderRadius: 20,
       borderWidth: 1.5,
       borderColor: subColor,
       justifyContent: 'center',
@@ -251,23 +246,11 @@ export const createDeadlineModalStyles = (
     },
     daySelectorText: {
       color: subColor,
-      fontSize: fontSizes[fsKey] - 2,
+      fontSize: fontSizes[fsKey] - (Platform.OS === 'ios' ? 1 : 2),
       fontWeight: '600',
     },
     daySelectorTextSelected: {
       color: isDark ? '#000' : '#FFF',
-    },
-    repeatEndOption: {
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        borderWidth: 1,
-        borderColor: 'transparent',
-        borderRadius: 8,
-        marginBottom: 8,
-    },
-    repeatEndOptionSelected: {
-        borderColor: subColor,
-        backgroundColor: isDark ? subColor + '30' : subColor + '20'
     },
     repeatEndText: {
         fontSize: fontSizes[fsKey],
@@ -296,8 +279,8 @@ export const createDeadlineModalStyles = (
       justifyContent: 'space-evenly',
       paddingVertical: 16,
       paddingHorizontal: 16,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderColor: iosSeparatorColor,
+      borderBottomWidth: 0,
+      backgroundColor: contentBackgroundColor,
     },
     periodButton: {
       paddingVertical: 10,
@@ -320,12 +303,79 @@ export const createDeadlineModalStyles = (
       color: isDark ? '#000' : '#FFF',
     },
     textInput: {
-        fontSize: fontSizes[fsKey],
-        color: baseTextColor,
-        padding: 10,
-        borderWidth: 1,
-        borderColor: iosSeparatorColor,
-        borderRadius: 6,
+    } as ViewStyle,
+    sectionTitle: {
+      fontSize: fontSizes[fsKey] - 2,
+      fontWeight: '500',
+      color: isDark ? '#8E8E93' : '#6D6D72',
+      paddingHorizontal: 16,
+      paddingTop: 24,
+      paddingBottom: 8,
+      backgroundColor: backgroundColor,
     },
-  });
+    sectionHeaderText: {
+      fontSize: fontSizes[fsKey] -1,
+      fontWeight: '600',
+      color: baseTextColor,
+      paddingHorizontal: 16,
+      paddingTop: 20,
+      paddingBottom: 10,
+      backgroundColor: backgroundColor,
+    } as TextStyle,
+    settingRowLabelNormalColor: {
+        color: baseTextColor,
+        fontSize: fontSizes[fsKey],
+        fontWeight: '600',
+    } as TextStyle,
+    exclusionSettingRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      borderBottomWidth: 0,
+      backgroundColor: contentBackgroundColor,
+    },
+    exclusionValueText: {
+      fontSize: fontSizes[fsKey],
+      color: baseTextColor,
+      flexShrink: 1,
+      textAlign: 'right',
+      marginLeft: 8,
+    },
+    modalContent: {
+      backgroundColor: contentBackgroundColor,
+      paddingVertical: 10,
+      paddingHorizontal: 0,
+      borderRadius: 12,
+      width: '90%',
+      maxWidth: 300,
+      maxHeight: '80%',
+      alignSelf: 'center',
+    },
+    modalOptionButton: {
+      paddingVertical: 15,
+      paddingHorizontal: 20,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderColor: iosSeparatorColor,
+    },
+    modalOptionText: {
+      fontSize: fontSizes[fsKey],
+      color: baseTextColor,
+      textAlign: 'center',
+    },
+    pickerContainer: {},
+    pickerColumn: {},
+    pickerLabel: {},
+    // react-native-elements Switch のためのスタイル定義 (もし必要なら)
+    switchContainer: { // スイッチを囲むコンテナ (枠線用)
+      width: 51, // iOS標準の幅
+      height: 31, // iOS標準の高さ
+      borderRadius: 31 / 2,
+      justifyContent: 'center',
+      alignItems: 'center',
+      // 枠線の色は動的に変更するため、ここでは共通スタイルのみ
+    },
+  };
+  return StyleSheet.create(stylesObject as any);
 };

@@ -19,7 +19,7 @@ const PeriodTabMemo: React.FC<SpecificPeriodTabProps> = ({
   periodEndDate,
   updateSettings,
 }) => {
-  const { colorScheme } = useAppTheme(); // subColor はここでは不要に
+  const { colorScheme } = useAppTheme();
   const isDark = colorScheme === 'dark';
   const { t } = useTranslation();
 
@@ -39,18 +39,11 @@ const PeriodTabMemo: React.FC<SpecificPeriodTabProps> = ({
   const handleDateConfirm = useCallback((newDate: string) => {
     if (editingDateType === 'start') {
       updateSettings('periodStartDate', newDate);
-      if (periodEndDate && newDate > periodEndDate) {
-        updateSettings('periodEndDate', undefined);
-      }
     } else if (editingDateType === 'end') {
-      if (periodStartDate && newDate < periodStartDate) {
-        updateSettings('periodEndDate', newDate);
-      } else {
-        updateSettings('periodEndDate', newDate);
-      }
+      updateSettings('periodEndDate', newDate);
     }
     handleDatePickerClose();
-  }, [editingDateType, periodStartDate, periodEndDate, updateSettings, handleDatePickerClose]);
+  }, [editingDateType, updateSettings, handleDatePickerClose]);
 
   const handleDateClear = useCallback(() => {
     if (editingDateType === 'start') {
@@ -75,11 +68,12 @@ const PeriodTabMemo: React.FC<SpecificPeriodTabProps> = ({
 
   return (
     <ScrollView style={styles.tabContentContainer} contentContainerStyle={{ paddingBottom: 20 }}>
-      <TouchableOpacity onPress={() => handleOpenDatePicker('start')} style={styles.settingRow}>
-        {/* ラベルは styles.label でユーザーカラーとfontWeight: '600' が適用される */}
+      <TouchableOpacity
+        onPress={() => handleOpenDatePicker('start')}
+        style={styles.settingRow} // 区切り線なしスタイルを使用
+      >
         <Text style={styles.label}>{t('deadline_modal.start_date', '開始日')}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          {/* pickerText の color は常に styles.pickerText.color (baseTextColor) を使用 */}
           <Text style={[styles.pickerText, { marginRight: 4 }]}>
             {displayStartDate}
           </Text>
@@ -91,11 +85,12 @@ const PeriodTabMemo: React.FC<SpecificPeriodTabProps> = ({
         </View>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => handleOpenDatePicker('end')} style={[styles.settingRow, { borderTopWidth: 0 }]}>
-        {/* ラベルは styles.label でユーザーカラーとfontWeight: '600' が適用される */}
+      <TouchableOpacity
+        onPress={() => handleOpenDatePicker('end')}
+        style={styles.settingRow} // 区切り線なしスタイルを使用
+      >
         <Text style={styles.label}>{t('deadline_modal.end_date', '終了日')}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          {/* pickerText の color は常に styles.pickerText.color (baseTextColor) を使用 */}
           <Text style={[styles.pickerText, { marginRight: 4 }]}>
             {displayEndDate}
           </Text>

@@ -40,6 +40,7 @@ export default function SettingsScreen() {
 
   const COLOR_OPTIONS = [
     '#2196F3',
+    '#0b9c2f',
     '#4CAF50',
     '#FF9800',
     '#9C27B0',
