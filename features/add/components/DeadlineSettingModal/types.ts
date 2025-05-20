@@ -30,9 +30,13 @@ export interface AmountAndUnit {
 }
 
 export interface DeadlineSettings {
-  date?: string;
-  time?: DeadlineTime;
-  isTimeEnabled?: boolean;
+  date?: string; // 単一の日付 or 期間の開始日
+  time?: DeadlineTime; // 単一の時刻 or 期間の開始時刻
+  isTimeEnabled?: boolean; // 単一の時刻有効 or 期間の開始時刻有効
+
+  endDate?: string; // 期間の終了日
+  endTime?: DeadlineTime; // 期間の終了時刻
+  isEndTimeEnabled?: boolean; // 期間の終了時刻有効
 
   taskStartTime?: DeadlineTime;
   isTaskStartTimeEnabled?: boolean;
@@ -46,9 +50,6 @@ export interface DeadlineSettings {
 
   customIntervalValue?: number;
   customIntervalUnit?: CustomIntervalUnit;
-
-  periodStartDate?: string;
-  periodEndDate?: string;
 }
 
 export interface DeadlineRoute {
@@ -124,6 +125,8 @@ export interface DeadlineModalStyles {
   customIntervalModalContainer?: ViewStyle;
   customIntervalPickerContainer?: ViewStyle;
   customIntervalInput?: TextStyle;
+
+  dateSectionSeparator?: ViewStyle;
 }
 
 
@@ -132,10 +135,14 @@ export interface SpecificDateSelectionTabProps {
   selectedDate?: string;
   selectedTime?: DeadlineTime;
   isTimeEnabled?: boolean;
-  updateSettings: <K extends keyof Pick<DeadlineSettings, 'date' | 'time' | 'isTimeEnabled'>>(
+  selectedEndDate?: string;
+  selectedEndTime?: DeadlineTime;
+  isEndTimeEnabled?: boolean;
+  updateSettings: <K extends keyof Pick<DeadlineSettings, 'date' | 'time' | 'isTimeEnabled' | 'endDate' | 'endTime' | 'isEndTimeEnabled'>>(
     key: K,
-    value: Pick<DeadlineSettings, 'date' | 'time' | 'isTimeEnabled'>[K]
+    value: Pick<DeadlineSettings, 'date' | 'time' | 'isTimeEnabled' | 'endDate' | 'endTime' | 'isEndTimeEnabled'>[K]
   ) => void;
+  showErrorAlert: (message: string) => void;
 }
 
 export interface SpecificRepeatTabProps {
@@ -203,16 +210,6 @@ export interface SpecificRepeatTabProps {
   showErrorAlert: (message: string) => void;
 }
 
-export interface SpecificPeriodTabProps {
-  styles: DeadlineModalStyles;
-  periodStartDate?: string;
-  periodEndDate?: string;
-  updateSettings: <K extends keyof Pick<DeadlineSettings, 'periodStartDate' | 'periodEndDate'>>(
-    key: K,
-    value: Pick<DeadlineSettings, 'periodStartDate' | 'periodEndDate'>[K]
-  ) => void;
-}
-
 export interface DurationOption {
   label: string;
   value: number;
@@ -271,12 +268,9 @@ export type DeadlineModalTranslationKey =
   | 'title_display'
   | 'tab_date'
   | 'tab_repeat'
-  | 'tab_period'
   | 'period_start_date_display'
   | 'period_end_date_display'
   | 'unset_confirm_message'
-  | 'period_start_label'
-  | 'period_end_label'
   | 'period_date_missing_alert_title'
   | 'period_date_missing_alert_message'
   | 'period_start_date_missing_alert_message'
@@ -297,7 +291,15 @@ export type DeadlineModalTranslationKey =
   | 'error_invalid_interval_value'
   | 'interval_not_set'
   | 'every_x_hours'
-  | 'every_x_days';
+  | 'every_x_days'
+  | 'start_date_section_title'
+  | 'end_date_section_title'
+  | 'end_date_label'
+  | 'end_time_label'
+  | 'start_date_required_for_end_date'
+  | 'end_date_before_start_date_alert_message'
+  | 'end_time_requires_end_date_alert_message';
+
 
 export type CommonTranslationKey =
   | 'am'

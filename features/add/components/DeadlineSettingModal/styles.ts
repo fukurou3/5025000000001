@@ -13,8 +13,8 @@ export const createDeadlineModalStyles = (
   const fontSizes = appFontSizes;
   const baseTextColor = isDark ? '#FFFFFF' : '#000000';
   const backgroundColor = isDark ? '#1C1C1E' : '#FFFFFF';
-  const contentBackgroundColor = isDark ? '#000000' : '#FFFFFF'; // モーダル内の各行の背景色
-  const iosSeparatorColor = isDark ? '#3A3A3C' : '#b3b3b5'; // 区切り線の色
+  const contentBackgroundColor = isDark ? '#000000' : '#FFFFFF';
+  const iosSeparatorColor = isDark ? '#3A3A3C' : '#b3b3b5';
 
   const baseButtonFontSize = fontSizes[fsKey];
   const headerBaseFontSize = fontSizes[fsKey];
@@ -27,7 +27,7 @@ export const createDeadlineModalStyles = (
     },
     container: {
       height: Math.round(windowHeight * 0.8),
-      backgroundColor: contentBackgroundColor, // 全体の背景ではなく、タブコンテンツの背景に合わせるか、別途指定
+      backgroundColor: contentBackgroundColor,
       borderTopLeftRadius: 16,
       borderTopRightRadius: 16,
       overflow: 'hidden',
@@ -128,24 +128,22 @@ export const createDeadlineModalStyles = (
       height: 0,
       backgroundColor: 'transparent',
     },
-    tabContentContainer: { // 各タブのコンテンツエリア全体の背景
+    tabContentContainer: {
       flex: 1,
-      backgroundColor: backgroundColor, // モーダルの主要背景色
+      backgroundColor: backgroundColor,
     },
     label: {
       fontSize: fontSizes[fsKey],
       color: subColor,
       fontWeight: '600',
     },
-    settingRow: { // 各設定行のスタイル
+    settingRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
       paddingHorizontal: 16,
       paddingVertical: 14,
-      // borderBottomWidth: StyleSheet.hairlineWidth, // ★ 削除 (または 0 に)
-      // borderColor: iosSeparatorColor,             // ★ 削除
-      backgroundColor: contentBackgroundColor, // 各行の背景は白または黒（テーマによる）
+      backgroundColor: contentBackgroundColor,
     },
     settingRowNoBottomBorder: {
       flexDirection: 'row',
@@ -185,7 +183,7 @@ export const createDeadlineModalStyles = (
     },
     timePickerContentContainer: {
     },
-    pickerRowSeparator: { // これはピッカーモーダル内の区切り線なので、残す
+    pickerRowSeparator: {
         height: StyleSheet.hairlineWidth,
         backgroundColor: iosSeparatorColor,
         marginHorizontal: 0,
@@ -223,8 +221,7 @@ export const createDeadlineModalStyles = (
       justifyContent: 'space-around',
       paddingVertical: 12,
       paddingHorizontal: 16,
-      backgroundColor: contentBackgroundColor, // 背景は白/黒
-      // borderBottomWidth: 0, // このコンテナ自体には線は不要
+      backgroundColor: contentBackgroundColor,
     },
     daySelector: {
       width: 40,
@@ -269,66 +266,42 @@ export const createDeadlineModalStyles = (
       alignSelf: 'center',
       paddingVertical: 12,
     },
-    periodButtonContainer: {
-      flexDirection: 'row',
-      justifyContent: 'space-evenly',
-      paddingVertical: 16,
-      paddingHorizontal: 16,
-      borderBottomWidth: 0,
-      backgroundColor: contentBackgroundColor,
-    },
-    periodButton: {
-      paddingVertical: 10,
-      paddingHorizontal: 12,
-      borderRadius: 8,
-      borderWidth: 1.5,
-      borderColor: subColor,
-      minWidth: '45%',
-      alignItems: 'center',
-    },
-    periodButtonSelected: {
-      backgroundColor: subColor,
-    },
-    periodButtonText: {
-      color: subColor,
-      fontSize: fontSizes[fsKey] - 1,
-      fontWeight: '500',
-    },
-    periodButtonTextSelected: {
-      color: isDark ? '#000' : '#FFF',
-    },
+    periodButtonContainer: {}, // 削除またはDateSelectionTab用に再利用検討
+    periodButton: {}, // 削除またはDateSelectionTab用に再利用検討
+    periodButtonSelected: {}, // 削除またはDateSelectionTab用に再利用検討
+    periodButtonText: {}, // 削除またはDateSelectionTab用に再利用検討
+    periodButtonTextSelected: {}, // 削除またはDateSelectionTab用に再利用検討
     textInput: {
     } as ViewStyle,
-    sectionTitle: { // RepeatTabのセクションヘッダー用 (元々はDateSelectionTabにあったものかも)
+    sectionTitle: {
       fontSize: fontSizes[fsKey] - 2,
       fontWeight: '500',
-      color: isDark ? '#8E8E93' : '#6D6D72', // グレー系の文字色
+      color: isDark ? '#8E8E93' : '#6D6D72',
       paddingHorizontal: 16,
-      paddingTop: 24, // 上マージンを大きめに
-      paddingBottom: 8, // 下マージン
-      backgroundColor: backgroundColor, // タブコンテンツ全体の背景色
+      paddingTop: 24,
+      paddingBottom: 8,
+      backgroundColor: backgroundColor,
     },
-    sectionHeaderText: { // より汎用的なセクションヘッダーのスタイル (RepeatTabで実際に使われている方)
+    sectionHeaderText: {
       fontSize: fontSizes[fsKey] -1,
       fontWeight: '600',
       color: baseTextColor,
       paddingHorizontal: 16,
-      paddingTop: 20, // 上マージン
-      paddingBottom: 10, // 下マージン
-      backgroundColor: backgroundColor, // タブコンテンツ全体の背景色
+      paddingTop: 20,
+      paddingBottom: 10,
+      backgroundColor: backgroundColor,
     } as TextStyle,
     settingRowLabelNormalColor: {
         color: baseTextColor,
         fontSize: fontSizes[fsKey],
         fontWeight: '600',
     } as TextStyle,
-    exclusionSettingRow: { // 「祝日を除く」の行
+    exclusionSettingRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
       paddingHorizontal: 16,
       paddingVertical: 14,
-      // borderBottomWidth: 0, // ★ ここも線を削除
       backgroundColor: contentBackgroundColor,
     },
     exclusionValueText: {
@@ -388,6 +361,12 @@ export const createDeadlineModalStyles = (
       minWidth: 60,
       marginRight: 10,
     } as TextStyle,
+    dateSectionSeparator: { // DateSelectionTab で使用
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: iosSeparatorColor,
+      marginVertical: 15,
+      marginHorizontal: 16,
+    }
   };
   return StyleSheet.create(stylesObject as any);
 };

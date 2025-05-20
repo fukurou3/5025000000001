@@ -13,7 +13,7 @@ import type {
     RepeatFrequency,
     DeadlineModalTranslationKey,
     CommonTranslationKey,
-    DeadlineSettings,
+    DeadlineSettings, // DeadlineSettings のインポートは変更内容を反映
     DeadlineTime,
     AmountAndUnit,
     DurationUnit,
@@ -127,26 +127,26 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
 
 
   const handleFrequencyChange = useCallback((freq: RepeatFrequency) => {
-    const newSettingsUpdate: Partial<DeadlineSettings> = { repeatFrequency: freq };
+    const newSettingsUpdate: Partial<Pick<DeadlineSettings, 'repeatFrequency' | 'repeatDaysOfWeek' | 'isTaskStartTimeEnabled' | 'taskStartTime' | 'taskDuration' | 'customIntervalValue' | 'customIntervalUnit'>> = { repeatFrequency: freq };
     if (freq === 'weekly') {
         const anyDaySelected = Object.values(settings.repeatDaysOfWeek || {}).some(v => v);
         if (!anyDaySelected) {
             newSettingsUpdate.repeatDaysOfWeek = weekdayKeys.reduce((acc, curr) => {
-                acc[curr.dayIndex] = curr.dayIndex !== 0 && curr.dayIndex !== 6; // Default to weekdays
+                acc[curr.dayIndex] = curr.dayIndex !== 0 && curr.dayIndex !== 6;
                 return acc;
             }, {} as Record<number, boolean>);
         }
     }
 
-    if (freq) { // Any repeat frequency is selected
+    if (freq) {
         if (!currentIsTaskStartTimeEnabled) {
             newSettingsUpdate.isTaskStartTimeEnabled = true;
-            if (!currentTaskStartTime) { // Only set default time if not already set
+            if (!currentTaskStartTime) {
                 const now = new Date();
                 newSettingsUpdate.taskStartTime = { hour: now.getHours(), minute: now.getMinutes() };
             }
         }
-    } else { // Repeat frequency is cleared
+    } else {
         newSettingsUpdate.isTaskStartTimeEnabled = false;
         newSettingsUpdate.taskStartTime = undefined;
         newSettingsUpdate.taskDuration = undefined;
@@ -158,7 +158,7 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
     if (freq !== 'custom') {
         newSettingsUpdate.customIntervalValue = undefined;
         newSettingsUpdate.customIntervalUnit = undefined;
-    } else { // freq === 'custom'
+    } else {
         if (!currentCustomIntervalValue || !currentCustomIntervalUnit) {
             newSettingsUpdate.customIntervalValue = 1;
             newSettingsUpdate.customIntervalUnit = 'days';
@@ -279,7 +279,7 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
   }, [currentIsTaskStartTimeEnabled, currentTaskStartTime, t]);
 
   const displayTaskDuration = useMemo(() => {
-    if (!currentIsTaskStartTimeEnabled) return t('common.not_set'); // 時刻が無効なら期間も未設定扱い
+    if (!currentIsTaskStartTimeEnabled) return t('common.not_set');
     return formatDurationToDisplay(currentTaskDuration, t);
   }, [currentTaskDuration, t, currentIsTaskStartTimeEnabled]);
 

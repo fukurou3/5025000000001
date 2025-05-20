@@ -93,10 +93,12 @@ function InnerTabs() {
 
           {/* ✅ 非表示にしたいルートたち */}
           {[
+            'settings/repeating-tasks',
+            'settings/language',
             'add/index',
             'add_edit/index',
             'add_edit/edit-draft',
-            'settings/language',
+            
             'task-detail/[id]',
             'drafts',
             'explore',

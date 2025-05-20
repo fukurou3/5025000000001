@@ -9,6 +9,7 @@ import { Task } from '@/features/tasks/types';
 import { TaskItem } from '@/features/tasks/components/TaskItem';
 import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
+import { calculateActualDueDate } from '../utils';
 
 type Props = {
   folderName: string;
@@ -34,8 +35,6 @@ export function TaskFolder({
   isCollapsed,
   toggleFolder,
   onToggleTaskDone,
-  sortMode,
-  onRefreshTasks,
   isReordering,
   setDraggingFolder,
   draggingFolder,
@@ -52,38 +51,30 @@ export function TaskFolder({
   const styles = createStyles(isDark, subColor, fontSizeKey);
 
   const folderLabel = folderName || t('task_list.no_folder');
-  const hasWarn = tasks.some(
-    (task) => task.deadline && dayjs(task.deadline).isBefore(dayjs().add(1, 'day')) && !task.done // 未完了タスクのみ警告
-  );
   const isSelected = selectedIds.includes(folderName);
 
-  const sections: Record<string, Task[]> = {
-    expired: [],
-    today: [],
-    tomorrow: [],
-    week: [],
-    later: [],
-    noDeadline: [], // 「期限なし」セクション
-  };
+  const deadlineTasks: Task[] = [];
+  const noDeadlineTasks: Task[] = [];
 
-  const now = dayjs();
   tasks.forEach((task) => {
-    if (!task.deadline) {
-      sections.noDeadline.push(task);
+    // if (task.done) return; // この行を削除またはコメントアウト
+    const actualDueDate = calculateActualDueDate(task);
+    if (actualDueDate) {
+      deadlineTasks.push(task);
     } else {
-      const deadline = dayjs(task.deadline);
-      if (deadline.isBefore(now, 'day')) {
-        sections.expired.push(task);
-      } else if (deadline.isSame(now, 'day')) {
-        sections.today.push(task);
-      } else if (deadline.isSame(now.add(1, 'day'), 'day')) {
-        sections.tomorrow.push(task);
-      } else if (deadline.isBefore(now.add(7, 'day'), 'day')) {
-        sections.week.push(task);
-      } else {
-        sections.later.push(task);
-      }
+      noDeadlineTasks.push(task);
     }
+  });
+
+  deadlineTasks.sort((a, b) => {
+    const dateA = calculateActualDueDate(a);
+    const dateB = calculateActualDueDate(b);
+    if (dateA && dateB) {
+      return dayjs(dateA).unix() - dayjs(dateB).unix();
+    }
+    if (dateA) return -1;
+    if (dateB) return 1;
+    return 0;
   });
 
   const handleFolderPress = () => {
@@ -93,17 +84,6 @@ export function TaskFolder({
       toggleFolder(folderName);
     }
   };
-
-  // セクションの表示順序を定義 (期限なしは一番下)
-  const sectionOrder: (keyof typeof sections)[] = [
-    'expired',
-    'today',
-    'tomorrow',
-    'week',
-    'later',
-    'noDeadline', // 期限なしセクションを最後に配置
-  ];
-
 
   return (
     <View
@@ -138,10 +118,6 @@ export function TaskFolder({
           <Text style={styles.folderTitleText}>{folderLabel}</Text>
         </View>
 
-        {!isSelecting && hasWarn && ( // 未完了タスクに警告がある場合のみ表示
-          <Ionicons name="warning-outline" size={22} color={subColor} />
-        )}
-
         {isReordering && (
           <View style={{ flexDirection: 'row' }}>
             <TouchableOpacity onPress={() => moveFolder(folderName, 'up')}>
@@ -159,25 +135,33 @@ export function TaskFolder({
 
       {!isCollapsed && (
         <View>
-          {sectionOrder.map(
-            (key) =>
-              sections[key].length > 0 && (
-                <View key={key}>
-                  <Text style={styles.sectionHeader}>
-                    {t(`section.${key}`)}
-                  </Text>
-                  {sections[key].map((item) => (
-                    <TaskItem
-                      key={item.id}
-                      task={item}
-                      onToggle={onToggleTaskDone}
-                      isSelecting={isSelecting}
-                      selectedIds={selectedIds}
-                      onLongPressSelect={(id) => onLongPressSelect('task', id)}
-                    />
-                  ))}
-                </View>
-              )
+          {deadlineTasks.map((item) => (
+            <TaskItem
+              key={item.id}
+              task={item}
+              onToggle={onToggleTaskDone}
+              isSelecting={isSelecting}
+              selectedIds={selectedIds}
+              onLongPressSelect={(id) => onLongPressSelect('task', id)}
+            />
+          ))}
+
+          {noDeadlineTasks.length > 0 && (
+            <View>
+              <Text style={styles.sectionHeader}>
+                {t('section.noDeadline')}
+              </Text>
+              {noDeadlineTasks.map((item) => (
+                <TaskItem
+                  key={item.id}
+                  task={item}
+                  onToggle={onToggleTaskDone}
+                  isSelecting={isSelecting}
+                  selectedIds={selectedIds}
+                  onLongPressSelect={(id) => onLongPressSelect('task', id)}
+                />
+              ))}
+            </View>
           )}
         </View>
       )}

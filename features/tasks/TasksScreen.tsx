@@ -19,19 +19,21 @@ import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
+import isSameOrAfter from 'dayjs/plugin/isSameOrAfter'; // 追加
 import { useAppTheme } from '@/hooks/ThemeContext';
-import { useSelection } from '@/features/tasks/context';
+import { useSelection } from '@/features/tasks/context'; // context パスを修正
 import { useTranslation } from 'react-i18next';
 import { FontSizeContext } from '@/context/FontSizeContext';
 import { createStyles } from '@/features/tasks/styles';
 import { Task, FolderOrder, SelectableItem } from '@/features/tasks/types';
 import { TaskFolder } from '@/features/tasks/components/TaskFolder';
-import { RenameFolderModal } from '@/features/tasks/components/RenameFolderModal';
+import { RenameFolderModal } from '@/features/tasks/components/RenameFolderModal'; // RenameFolderModal パスを修正
 
 dayjs.locale('ja');
 dayjs.extend(relativeTime);
 dayjs.extend(localizedFormat);
 dayjs.extend(isSameOrBefore);
+dayjs.extend(isSameOrAfter); // 追加
 
 const STORAGE_KEY = 'TASKS';
 const FOLDER_ORDER_KEY = 'FOLDER_ORDER';
@@ -73,9 +75,9 @@ export default function TasksScreen() {
     Animated.timing(selectionAnim, {
       toValue: isSelecting ? 0 : -TAB_HEIGHT,
       duration: 300,
-      useNativeDriver: false, // trueにするとWebで動作しない可能性があるため注意
+      useNativeDriver: false,
     }).start();
-  }, [isSelecting]);
+  }, [isSelecting, selectionAnim]); // selectionAnim を依存配列に追加
 
   const loadTasks = useCallback(async () => {
     setLoading(true);
@@ -134,7 +136,7 @@ export default function TasksScreen() {
       if (swap < 0 || swap >= prev.length) return prev;
       const arr = [...prev];
       [arr[idx], arr[swap]] = [arr[swap], arr[idx]];
-      saveFolderOrder(arr);
+      saveFolderOrder(arr); // saveFolderOrder を呼び出す
       return arr;
     });
   };
@@ -149,17 +151,33 @@ export default function TasksScreen() {
   };
 
   const handleSelectAll = () => {
-    const visible = tasks.filter(t => (tab === 'completed' ? t.done : !t.done));
-    const taskItems: SelectableItem[] = visible.map(t => ({ id: t.id, type: 'task' }));
-    const folderNames = Array.from(new Set(visible.map(t => t.folder ?? '')));
-    const folderItems: SelectableItem[] = folderNames.map(f => ({ id: f, type: 'folder' }));
+    // 表示されているタスクとフォルダのみを選択対象とする
+    const nowForFilter = dayjs();
+    const visibleTasks = tasks.filter(t => {
+        const isCorrectTab = tab === 'completed' ? t.done : !t.done;
+        if (!isCorrectTab) return false;
+        if (tab === 'incomplete' && t.deadline) {
+            const taskActiveTime = dayjs(t.deadline);
+            if (taskActiveTime.isAfter(nowForFilter)) {
+                return false;
+            }
+        }
+        return true;
+    });
+
+    const taskItems: SelectableItem[] = visibleTasks.map(t => ({ id: t.id, type: 'task' }));
+    const folderNames = Array.from(new Set(visibleTasks.map(t => t.folder ?? '')));
+    // フォルダは現在表示されているタスクが含まれるフォルダのみを対象にする
+    const folderItems: SelectableItem[] = folderNames
+                                            .filter(name => sortedFolders.includes(name)) // 画面に表示されているフォルダのみ
+                                            .map(f => ({ id: f, type: 'folder' }));
     setAllItems([...taskItems, ...folderItems]);
   };
 
   const handleDeleteSelected = () => {
     Alert.alert(
-      t('common.confirm'),
-      t('task_list.delete_confirm_message'), // 汎用的な削除確認メッセージに変更
+      t('common.delete'), // タイトルを "削除" に変更 (翻訳キーがあればそちらを使用)
+      t('task_list.delete_confirm_message'),
       [
         { text: t('common.cancel'), style: 'cancel' },
         {
@@ -189,10 +207,11 @@ export default function TasksScreen() {
     );
     setTasks(newTasks);
     const newFolderOrder = folderOrder.map(name => (name === renameTarget ? newName : name));
-    setFolderOrder(newFolderOrder);
+    // setFolderOrder(newFolderOrder); // saveFolderOrder 内で呼ばれる
     await saveTasks(newTasks);
     await saveFolderOrder(newFolderOrder);
     setRenameModalVisible(false);
+    setRenameTarget(null); // renameTarget をクリア
     clearSelection();
   };
 
@@ -200,30 +219,48 @@ export default function TasksScreen() {
   const handleReorderFolder = () => {
     if (selectedItems.length === 1 && selectedItems[0].type === 'folder') {
       setIsReordering(true);
-      clearSelection(); // 選択を解除してから並び替えモードへ
+      // clearSelection(); // ここでは選択解除しない方が操作性が良いかもしれない
     }
   };
 
   useEffect(() => {
     loadTasks();
-  }, [fontSizeKey]); // 初回ロードとフォントサイズ変更時のみ実行
+  }, [fontSizeKey, loadTasks]); // loadTasks を依存配列に追加
 
   useFocusEffect(
     useCallback(() => {
-      loadTasks(); // 画面フォーカス時にタスクを再読み込み
-    }, [loadTasks]) // loadTasks を依存配列に追加
+      loadTasks();
+    }, [loadTasks])
   );
 
+  // --- ここからフィルタリングロジックの修正 ---
+  const nowForFilter = dayjs();
+  const tasksToProcess = tasks.filter(t => {
+    const isCorrectTab = tab === 'completed' ? t.done : !t.done;
+    if (!isCorrectTab) return false;
 
-  const filtered = tasks.filter(t => (tab === 'completed' ? t.done : !t.done));
-  const allFolders = Array.from(new Set(filtered.map(t => t.folder ?? '')));
+    // 未完了タブの場合のみ、開始時刻前のタスクをフィルタリング
+    // task.deadline には、繰り返しタスクの場合「最初のインスタンスの開始日時」が、
+    // 単発タスクの場合は「期限」または「実行日時」が入っている想定。
+    // いずれにしても、この日時が未来であれば、タスクはまだアクティブではない。
+    if (tab === 'incomplete' && t.deadline) {
+      const taskActiveTime = dayjs(t.deadline);
+      if (taskActiveTime.isAfter(nowForFilter)) {
+        return false; // 開始時刻/実行日時が未来なら表示しない
+      }
+    }
+    return true;
+  });
+  // --- フィルタリングロジックの修正ここまで ---
 
-  // フォルダのソート順を folderOrder に基づいて決定
+
+  const allFolders = Array.from(new Set(tasksToProcess.map(t => t.folder ?? ''))); // tasksToProcess を使用
+
   const sortedFolders = folderOrder.length
     ? folderOrder
-        .filter(n => allFolders.includes(n)) // folderOrder に存在し、かつ現在のフィルタ結果にも存在するフォルダ
-        .concat(allFolders.filter(n => !folderOrder.includes(n))) // folderOrder に存在しないフォルダを末尾に追加
-    : allFolders; // folderOrder が空の場合はそのまま
+        .filter(n => allFolders.includes(n))
+        .concat(allFolders.filter(n => !folderOrder.includes(n)))
+    : allFolders;
 
   const fontSizeMap: Record<string, number> = {
     small: 10,
@@ -241,7 +278,7 @@ export default function TasksScreen() {
         <View style={styles.tabs}>
           <TouchableOpacity
             style={[styles.tabButton, tab === 'incomplete' && styles.tabSelected]}
-            onPress={() => setTab('incomplete')}
+            onPress={() => { setTab('incomplete'); clearSelection(); }} // タブ変更時に選択解除
           >
             <Text style={[styles.tabText, tab === 'incomplete' && styles.tabSelectedText]}>
               {t('tab.incomplete')}
@@ -249,7 +286,7 @@ export default function TasksScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.tabButton, tab === 'completed' && styles.tabSelected]}
-            onPress={() => setTab('completed')}
+            onPress={() => { setTab('completed'); clearSelection(); }} // タブ変更時に選択解除
           >
             <Text style={[styles.tabText, tab === 'completed' && styles.tabSelectedText]}>
               {t('tab.completed')}
@@ -279,7 +316,7 @@ export default function TasksScreen() {
       ) : (
         <ScrollView contentContainerStyle={{ paddingBottom: isSelecting ? TAB_HEIGHT + 20 : 120, paddingTop: 8 }}>
           {sortedFolders.map(folder => {
-            const folderTasks = filtered
+            const folderTasks = tasksToProcess // tasksToProcess を使用
               .filter(t => (t.folder ?? '') === folder)
               .sort((a, b) => {
                 if (sortMode === 'deadline') {
@@ -289,35 +326,31 @@ export default function TasksScreen() {
                   if (aHasDeadline && bHasDeadline) {
                     return dayjs(a.deadline).unix() - dayjs(b.deadline).unix();
                   } else if (aHasDeadline && !bHasDeadline) {
-                    return -1; // a (期限あり) を b (期限なし) より前に
+                    return -1;
                   } else if (!aHasDeadline && bHasDeadline) {
-                    return 1;  // b (期限あり) を a (期限なし) より前に
+                    return 1;
                   }
-                  // 両方とも期限なしの場合、またはカスタム・優先度ソートの場合はタイトルでソート (または他の基準)
                   return a.title.localeCompare(b.title);
                 }
                 if (sortMode === 'custom') {
-                    // カスタムソートの場合、customOrderが未定義なら大きな値として扱う
                     const orderA = a.customOrder ?? Infinity;
                     const orderB = b.customOrder ?? Infinity;
                     if (orderA === Infinity && orderB === Infinity) {
-                        return a.title.localeCompare(b.title); // 両方未定義ならタイトル順
+                        return a.title.localeCompare(b.title);
                     }
                     return orderA - orderB;
                 }
-                // 優先度ソート (priorityが高いものが先頭)
-                // priority が未定義の場合は低い優先度 (例: 0) として扱う
                 const priorityA = a.priority ?? 0;
                 const priorityB = b.priority ?? 0;
                 if (priorityB === priorityA) {
-                    return a.title.localeCompare(b.title); // 優先度が同じならタイトル順
+                    return a.title.localeCompare(b.title);
                 }
                 return priorityB - priorityA;
               });
-            if (!folderTasks.length) return null;
+            if (!folderTasks.length) return null; // フィルタリング後にタスクがなければフォルダも表示しない
             return (
               <TaskFolder
-                key={folder || 'none'} // フォルダ名が空文字列の場合も考慮
+                key={folder || 'none'}
                 folderName={folder}
                 tasks={folderTasks}
                 isCollapsed={!!collapsedFolders[folder]}
@@ -325,7 +358,7 @@ export default function TasksScreen() {
                 onToggleTaskDone={toggleTaskDone}
                 sortMode={sortMode}
                 onRefreshTasks={loadTasks}
-                isReordering={isReordering && selectedItems.length === 0 && draggingFolder === folder} // 修正: reordering条件
+                isReordering={isReordering && draggingFolder === folder} // 修正: selectedItemsの条件を削除
                 setDraggingFolder={setDraggingFolder}
                 draggingFolder={draggingFolder}
                 moveFolder={moveFolder}
@@ -339,10 +372,10 @@ export default function TasksScreen() {
               />
             );
           })}
-          {filtered.length === 0 && !loading && (
+          {tasksToProcess.length === 0 && !loading && ( // tasksToProcess を使用
              <View style={styles.emptyContainer}>
                <Text style={styles.emptyText}>
-                 {tab === 'incomplete' ? t('task_list.empty') : t('task_list.no_tasks_completed')}
+                 {tab === 'incomplete' ? t('task_list.empty') : t('task_list.no_tasks_completed', '完了したタスクはありません')}
                </Text>
              </View>
            )}
@@ -357,7 +390,7 @@ export default function TasksScreen() {
       {isSelecting && (
         <Animated.View
           style={[
-            styles.selectionBar, // styles.ts から共通スタイルを適用
+            styles.selectionBar,
             { bottom: selectionAnim },
           ]}
         >
@@ -413,7 +446,7 @@ export default function TasksScreen() {
 
       <RenameFolderModal
         visible={renameModalVisible}
-        onClose={() => setRenameModalVisible(false)}
+        onClose={() => { setRenameModalVisible(false); setRenameTarget(null); }} // renameTarget もクリア
         initialName={renameTarget || ''}
         onSubmit={handleRenameFolder}
       />

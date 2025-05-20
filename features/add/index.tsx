@@ -13,7 +13,7 @@ import { FontSizeContext } from '@/context/FontSizeContext';
 import { fontSizes } from '@/constants/fontSizes';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import type { AddTaskStyles, Task } from './types';
+import type { AddTaskStyles, Task } from './types'; // Task type from local types.ts
 import { createStyles } from './styles';
 
 import { useFolders } from './hooks/useFolders';
@@ -27,11 +27,11 @@ import { WheelPickerModal } from './components/WheelPickerModal';
 import { LIGHT_PLACEHOLDER, DARK_PLACEHOLDER } from './constants';
 
 import { DeadlineSettingModal } from './components/DeadlineSettingModal';
-import type {
+import type { // Types from DeadlineSettingModal
     DeadlineSettings,
     DeadlineTime,
     RepeatFrequency,
-} from './components/DeadlineSettingModal/types';
+} from './components/DeadlineSettingModal/types'; // Corrected import path for DeadlineSettings
 
 type NotificationUnit = 'minutes' | 'hours' | 'days';
 
@@ -52,9 +52,10 @@ const formatDateForDisplayInternal = (dateString: string | undefined, t: Functio
     if (!dateString) return '';
     try {
         const [year, month, day] = dateString.split('-').map(Number);
+        // ロケールに応じた日付フォーマットも検討可能ですが、ここではシンプルに YYYY/MM/DD とします
         return `${year}/${String(month).padStart(2, '0')}/${String(day).padStart(2, '0')}`;
     } catch (e) {
-        return dateString;
+        return dateString; // パース失敗時は元の文字列を返す
     }
 };
 
@@ -67,49 +68,59 @@ const formatTimeForDisplayInternal = (time: DeadlineTime | undefined, t: Functio
 };
 
 const formatDeadlineForDisplay = (settings: DeadlineSettings | undefined, t: Function, i18nLanguage: string): string => {
-    if (!settings) {
-      return t('add_task.no_deadline_set', '未設定');
-    }
-
-    const {
-        date,
-        isTimeEnabled,
-        time,
-        periodStartDate,
-        periodEndDate,
-        repeatFrequency,
-    } = settings;
-
-    if (repeatFrequency) {
-        const frequencyKeyMap: Record<RepeatFrequency, string> = {
-            daily: 'deadline_modal.daily',
-            weekly: 'deadline_modal.weekly',
-            monthly: 'deadline_modal.monthly',
-            yearly: 'deadline_modal.yearly',
-            custom: 'deadline_modal.custom',
-        };
-        const frequencyText = t(frequencyKeyMap[repeatFrequency]);
-        return frequencyText;
-    } else if (periodStartDate) {
-        let startDateText = formatDateForDisplayInternal(periodStartDate, t, i18nLanguage);
-        let endDateText = periodEndDate ? formatDateForDisplayInternal(periodEndDate, t, i18nLanguage) : null;
-
-        if (endDateText && startDateText !== endDateText) {
-            return `${startDateText} ${t('common.to', '～')} ${endDateText}`;
-        } else {
-            return startDateText;
-        }
-    } else if (date) {
-        let mainDisplay = formatDateForDisplayInternal(date, t, i18nLanguage);
-        if (isTimeEnabled && time) {
-            mainDisplay += ` ${formatTimeForDisplayInternal(time, t)}`;
-        } else {
-            mainDisplay += ` ${t('common.all_day', '終日')}`;
-        }
-        return mainDisplay;
-    }
-
+  if (!settings) {
     return t('add_task.no_deadline_set', '未設定');
+  }
+
+  const {
+    date,          // 開始日 or 単一日付
+    isTimeEnabled, // 開始時刻有効 or 単一時刻有効
+    time,          // 開始時刻 or 単一時刻
+    endDate,       // 終了日
+    isEndTimeEnabled, // 終了時刻有効
+    endTime,       // 終了時刻
+    repeatFrequency,
+    taskStartTime, // 繰り返しの際のタスク開始時刻
+    isTaskStartTimeEnabled: isRepeatTaskStartTimeEnabled, // 繰り返しの際のタスク開始時刻が有効か
+    repeatStartDate, // 繰り返しの開始日
+  } = settings;
+
+  if (repeatFrequency) {
+    const frequencyKeyMap: Record<RepeatFrequency, string> = {
+      daily: 'deadline_modal.daily',
+      weekly: 'deadline_modal.weekly',
+      monthly: 'deadline_modal.monthly',
+      yearly: 'deadline_modal.yearly',
+      custom: 'deadline_modal.custom',
+    };
+    let repeatText = t(frequencyKeyMap[repeatFrequency]);
+    if (repeatStartDate) {
+      let detail = formatDateForDisplayInternal(repeatStartDate, t, i18nLanguage);
+      if (isRepeatTaskStartTimeEnabled && taskStartTime) {
+        detail += ` ${formatTimeForDisplayInternal(taskStartTime, t)}`;
+      }
+      repeatText += ` (${detail})`;
+    }
+    return repeatText;
+  } else if (date && endDate) { // 開始日と終了日が両方ある場合（期間指定）
+    let startDateText = formatDateForDisplayInternal(date, t, i18nLanguage);
+    if (isTimeEnabled && time) {
+        startDateText += ` ${formatTimeForDisplayInternal(time, t)}`;
+    }
+    let endDateText = formatDateForDisplayInternal(endDate, t, i18nLanguage);
+    if (isEndTimeEnabled && endTime) {
+        endDateText += ` ${formatTimeForDisplayInternal(endTime, t)}`;
+    }
+    return `${startDateText} ${t('common.to', '～')} ${endDateText}`;
+  } else if (date) { // 開始日のみ（単一日時指定）
+    let mainDisplay = formatDateForDisplayInternal(date, t, i18nLanguage);
+    if (isTimeEnabled && time) {
+      mainDisplay += ` ${formatTimeForDisplayInternal(time, t)}`;
+    }
+    return mainDisplay;
+  }
+
+  return t('add_task.no_deadline_set', '未設定');
 };
 
 
@@ -198,7 +209,7 @@ export default function AddTaskScreen() {
             memo !== initialFormState.memo ||
             !selectedUris.every((uri, index) => uri === (initialFormState.selectedUris[index])) || selectedUris.length !== initialFormState.selectedUris.length ||
             folder !== initialFormState.folder ||
-            JSON.stringify(currentDeadlineSettings) !== JSON.stringify(initialFormState.currentDeadlineSettings) ||
+            JSON.stringify(currentDeadlineSettings) !== JSON.stringify(initialFormState.currentDeadlineSettings) || // Deep comparison might be needed if object structure is complex
             notificationActive !== initialFormState.notificationActive ||
             customAmount !== initialFormState.customAmount ||
             customUnit !== initialFormState.customUnit;
@@ -276,18 +287,19 @@ export default function AddTaskScreen() {
     const loadDraft = async () => {
       if (draftId) {
         try {
-          const storedDrafts = await AsyncStorage.getItem('TASK_DRAFTS');
+          const storedDrafts = await AsyncStorage.getItem('TASK_DRAFTS'); // DRAFTS_KEY from constants can be used here
           if (storedDrafts) {
-            const draftsArray: Task[] = JSON.parse(storedDrafts);
+            const draftsArray: Task[] = JSON.parse(storedDrafts); // Task[] should be Draft[] if types are different, or use a common base type
             const draftToLoad = draftsArray.find(d => d.id === draftId);
             if (draftToLoad) {
               setCurrentDraftId(draftToLoad.id);
               setTitle(draftToLoad.title || initialFormState.title);
               setMemo(draftToLoad.memo || initialFormState.memo);
+              // Ensure deadlineDetails from draft is correctly cast or handled if its structure differs or is optional
               setCurrentDeadlineSettings(draftToLoad.deadlineDetails || initialFormState.currentDeadlineSettings);
               setSelectedUris(draftToLoad.imageUris || initialFormState.selectedUris);
               setNotificationActive(draftToLoad.notifyEnabled !== undefined ? draftToLoad.notifyEnabled : initialFormState.notificationActive);
-              setCustomUnit(draftToLoad.customUnit || initialFormState.customUnit);
+              setCustomUnit(draftToLoad.customUnit as NotificationUnit || initialFormState.customUnit); // Cast customUnit
               setCustomAmount(draftToLoad.customAmount || initialFormState.customAmount);
               setFolder(draftToLoad.folder || initialFormState.folder);
 
@@ -295,21 +307,21 @@ export default function AddTaskScreen() {
                 setUnsaved(false);
               }, 0);
             } else {
-              clearForm();
+              clearForm(); // Draft not found
             }
           } else {
-            clearForm();
+            clearForm(); // No drafts stored
           }
         } catch (error) {
           console.error("Failed to load draft:", error);
           clearForm();
         }
       } else {
-        clearForm();
+        clearForm(); // No draftId provided
       }
     };
     loadDraft();
-  }, [draftId, clearForm, initialFormState, setUnsaved]);
+  }, [draftId, clearForm, initialFormState, setUnsaved]); // initialFormState in dependencies for reset values
 
 
   const handleSetNoNotificationInModal = () => {
@@ -372,7 +384,7 @@ export default function AddTaskScreen() {
           <>
             <View
               style={{
-                backgroundColor: isDark ? '#121212' : '#FFFFFF',
+                backgroundColor: isDark ? '#121212' : '#FFFFFF', // Consider using styles.card or similar
                 borderRadius: 12,
                 overflow: 'hidden',
                 marginHorizontal:8,
@@ -388,7 +400,7 @@ export default function AddTaskScreen() {
                   placeholder={t('add_task.input_title_placeholder')}
                   placeholderTextColor={isDark ? DARK_PLACEHOLDER : LIGHT_PLACEHOLDER}
                   labelStyle={[styles.label, { color: subColor }]}
-                  inputStyle={[styles.input, { minHeight: INITIAL_INPUT_HEIGHT, backgroundColor: isDark ? '#2C2C2E' : '#F0F0F0' }]}
+                  inputStyle={[styles.input, { minHeight: INITIAL_INPUT_HEIGHT, backgroundColor: isDark ? '#2C2C2E' : '#F0F0F0' }]} // Use styles.input from createStyles
                 />
               </View>
               <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: isDark ? '#444' : '#DDD', marginHorizontal: 8 }} />
@@ -401,7 +413,7 @@ export default function AddTaskScreen() {
                   placeholder={t('add_task.memo_placeholder')}
                   placeholderTextColor={isDark ? DARK_PLACEHOLDER : LIGHT_PLACEHOLDER}
                   labelStyle={[styles.label, { color: subColor }]}
-                  inputStyle={[styles.input, { minHeight: INITIAL_INPUT_HEIGHT, backgroundColor: isDark ? '#2C2C2E' : '#F0F0F0', textAlignVertical: 'top' }]}
+                  inputStyle={[styles.input, { minHeight: INITIAL_INPUT_HEIGHT, backgroundColor: isDark ? '#2C2C2E' : '#F0F0F0', textAlignVertical: 'top' }]} // Use styles.input
                 />
               </View>
               <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: isDark ? '#444' : '#DDD', marginHorizontal: 8 }} />
@@ -424,15 +436,15 @@ export default function AddTaskScreen() {
         renderItem={renderPhotoItem}
         keyExtractor={(item) => item}
         numColumns={numColumns}
-        key={numColumns}
+        key={numColumns} // Re-render FlatList when numColumns changes
         style={{paddingHorizontal: 8}}
-        contentContainerStyle={styles.photoPreviewContainer}
+        contentContainerStyle={styles.photoPreviewContainer} // Use style from createStyles
         ListFooterComponent={
           <>
            {selectedUris.length > 0 && <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: isDark ? '#444' : '#DDD', marginHorizontal: 8, marginTop: IMAGE_MARGIN, marginBottom:12 }} /> }
             <View
               style={{
-                backgroundColor: isDark ? '#121212' : '#FFFFFF',
+                backgroundColor: isDark ? '#121212' : '#FFFFFF', // Consider styles.card
                 borderRadius: 12,
                 overflow: 'hidden',
                 marginHorizontal:8,
@@ -479,7 +491,7 @@ export default function AddTaskScreen() {
                             fontSize: fontSizes[fsKey],
                             fontWeight: '400',
                             marginRight: 4,
-                            maxWidth: screenWidth * 0.55
+                            maxWidth: screenWidth * 0.55 // Ensure text doesn't overflow
                         }} numberOfLines={1} ellipsizeMode="tail">
                             {notificationActive
                                 ? `${customAmount} ${t(`add_task.${customUnit}_before` as const, { count: customAmount })}`
@@ -498,7 +510,7 @@ export default function AddTaskScreen() {
                 onSaveDraft={saveDraft}
                 saveText={t('add_task.add_task_button')}
                 draftText={t('add_task.save_draft_button')}
-                styles={styles}
+                styles={styles} // Pass AddTaskStyles
                 />
             </View>
           </>
