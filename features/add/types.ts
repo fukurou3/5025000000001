@@ -1,25 +1,22 @@
 // app/features/add/types.ts
 import { ViewStyle, TextStyle, ImageStyle, StyleProp } from 'react-native';
-// DeadlineSettings 型は、モーダルコンポーネントの型定義ファイルからインポートする
 import type { DeadlineSettings } from './components/DeadlineSettingModal/types';
 
-// Task や Draft はこのファイルで定義して OK
 export interface Task {
   id: string;
   title: string;
   memo: string;
-  deadline: string; // 簡易表示用。詳細な期限は deadlineDetails に。
+  deadline: string;
   imageUris: string[];
   notifyEnabled: boolean;
   customUnit: 'minutes' | 'hours' | 'days';
   customAmount: number;
   folder: string;
-  deadlineDetails?: DeadlineSettings; // インポートした DeadlineSettings 型を使用
+  deadlineDetails?: DeadlineSettings;
 }
 
 export type Draft = Task;
 
-// AddTaskScreen 固有のスタイル型 (これはここで定義して OK)
 export type AddTaskStyles = {
   folderInput: ViewStyle;
   container: ViewStyle;
@@ -47,15 +44,19 @@ export type AddTaskStyles = {
   slotPickerRow: ViewStyle;
   slotPickerWrapper: ViewStyle;
   slotPicker: TextStyle;
-  imageWrapper: ViewStyle;
-  image: ImageStyle;
-  previewImage: ImageStyle;
-  previewWrapper: ViewStyle;
+  photoPreviewContainer: ViewStyle; // こちらが追加されていることを確認してください
+  photoPreviewItem: ViewStyle;      // こちらが追加されていることを確認してください
+  photoPreviewImage: ImageStyle;    // こちらが追加されていることを確認してください
   removeIcon: ViewStyle;
   buttonRow: ViewStyle;
   saveButton: ViewStyle;
   saveButtonText: TextStyle;
   draftButton: ViewStyle;
+  // 不要になった古いスタイル定義は削除しても問題ありません
+  // imageWrapper?: ViewStyle; // 例: もし残っていたら削除
+  // image?: ImageStyle;     // 例: もし残っていたら削除
+  // previewImage?: ImageStyle;// 例: もし残っていたら削除
+  // previewWrapper?: ViewStyle;// 例: もし残っていたら削除
 };
 
 export interface FieldProps {

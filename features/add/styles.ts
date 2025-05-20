@@ -1,3 +1,4 @@
+// app/features/add/styles.ts
 import { StyleSheet } from 'react-native';
 import type { AddTaskStyles } from './types';
 import { fontSizes } from '@/constants/fontSizes';
@@ -176,30 +177,28 @@ export function createStyles(
       color: isDark ? '#fff' : '#000',
       fontSize: fontSizes[fsKey],
     },
-    imageWrapper: {
+    photoPreviewContainer: {
+      paddingTop: 8,
+      paddingBottom: 0, // 下マージンは各アイテムのmarginBottomで制御
+      // paddingHorizontal はFlatListのstyleで設定
+    },
+    photoPreviewItem: {
       position: 'relative',
-      marginRight: 16,
-    },
-    image: {
-      width: 100,
-      height: 100,
       borderRadius: 8,
+      // overflow: 'hidden', // 画像の角丸を適用するため
+      // width, height, marginRight, marginBottom はindex.tsxで動的に設定
     },
-    previewImage: {
-      width: 100,
-      height: 100,
-      borderRadius: 8,
-    },
-    previewWrapper: {
-      position: 'relative',
-      marginRight: 12,
+    photoPreviewImage: {
+      width: '100%',
+      height: '100%',
+      borderRadius: 8, // photoPreviewItemと合わせる
     },
     removeIcon: {
       position: 'absolute',
-      top: -6,
-      right: -6,
+      top: -8,
+      right: -8,
       backgroundColor: isDark ? DARK_REMOVE_BG : LIGHT_REMOVE_BG,
-      borderRadius: 10,
+      borderRadius: 12,
       padding: 2,
     },
     buttonRow: {
@@ -207,26 +206,25 @@ export function createStyles(
       justifyContent: 'space-between',
       marginTop: 20,
     },
-    saveButton: { // 「タスクに追加」ボタンのスタイル
+    saveButton: {
       flex: 1,
       backgroundColor: subColor,
       paddingVertical: 12,
       borderRadius: 10,
       alignItems: 'center',
-      marginLeft: 10, // 「下書きに保存」ボタンとの間にマージンを設定
+      marginLeft: 10,
     },
     saveButtonText: {
       color: '#fff',
       fontSize: fontSizes[fsKey],
       fontWeight: 'bold',
     },
-    draftButton: { // 「下書きに保存」ボタンのスタイル
+    draftButton: {
       flex: 1,
       backgroundColor: '#888',
       paddingVertical: 12,
       borderRadius: 10,
       alignItems: 'center',
-      // marginLeft は不要なので削除、もしくは marginRight を設定して saveButton の marginLeft を削除
     },
   });
 }

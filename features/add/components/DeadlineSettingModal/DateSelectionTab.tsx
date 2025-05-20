@@ -10,7 +10,8 @@ import type { SpecificDateSelectionTabProps, DeadlineTime } from './types';
 import { TimePickerModal } from './TimePickerModal';
 import { DatePickerModal } from './DatePickerModal';
 
-const formatTimeToDisplay = (time: DeadlineTime, t: (key: string, options?: any) => string): string => {
+const formatTimeToDisplay = (time: DeadlineTime | undefined, t: (key: string, options?: any) => string): string => {
+    if (!time) return t('common.select');
     const hour24 = time.hour;
     const ampmKey = (hour24 < 12 || hour24 === 24 || hour24 === 0) ? 'am' : 'pm';
     const ampm = t(`common.${ampmKey}`);
@@ -50,6 +51,8 @@ const DateSelectionTabMemo: React.FC<SpecificDateSelectionTabProps> = ({
 
   const handleDateClear = useCallback(() => {
     updateSettings('date', undefined);
+    updateSettings('isTimeEnabled', false); // 日付をクリアしたら時刻も無効化
+    updateSettings('time', undefined);      // 時刻情報もクリア
     setDatePickerModalVisible(false);
   }, [updateSettings]);
 
@@ -70,8 +73,7 @@ const DateSelectionTabMemo: React.FC<SpecificDateSelectionTabProps> = ({
 
   const handleTimeClear = useCallback(() => {
     updateSettings('isTimeEnabled', false);
-    const defaultInitialTime: DeadlineTime = { hour: 9, minute: 0 };
-    updateSettings('time', defaultInitialTime);
+    updateSettings('time', undefined); // 実際に時刻情報をクリア
     setTimePickerModalVisible(false);
   }, [updateSettings]);
 
@@ -93,6 +95,15 @@ const DateSelectionTabMemo: React.FC<SpecificDateSelectionTabProps> = ({
 
   const labelFontSize = typeof styles.label.fontSize === 'number' ? styles.label.fontSize : 16;
   const mutedTextColor = isDark ? '#A0A0A0' : '#555555';
+
+  const getInitialTimeForPicker = (): DeadlineTime => {
+    if (isTimeEnabled && selectedTime) {
+        return selectedTime;
+    }
+    const now = new Date();
+    return { hour: now.getHours(), minute: now.getMinutes() };
+  };
+
 
   return (
     <ScrollView style={styles.tabContentContainer} contentContainerStyle={{ paddingBottom: 20 }}>
@@ -135,7 +146,7 @@ const DateSelectionTabMemo: React.FC<SpecificDateSelectionTabProps> = ({
 
       <TimePickerModal
         visible={isTimePickerModalVisible}
-        initialTime={selectedTime}
+        initialTime={getInitialTimeForPicker()}
         onClose={handleTimePickerClose}
         onConfirm={handleTimeConfirm}
         onClear={handleTimeClear}

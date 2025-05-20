@@ -8,13 +8,13 @@ export const createDeadlineModalStyles = (
   isDark: boolean,
   subColor: string,
   fsKey: FontSizeKey,
-  windowHeight: number // ★ 画面の高さを引数として受け取る
+  windowHeight: number
 ): DeadlineModalStyles => {
   const fontSizes = appFontSizes;
   const baseTextColor = isDark ? '#FFFFFF' : '#000000';
-  const backgroundColor = isDark ? '#000000' : '#FFFFFF';
-  const contentBackgroundColor = isDark ? '#000000' : '#FFFFFF';
-  const iosSeparatorColor = isDark ? '#3A3A3C' : '#C6C6C8';
+  const backgroundColor = isDark ? '#1C1C1E' : '#FFFFFF';
+  const contentBackgroundColor = isDark ? '#000000' : '#FFFFFF'; // モーダル内の各行の背景色
+  const iosSeparatorColor = isDark ? '#3A3A3C' : '#b3b3b5'; // 区切り線の色
 
   const baseButtonFontSize = fontSizes[fsKey];
   const headerBaseFontSize = fontSizes[fsKey];
@@ -26,8 +26,8 @@ export const createDeadlineModalStyles = (
       backgroundColor: 'rgba(0,0,0,0.5)',
     },
     container: {
-      height: Math.round(windowHeight * 0.7), // ★ 画面の高さの80%に設定
-      backgroundColor: contentBackgroundColor,
+      height: Math.round(windowHeight * 0.8),
+      backgroundColor: contentBackgroundColor, // 全体の背景ではなく、タブコンテンツの背景に合わせるか、別途指定
       borderTopLeftRadius: 16,
       borderTopRightRadius: 16,
       overflow: 'hidden',
@@ -128,24 +128,24 @@ export const createDeadlineModalStyles = (
       height: 0,
       backgroundColor: 'transparent',
     },
-    tabContentContainer: {
+    tabContentContainer: { // 各タブのコンテンツエリア全体の背景
       flex: 1,
-      backgroundColor: backgroundColor,
+      backgroundColor: backgroundColor, // モーダルの主要背景色
     },
     label: {
       fontSize: fontSizes[fsKey],
       color: subColor,
       fontWeight: '600',
     },
-    settingRow: {
+    settingRow: { // 各設定行のスタイル
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
       paddingHorizontal: 16,
       paddingVertical: 14,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderColor: iosSeparatorColor,
-      backgroundColor: contentBackgroundColor,
+      // borderBottomWidth: StyleSheet.hairlineWidth, // ★ 削除 (または 0 に)
+      // borderColor: iosSeparatorColor,             // ★ 削除
+      backgroundColor: contentBackgroundColor, // 各行の背景は白または黒（テーマによる）
     },
     settingRowNoBottomBorder: {
       flexDirection: 'row',
@@ -185,7 +185,7 @@ export const createDeadlineModalStyles = (
     },
     timePickerContentContainer: {
     },
-    pickerRowSeparator: {
+    pickerRowSeparator: { // これはピッカーモーダル内の区切り線なので、残す
         height: StyleSheet.hairlineWidth,
         backgroundColor: iosSeparatorColor,
         marginHorizontal: 0,
@@ -223,8 +223,8 @@ export const createDeadlineModalStyles = (
       justifyContent: 'space-around',
       paddingVertical: 12,
       paddingHorizontal: 16,
-      backgroundColor: contentBackgroundColor,
-      borderBottomWidth: 0,
+      backgroundColor: contentBackgroundColor, // 背景は白/黒
+      // borderBottomWidth: 0, // このコンテナ自体には線は不要
     },
     daySelector: {
       width: 40,
@@ -299,36 +299,36 @@ export const createDeadlineModalStyles = (
     },
     textInput: {
     } as ViewStyle,
-    sectionTitle: {
+    sectionTitle: { // RepeatTabのセクションヘッダー用 (元々はDateSelectionTabにあったものかも)
       fontSize: fontSizes[fsKey] - 2,
       fontWeight: '500',
-      color: isDark ? '#8E8E93' : '#6D6D72',
+      color: isDark ? '#8E8E93' : '#6D6D72', // グレー系の文字色
       paddingHorizontal: 16,
-      paddingTop: 24,
-      paddingBottom: 8,
-      backgroundColor: backgroundColor,
+      paddingTop: 24, // 上マージンを大きめに
+      paddingBottom: 8, // 下マージン
+      backgroundColor: backgroundColor, // タブコンテンツ全体の背景色
     },
-    sectionHeaderText: {
+    sectionHeaderText: { // より汎用的なセクションヘッダーのスタイル (RepeatTabで実際に使われている方)
       fontSize: fontSizes[fsKey] -1,
       fontWeight: '600',
       color: baseTextColor,
       paddingHorizontal: 16,
-      paddingTop: 20,
-      paddingBottom: 10,
-      backgroundColor: backgroundColor,
+      paddingTop: 20, // 上マージン
+      paddingBottom: 10, // 下マージン
+      backgroundColor: backgroundColor, // タブコンテンツ全体の背景色
     } as TextStyle,
     settingRowLabelNormalColor: {
         color: baseTextColor,
         fontSize: fontSizes[fsKey],
         fontWeight: '600',
     } as TextStyle,
-    exclusionSettingRow: {
+    exclusionSettingRow: { // 「祝日を除く」の行
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
       paddingHorizontal: 16,
       paddingVertical: 14,
-      borderBottomWidth: 0,
+      // borderBottomWidth: 0, // ★ ここも線を削除
       backgroundColor: contentBackgroundColor,
     },
     exclusionValueText: {

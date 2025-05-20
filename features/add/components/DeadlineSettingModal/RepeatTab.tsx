@@ -27,7 +27,8 @@ import { CustomIntervalModal } from './CustomIntervalModal';
 
 const todayString = CalendarUtils.getCalendarDateString(new Date());
 
-const formatTimeToDisplay = (time: DeadlineTime, t: (key: string, options?: any) => string): string => {
+const formatTimeToDisplay = (time: DeadlineTime | undefined, t: (key: string, options?: any) => string): string => {
+    if (!time) return t('common.select');
     const hour24 = time.hour;
     const ampmKey = (hour24 < 12 || hour24 === 24 || hour24 === 0) ? 'am' : 'pm';
     const ampm = t(`common.${ampmKey}`);
@@ -131,17 +132,21 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
         const anyDaySelected = Object.values(settings.repeatDaysOfWeek || {}).some(v => v);
         if (!anyDaySelected) {
             newSettingsUpdate.repeatDaysOfWeek = weekdayKeys.reduce((acc, curr) => {
-                acc[curr.dayIndex] = curr.dayIndex !== 0 && curr.dayIndex !== 6;
+                acc[curr.dayIndex] = curr.dayIndex !== 0 && curr.dayIndex !== 6; // Default to weekdays
                 return acc;
             }, {} as Record<number, boolean>);
         }
     }
-    if (freq && !currentIsTaskStartTimeEnabled) {
-        newSettingsUpdate.isTaskStartTimeEnabled = true;
-        if (!currentTaskStartTime) {
-            newSettingsUpdate.taskStartTime = { hour: 9, minute: 0 };
+
+    if (freq) { // Any repeat frequency is selected
+        if (!currentIsTaskStartTimeEnabled) {
+            newSettingsUpdate.isTaskStartTimeEnabled = true;
+            if (!currentTaskStartTime) { // Only set default time if not already set
+                const now = new Date();
+                newSettingsUpdate.taskStartTime = { hour: now.getHours(), minute: now.getMinutes() };
+            }
         }
-    } else if (!freq) {
+    } else { // Repeat frequency is cleared
         newSettingsUpdate.isTaskStartTimeEnabled = false;
         newSettingsUpdate.taskStartTime = undefined;
         newSettingsUpdate.taskDuration = undefined;
@@ -149,10 +154,11 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
         newSettingsUpdate.customIntervalUnit = undefined;
     }
 
+
     if (freq !== 'custom') {
         newSettingsUpdate.customIntervalValue = undefined;
         newSettingsUpdate.customIntervalUnit = undefined;
-    } else {
+    } else { // freq === 'custom'
         if (!currentCustomIntervalValue || !currentCustomIntervalUnit) {
             newSettingsUpdate.customIntervalValue = 1;
             newSettingsUpdate.customIntervalUnit = 'days';
@@ -266,14 +272,14 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
   }, [currentRepeatStartDate, t]);
 
   const displayTaskStartTime = useMemo(() => {
-    if (currentIsTaskStartTimeEnabled && currentTaskStartTime) {
+    if (currentIsTaskStartTimeEnabled) {
       return formatTimeToDisplay(currentTaskStartTime, t);
     }
     return t('common.select');
   }, [currentIsTaskStartTimeEnabled, currentTaskStartTime, t]);
 
   const displayTaskDuration = useMemo(() => {
-    if (!currentIsTaskStartTimeEnabled) return t('common.not_set');
+    if (!currentIsTaskStartTimeEnabled) return t('common.not_set'); // 時刻が無効なら期間も未設定扱い
     return formatDurationToDisplay(currentTaskDuration, t);
   }, [currentTaskDuration, t, currentIsTaskStartTimeEnabled]);
 
@@ -285,10 +291,18 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
     return formatCustomIntervalToDisplay(currentCustomIntervalValue, currentCustomIntervalUnit, t);
   }, [currentCustomIntervalValue, currentCustomIntervalUnit, t]);
 
+  const getInitialTaskStartTimeForPicker = (): DeadlineTime => {
+    if (currentIsTaskStartTimeEnabled && currentTaskStartTime) {
+        return currentTaskStartTime;
+    }
+    const now = new Date();
+    return { hour: now.getHours(), minute: now.getMinutes() };
+  };
+
 
   const labelFontSize = typeof styles.label?.fontSize === 'number' ? styles.label.fontSize : 16;
   const mutedTextColor = isDark ? '#A0A0A0' : '#555555';
-  const separatorColor = styles.settingRow?.borderColor as string || (isDark ? '#3A3A3C' : '#C6C6C8');
+  const separatorColor = (styles.pickerRowSeparator as ViewStyle)?.backgroundColor as string || (isDark ? '#3A3A3C' : '#C6C6C8');
 
   const sectionHeaderTextStyleWithFallback: TextStyle = styles.sectionHeaderText || {
     fontSize: (styles.label?.fontSize || 16) + 1,
@@ -297,7 +311,7 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
     paddingHorizontal: 16,
     paddingTop: 24,
     paddingBottom: 12,
-    backgroundColor: styles.tabContentContainer?.backgroundColor
+    backgroundColor: (styles.tabContentContainer as ViewStyle)?.backgroundColor
   };
 
   const switchContainerBaseStyle: ViewStyle = {
@@ -311,98 +325,102 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
 
   return (
     <ScrollView style={styles.tabContentContainer} contentContainerStyle={{ paddingBottom: 20 }}>
-      <Text style={sectionHeaderTextStyleWithFallback}>
-        {t('deadline_modal.section_task_addition')}
-      </Text>
+      <View>
+        <Text style={sectionHeaderTextStyleWithFallback}>
+          {t('deadline_modal.section_task_addition')}
+        </Text>
 
-      <TouchableOpacity onPress={handleFrequencyPickerPress} style={styles.settingRow}>
-        <Text style={styles.label}>{t('deadline_modal.repeat_frequency')}</Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={[styles.pickerText, { marginRight: 4 }]}>
-            {displayFrequency}
-            </Text>
-            <Ionicons name="chevron-forward" size={labelFontSize + 2} color={mutedTextColor} />
-        </View>
-      </TouchableOpacity>
-
-      {currentFrequency === 'custom' && (
-        <TouchableOpacity onPress={handleCustomIntervalModalPress} style={styles.settingRow}>
-          <Text style={styles.label}>{t('deadline_modal.custom_interval')}</Text>
+        <TouchableOpacity onPress={handleFrequencyPickerPress} style={styles.settingRow}>
+          <Text style={styles.label}>{t('deadline_modal.repeat_frequency')}</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={[styles.pickerText, { marginRight: 4 }]}>
-              {displayCustomInterval}
-            </Text>
-            <Ionicons name="chevron-forward" size={labelFontSize + 2} color={mutedTextColor} />
+              <Text style={[styles.pickerText, { marginRight: 4 }]}>
+              {displayFrequency}
+              </Text>
+              <Ionicons name="chevron-forward" size={labelFontSize + 2} color={mutedTextColor} />
           </View>
         </TouchableOpacity>
-      )}
 
-
-      {currentFrequency && (
-        <>
-          <TouchableOpacity onPress={handleTaskStartTimePickerPress} style={styles.settingRow}>
-            <Text style={styles.label}>{t('deadline_modal.task_start_time_label')}</Text>
+        {currentFrequency === 'custom' && (
+          <TouchableOpacity onPress={handleCustomIntervalModalPress} style={styles.settingRow}>
+            <Text style={styles.label}>{t('deadline_modal.custom_interval')}</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={[styles.pickerText, { marginRight: 4 }]}>{displayTaskStartTime}</Text>
+              <Text style={[styles.pickerText, { marginRight: 4 }]}>
+                {displayCustomInterval}
+              </Text>
               <Ionicons name="chevron-forward" size={labelFontSize + 2} color={mutedTextColor} />
             </View>
           </TouchableOpacity>
+        )}
 
-          {currentIsTaskStartTimeEnabled && (
-            <TouchableOpacity
-                onPress={handleDurationPickerPress}
-                style={styles.settingRow}
-                disabled={!currentIsTaskStartTimeEnabled}
-            >
-              <Text style={[styles.label, !currentIsTaskStartTimeEnabled && { color: mutedTextColor } ]}>
-                {t('deadline_modal.task_duration_label')}
-              </Text>
+        {currentFrequency && (
+          <>
+            <TouchableOpacity onPress={handleTaskStartTimePickerPress} style={styles.settingRow}>
+              <Text style={styles.label}>{t('deadline_modal.task_start_time_label')}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={[styles.pickerText, { marginRight: 4 }, !currentIsTaskStartTimeEnabled && { color: mutedTextColor }]}>
-                    {displayTaskDuration}
-                </Text>
-                <Ionicons
-                    name="chevron-forward"
-                    size={labelFontSize + 2}
-                    color={!currentIsTaskStartTimeEnabled ? styles.tabContentContainer?.backgroundColor || mutedTextColor : mutedTextColor}
-                />
+                <Text style={[styles.pickerText, { marginRight: 4 }]}>{displayTaskStartTime}</Text>
+                <Ionicons name="chevron-forward" size={labelFontSize + 2} color={mutedTextColor} />
               </View>
             </TouchableOpacity>
-          )}
 
-          {isJapanese && (currentFrequency === 'daily' || currentFrequency === 'weekly' || currentFrequency === 'monthly' || currentFrequency === 'yearly') && (
-            <View style={styles.exclusionSettingRow}>
-              <Text style={styles.label}>
-                {t('deadline_modal.exclude_holidays')}
-              </Text>
-              <View
-                style={[
-                  switchContainerBaseStyle,
-                  {
-                    backgroundColor: currentExcludeHolidays ? switchTrackColorTrue : switchTrackColorFalse,
-                    borderWidth: 1,
-                    borderColor: currentExcludeHolidays ? switchTrackColorTrue : switchTrackBorderColorFalse,
-                  }
-                ]}
+            {currentIsTaskStartTimeEnabled && (
+              <TouchableOpacity
+                  onPress={handleDurationPickerPress}
+                  style={styles.settingRow}
+                  disabled={!currentIsTaskStartTimeEnabled}
               >
-                <Switch
-                  value={currentExcludeHolidays}
-                  onValueChange={handleExcludeHolidaysChange}
-                  thumbColor={switchThumbColorValue}
-                  trackColor={{ false: 'transparent', true: 'transparent' }}
-                />
-              </View>
-            </View>
-          )}
-        </>
-      )}
+                <Text style={[styles.label, !currentIsTaskStartTimeEnabled && { color: mutedTextColor } ]}>
+                  {t('deadline_modal.task_duration_label')}
+                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={[styles.pickerText, { marginRight: 4 }, !currentIsTaskStartTimeEnabled && { color: mutedTextColor }]}>
+                      {displayTaskDuration}
+                  </Text>
+                  <Ionicons
+                      name="chevron-forward"
+                      size={labelFontSize + 2}
+                      color={!currentIsTaskStartTimeEnabled ? ((styles.tabContentContainer as ViewStyle)?.backgroundColor || mutedTextColor) as string : mutedTextColor}
+                  />
+                </View>
+              </TouchableOpacity>
+            )}
+
+            {isJapanese && (currentFrequency === 'daily' || currentFrequency === 'weekly' || currentFrequency === 'monthly' || currentFrequency === 'yearly') && (
+              <TouchableOpacity style={styles.settingRow} onPress={() => handleExcludeHolidaysChange(!currentExcludeHolidays)}>
+                <Text style={styles.label}>
+                  {t('deadline_modal.exclude_holidays')}
+                </Text>
+                <View
+                  style={[
+                    switchContainerBaseStyle,
+                    {
+                      backgroundColor: currentExcludeHolidays ? switchTrackColorTrue : switchTrackColorFalse,
+                      borderWidth: 1,
+                      borderColor: currentExcludeHolidays ? switchTrackColorTrue : switchTrackBorderColorFalse,
+                    }
+                  ]}
+                >
+                  <Switch
+                    value={currentExcludeHolidays}
+                    onValueChange={handleExcludeHolidaysChange}
+                    thumbColor={switchThumbColorValue}
+                    trackColor={{ false: 'transparent', true: 'transparent' }}
+                    style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
+                  />
+                </View>
+              </TouchableOpacity>
+            )}
+          </>
+        )}
+      </View>
+
 
       {currentFrequency && (
-          <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: separatorColor, marginVertical: 10 }} />
+          <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: separatorColor, marginHorizontal: 0, marginVertical: 10 }} />
       )}
 
+
       {currentFrequency && (
-        <>
+        <View>
           <Text style={sectionHeaderTextStyleWithFallback}>
             {t('deadline_modal.section_repeat_settings')}
           </Text>
@@ -429,31 +447,29 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
           </TouchableOpacity>
 
           {currentFrequency === 'weekly' && (
-            <>
-              <View style={styles.weekdaySelectorContainer}>
-                {weekdayKeys.map(({ key, dayIndex }) => (
-                  <TouchableOpacity
-                    key={key}
-                    style={[styles.daySelector, currentDaysOfWeek?.[dayIndex] && styles.daySelectorSelected]}
-                    onPress={() => toggleWeekday(dayIndex)}
-                  >
-                    <Text style={[styles.daySelectorText, currentDaysOfWeek?.[dayIndex] && styles.daySelectorTextSelected]}>
-                      {t(`common.${key}` as const)}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </>
+            <View style={styles.weekdaySelectorContainer}>
+              {weekdayKeys.map(({ key, dayIndex }) => (
+                <TouchableOpacity
+                  key={key}
+                  style={[styles.daySelector, currentDaysOfWeek?.[dayIndex] && styles.daySelectorSelected]}
+                  onPress={() => toggleWeekday(dayIndex)}
+                >
+                  <Text style={[styles.daySelectorText, currentDaysOfWeek?.[dayIndex] && styles.daySelectorTextSelected]}>
+                    {t(`common.${key}` as const)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           )}
 
           { (currentFrequency === 'monthly' || currentFrequency === 'yearly') && (
-            <View style={{ paddingHorizontal: 16, paddingVertical:10, backgroundColor: (styles.settingRow as ViewStyle)?.backgroundColor }}>
+            <View style={[styles.settingRow, styles.settingRowNoBottomBorder]}>
                 <Text style={{color: mutedTextColor, fontSize: labelFontSize-2}}>
                     {t(`deadline_modal.${currentFrequency}` as const)} {t('common.settings_not_implemented')}
                 </Text>
             </View>
           )}
-        </>
+        </View>
       )}
 
       <Modal visible={isFrequencyPickerVisible} onRequestClose={() => setFrequencyPickerVisible(false)} transparent animationType="fade">
@@ -479,7 +495,7 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
 
       <TimePickerModal
         visible={isTaskStartTimePickerVisible}
-        initialTime={currentTaskStartTime}
+        initialTime={getInitialTaskStartTimeForPicker()}
         onClose={handleTaskStartTimePickerClose}
         onConfirm={handleTaskStartTimeConfirm}
         onClear={handleTaskStartTimeClear}

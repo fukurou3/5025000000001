@@ -31,32 +31,41 @@ interface DeadlineSettingModalProps {
   initialSettings?: DeadlineSettings;
 }
 
-const defaultTime: DeadlineTime = { hour: 9, minute: 0 };
+const getSafeTime = (time?: DeadlineTime): DeadlineTime => {
+  const now = new Date();
+  return {
+    hour: time?.hour ?? now.getHours(),
+    minute: time?.minute ?? now.getMinutes(),
+  };
+};
+
 const todayString = CalendarUtils.getCalendarDateString(new Date());
 const ANIMATION_TIMING = 250;
 const BACKDROP_OPACITY = 0.4;
 
-const getDefaultInitialSettings = (): DeadlineSettings => ({
-  date: undefined,
-  isTimeEnabled: false,
-  time: defaultTime,
+const getDefaultInitialSettings = (): DeadlineSettings => {
+    const now = new Date();
+    return {
+      date: undefined,
+      isTimeEnabled: false,
+      time: { hour: now.getHours(), minute: now.getMinutes() },
 
-  taskStartTime: defaultTime,
-  isTaskStartTimeEnabled: false,
-  taskDuration: undefined,
+      taskStartTime: { hour: now.getHours(), minute: now.getMinutes() },
+      isTaskStartTimeEnabled: false,
+      taskDuration: undefined,
 
-  repeatFrequency: undefined,
-  repeatStartDate: todayString,
-  repeatDaysOfWeek: undefined,
-  repeatEnds: undefined,
-  isExcludeHolidays: false,
-  customIntervalValue: 1,
-  customIntervalUnit: 'days',
+      repeatFrequency: undefined,
+      repeatStartDate: todayString,
+      repeatDaysOfWeek: undefined,
+      repeatEnds: undefined,
+      isExcludeHolidays: false,
+      customIntervalValue: 1,
+      customIntervalUnit: 'days',
 
-
-  periodStartDate: undefined,
-  periodEndDate: undefined,
-});
+      periodStartDate: undefined,
+      periodEndDate: undefined,
+    };
+};
 
 
 export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
@@ -68,15 +77,24 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
   const { colorScheme, subColor } = useAppTheme();
   const isDark = colorScheme === 'dark';
   const { fontSizeKey } = useContext(FontSizeContext);
-  const layout = useWindowDimensions(); // ★ useWindowDimensions をここで呼び出す
-  const styles = useMemo(() => createDeadlineModalStyles(isDark, subColor, fontSizeKey, layout.height), [isDark, subColor, fontSizeKey, layout.height]); // ★ layout.height を渡す
+  const layout = useWindowDimensions();
+  const styles = useMemo(() => createDeadlineModalStyles(isDark, subColor, fontSizeKey, layout.height), [isDark, subColor, fontSizeKey, layout.height]);
   const { t } = useTranslation();
 
 
   const [activeTabIndex, setActiveTabIndex] = useState(0);
-  const [settings, setSettings] = useState<DeadlineSettings>(
-    initialSettings ? { ...getDefaultInitialSettings(), ...initialSettings } : getDefaultInitialSettings()
-  );
+  const [settings, setSettings] = useState<DeadlineSettings>(() => {
+    const defaults = getDefaultInitialSettings();
+    if (initialSettings) {
+        return {
+            ...defaults,
+            ...initialSettings,
+            time: getSafeTime(initialSettings.time),
+            taskStartTime: getSafeTime(initialSettings.taskStartTime),
+        };
+    }
+    return defaults;
+  });
 
   const [isUnsetConfirmVisible, setUnsetConfirmVisible] = useState(false);
   const [isValidationErrorModalVisible, setValidationErrorModalVisible] = useState(false);
@@ -86,7 +104,16 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
   useEffect(() => {
     if (visible) {
       InteractionManager.runAfterInteractions(() => {
-        const currentInitialSettings = initialSettings ? { ...getDefaultInitialSettings(), ...initialSettings } : getDefaultInitialSettings();
+        const defaults = getDefaultInitialSettings();
+        let currentInitialSettings = defaults;
+        if (initialSettings) {
+            currentInitialSettings = {
+                ...defaults,
+                ...initialSettings,
+                time: getSafeTime(initialSettings.time), // Ensure time is valid
+                taskStartTime: getSafeTime(initialSettings.taskStartTime), // Ensure taskStartTime is valid
+            };
+        }
         setSettings(currentInitialSettings);
 
         if (currentInitialSettings.repeatFrequency) {
@@ -168,7 +195,7 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
             finalSettingsOutput = {
                 ...defaultValues,
                 date: settings.date,
-                time: settings.isTimeEnabled ? settings.time : undefined,
+                time: settings.isTimeEnabled && settings.time ? settings.time : undefined,
                 isTimeEnabled: settings.isTimeEnabled,
                 repeatFrequency: undefined,
                 periodStartDate: undefined,
@@ -186,14 +213,14 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
                 repeatDaysOfWeek: settings.repeatFrequency === 'weekly' ? settings.repeatDaysOfWeek : undefined,
                 repeatEnds: settings.repeatEnds,
                 isExcludeHolidays: settings.isExcludeHolidays,
-                taskStartTime: settings.taskStartTime,
+                taskStartTime: settings.isTaskStartTimeEnabled && settings.taskStartTime ? settings.taskStartTime : undefined,
                 isTaskStartTimeEnabled: settings.isTaskStartTimeEnabled,
-                taskDuration: settings.taskDuration,
+                taskDuration: settings.isTaskStartTimeEnabled ? settings.taskDuration : undefined,
                 customIntervalValue: settings.repeatFrequency === 'custom' ? settings.customIntervalValue : undefined,
                 customIntervalUnit: settings.repeatFrequency === 'custom' ? settings.customIntervalUnit : undefined,
                 date: undefined,
                 isTimeEnabled: false,
-                time: defaultTime,
+                time: undefined,
                 periodStartDate: undefined,
                 periodEndDate: undefined,
             };
@@ -208,7 +235,7 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
                 periodEndDate: settings.periodEndDate,
                 date: undefined,
                 isTimeEnabled: false,
-                time: defaultTime,
+                time: undefined,
                 repeatFrequency: undefined,
             };
         } else {
@@ -217,10 +244,7 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
     } else {
         finalSettingsOutput = undefined;
     }
-
     onSave(finalSettingsOutput);
-    // onClose();
-
   }, [activeTabIndex, settings, onSave, t, showErrorAlert]);
 
   const handleUnsetPress = useCallback(() => {
@@ -229,10 +253,10 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
 
   const handleConfirmUnset = useCallback(() => {
     setUnsetConfirmVisible(false);
-    setSettings(getDefaultInitialSettings());
+    const defaults = getDefaultInitialSettings();
+    setSettings(defaults);
     onSave(undefined);
-    // onClose();
-  }, [onSave]);
+  }, [onSave, setSettings]);
 
   const handleCancelUnset = useCallback(() => {
     setUnsetConfirmVisible(false);
