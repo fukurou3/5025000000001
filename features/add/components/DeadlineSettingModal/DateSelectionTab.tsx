@@ -30,9 +30,6 @@ const formatDateToDisplay = (dateString: string | undefined, t: (key: string, op
 
 const DateSelectionTabMemo: React.FC<SpecificDateSelectionTabProps> = ({
   styles,
-  selectedDate,
-  selectedTime,
-  isTimeEnabled,
   selectedEndDate,
   selectedEndTime,
   isEndTimeEnabled,
@@ -53,15 +50,15 @@ const DateSelectionTabMemo: React.FC<SpecificDateSelectionTabProps> = ({
   }, []);
 
   const handleStartDateConfirm = useCallback((newDate: string) => {
-    updateSettings('date', newDate);
+    updateSettings('endDate', newDate); // "date" を "endDate" に変更
     setStartDatePickerVisible(false);
   }, [updateSettings]);
 
   const handleStartDateClear = useCallback(() => {
     const now = new Date();
-    updateSettings('date', todayString);
-    updateSettings('isTimeEnabled', true);
-    updateSettings('time', { hour: now.getHours(), minute: now.getMinutes() });
+    updateSettings('endDate', todayString); // "date" を "endDate" に変更
+    updateSettings('isEndTimeEnabled', true); // "isTimeEnabled" を "isEndTimeEnabled" に変更
+    updateSettings('endTime', { hour: now.getHours(), minute: now.getMinutes() }); // "time" を "endTime" に変更
     setStartDatePickerVisible(false);
   }, [updateSettings]);
 
@@ -70,22 +67,22 @@ const DateSelectionTabMemo: React.FC<SpecificDateSelectionTabProps> = ({
   }, []);
 
   const handleStartTimeSectionPress = useCallback(() => {
-    if (!selectedDate) {
+    if (!selectedEndDate) { // selectedDate を selectedEndDate に変更
         showErrorAlert(t('deadline_modal.date_missing_for_time_alert_message'));
         return;
     }
     setStartTimePickerVisible(true);
-  }, [selectedDate, showErrorAlert, t]);
+  }, [selectedEndDate, showErrorAlert, t]); // selectedDate を selectedEndDate に変更
 
   const handleStartTimeConfirm = useCallback((newTime: DeadlineTime) => {
-    updateSettings('time', newTime);
-    updateSettings('isTimeEnabled', true);
+    updateSettings('endTime', newTime); // "time" を "endTime" に変更
+    updateSettings('isEndTimeEnabled', true); // "isTimeEnabled" を "isEndTimeEnabled" に変更
     setStartTimePickerVisible(false);
   }, [updateSettings]);
 
   const handleStartTimeClear = useCallback(() => {
-    updateSettings('time', undefined);
-    updateSettings('isTimeEnabled', false);
+    updateSettings('endTime', undefined); // "time" を "endTime" に変更
+    updateSettings('isEndTimeEnabled', false); // "isTimeEnabled" を "isEndTimeEnabled" に変更
     setStartTimePickerVisible(false);
   }, [updateSettings]);
 
@@ -94,21 +91,21 @@ const DateSelectionTabMemo: React.FC<SpecificDateSelectionTabProps> = ({
   }, []);
 
   const handleEndDateSectionPress = useCallback(() => {
-    if (!selectedDate) {
+    if (!selectedEndDate) { // selectedDate を selectedEndDate に変更
         showErrorAlert(t('deadline_modal.start_date_required_for_end_date'));
         return;
     }
     setEndDatePickerVisible(true);
-  }, [selectedDate, showErrorAlert, t]);
+  }, [selectedEndDate, showErrorAlert, t]); // selectedDate を selectedEndDate に変更
 
   const handleEndDateConfirm = useCallback((newDate: string) => {
-    if (selectedDate && newDate < selectedDate) {
+    if (selectedEndDate && newDate < selectedEndDate) { // selectedDate を selectedEndDate に変更
         showErrorAlert(t('deadline_modal.end_date_before_start_date_alert_message'));
         return;
     }
     updateSettings('endDate', newDate);
     setEndDatePickerVisible(false);
-  }, [updateSettings, selectedDate, showErrorAlert, t]);
+  }, [updateSettings, selectedEndDate, showErrorAlert, t]); // selectedDate を selectedEndDate に変更
 
   const handleEndDateClear = useCallback(() => {
     updateSettings('endDate', undefined);
@@ -146,19 +143,19 @@ const DateSelectionTabMemo: React.FC<SpecificDateSelectionTabProps> = ({
   }, []);
 
   const displayStartDate = useMemo(() => {
-    if (!selectedDate) return t('common.select');
-    const formattedDate = formatDateToDisplay(selectedDate, t);
-    if (selectedDate === todayString) {
+    if (!selectedEndDate) return t('common.select'); // selectedDate を selectedEndDate に変更
+    const formattedDate = formatDateToDisplay(selectedEndDate, t); // selectedDate を selectedEndDate に変更
+    if (selectedEndDate === todayString) { // selectedDate を selectedEndDate に変更
       return `${formattedDate} (${t('common.today')})`;
     }
     return formattedDate;
-  }, [selectedDate, t]);
+  }, [selectedEndDate, t]); // selectedDate を selectedEndDate に変更
 
   const displayStartTime = useMemo(() => {
-    if (isTimeEnabled && selectedTime) return formatTimeToDisplay(selectedTime, t);
-    if (selectedTime) return formatTimeToDisplay(selectedTime,t);
+    if (isEndTimeEnabled && selectedEndTime) return formatTimeToDisplay(selectedEndTime, t); // isTimeEnabled を isEndTimeEnabled に、selectedTime を selectedEndTime に変更
+    if (selectedEndTime) return formatTimeToDisplay(selectedEndTime,t); // selectedTime を selectedEndTime に変更
     return t('common.select');
-  }, [isTimeEnabled, selectedTime, t]);
+  }, [isEndTimeEnabled, selectedEndTime, t]); // isTimeEnabled を isEndTimeEnabled に、selectedTime を selectedEndTime に変更
 
   const displayEndDate = useMemo(() => formatDateToDisplay(selectedEndDate, t), [selectedEndDate, t]);
   const displayEndTime = useMemo(() => {
@@ -189,7 +186,7 @@ const DateSelectionTabMemo: React.FC<SpecificDateSelectionTabProps> = ({
     let currentTime = { hour: now.getHours(), minute: now.getMinutes() };
 
     if (type === 'start') {
-        return selectedTime || currentTime;
+        return selectedEndTime || currentTime; // selectedTime を selectedEndTime に変更
     }
     if (type === 'end') {
         return selectedEndTime || currentTime;
@@ -198,7 +195,7 @@ const DateSelectionTabMemo: React.FC<SpecificDateSelectionTabProps> = ({
   };
   
   const getInitialDateForStartDatePicker = () => {
-    return selectedDate || todayString;
+    return selectedEndDate || todayString; // selectedDate を selectedEndDate に変更
   };
 
   return (
@@ -215,19 +212,19 @@ const DateSelectionTabMemo: React.FC<SpecificDateSelectionTabProps> = ({
       <TouchableOpacity
         onPress={handleStartTimeSectionPress}
         style={styles.settingRow}
-        disabled={!selectedDate}
+        disabled={!selectedEndDate} // selectedDate を selectedEndDate に変更
       >
-        <Text style={[styles.label, !selectedDate && { color: mutedTextColor }]}>
+        <Text style={[styles.label, !selectedEndDate && { color: mutedTextColor }]}>
           {t('deadline_modal.specify_time')}
         </Text>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Text style={[styles.pickerText, { marginRight: 4 }, !selectedDate && { color: mutedTextColor }]}>
+          <Text style={[styles.pickerText, { marginRight: 4 }, !selectedEndDate && { color: mutedTextColor }]}>
             {displayStartTime}
           </Text>
           <Ionicons
             name="chevron-forward"
             size={labelFontSize + 2}
-            color={!selectedDate ? ((styles.tabContentContainer as ViewStyle)?.backgroundColor || mutedTextColor) as string : mutedTextColor}
+            color={!selectedEndDate ? ((styles.tabContentContainer as ViewStyle)?.backgroundColor || mutedTextColor) as string : mutedTextColor} // selectedDate を selectedEndDate に変更
            />
         </View>
       </TouchableOpacity>
@@ -238,19 +235,19 @@ const DateSelectionTabMemo: React.FC<SpecificDateSelectionTabProps> = ({
       <TouchableOpacity
         onPress={handleEndDateSectionPress}
         style={styles.settingRow}
-        disabled={!selectedDate}
+        disabled={!selectedEndDate} // selectedDate を selectedEndDate に変更
       >
-        <Text style={[styles.label, !selectedDate && { color: mutedTextColor }]}>
+        <Text style={[styles.label, !selectedEndDate && { color: mutedTextColor }]}>
           {t('deadline_modal.end_date')}
         </Text>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Text style={[styles.pickerText, { marginRight: 4 }, !selectedDate && { color: mutedTextColor }]}>
+          <Text style={[styles.pickerText, { marginRight: 4 }, !selectedEndDate && { color: mutedTextColor }]}>
             {displayEndDate}
           </Text>
           <Ionicons
             name="chevron-forward"
             size={labelFontSize + 2}
-            color={!selectedDate ? ((styles.tabContentContainer as ViewStyle)?.backgroundColor || mutedTextColor) as string : mutedTextColor}
+            color={!selectedEndDate ? ((styles.tabContentContainer as ViewStyle)?.backgroundColor || mutedTextColor) as string : mutedTextColor} // selectedDate を selectedEndDate に変更
           />
         </View>
       </TouchableOpacity>
@@ -294,7 +291,7 @@ const DateSelectionTabMemo: React.FC<SpecificDateSelectionTabProps> = ({
 
       <DatePickerModal
         visible={isEndDatePickerVisible}
-        initialDate={selectedEndDate || selectedDate || todayString}
+        initialDate={selectedEndDate || selectedEndDate || todayString} // selectedDate を selectedEndDate に変更
         onClose={handleEndDatePickerClose}
         onConfirm={handleEndDateConfirm}
         onClear={handleEndDateClear}
@@ -318,10 +315,10 @@ const areDateSelectionTabPropsEqual = (
 ): boolean => {
     return (
         prevProps.styles === nextProps.styles &&
-        prevProps.selectedDate === nextProps.selectedDate &&
-        prevProps.isTimeEnabled === nextProps.isTimeEnabled &&
-        prevProps.selectedTime?.hour === nextProps.selectedTime?.hour &&
-        prevProps.selectedTime?.minute === nextProps.selectedTime?.minute &&
+        prevProps.selectedEndDate === nextProps.selectedEndDate && // selectedDate を selectedEndDate に変更
+        prevProps.isEndTimeEnabled === nextProps.isEndTimeEnabled && // isTimeEnabled を isEndTimeEnabled に変更
+        prevProps.selectedEndTime?.hour === nextProps.selectedEndTime?.hour && // selectedTime を selectedEndTime に変更
+        prevProps.selectedEndTime?.minute === nextProps.selectedEndTime?.minute && // selectedTime を selectedEndTime に変更
         prevProps.selectedEndDate === nextProps.selectedEndDate &&
         prevProps.isEndTimeEnabled === nextProps.isEndTimeEnabled &&
         prevProps.selectedEndTime?.hour === nextProps.selectedEndTime?.hour &&
