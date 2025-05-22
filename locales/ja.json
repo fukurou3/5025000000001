@@ -115,7 +115,12 @@
     "no_notification": "通知なし",
     "photo_selected": "{{count}}枚選択中",
     "no_notification_button": "通知なし",
-    "no_notification_display": "なし"
+    "no_notification_display": "なし",
+       "unselected_date_placeholder": "未選択",
+    "unselected_time_placeholder": "未選択",
+    "period_not_fully_set": "期間未完了",
+    "period_start_prefix": "開始:",
+    "task_deadline_prefix": "期限:"
   },
   "edit_task": {
     "title": "編集",
@@ -226,7 +231,14 @@
     "remainingYears": "残り{{count}}年",
     "remainingYearsMonths": "残り{{years}}年{{months}}カ月",
     "justNow": "たった今",
-    "dueNow": "期限です"
+    "dueNow": "期限です",
+        "overdue_days": "{{count}}日超過",
+    "overdue_hours": "{{count}}時間超過",
+    "overdue_minutes": "{{count}}分超過",
+    "startsInMinutes": "{{count}}分後開始",
+    "startsInHours": "{{count}}時間後開始",
+    "startsTomorrow": "明日開始",
+    "startsOnDate": "{{date}}開始"
   },
   "draft_list": {
     "title": "下書き一覧",
@@ -312,6 +324,15 @@
     "end_time_label": "時刻",
     "start_date_required_for_end_date": "終了日時を設定するには、開始日の設定も必要です。",
     "end_date_before_start_date_alert_message": "終了日は開始日以降に設定してください。",
-    "end_time_requires_end_date_alert_message": "終了時刻を設定する場合は、終了日も選択してください。"
+    "end_time_requires_end_date_alert_message": "終了時刻を設定する場合は、終了日も選択してください。",
+    "task_deadline_section_title": "タスク期限",
+    "date_label": "日付",
+    "time_label": "時刻",
+    "set_period_toggle_label": "期間を設定する",
+    "start_date_label": "開始日",
+    "start_date_required_for_time": "時刻を設定する場合は開始日も選択してください。",
+    "period_start_must_be_before_deadline_alert_message": "期間の開始日はタスクの期限日より前に設定してください。",
+    "period_start_time_must_be_before_deadline_time_alert_message": "期間の開始時刻はタスクの期限時刻より前に設定してください。"
+  
   }
 }

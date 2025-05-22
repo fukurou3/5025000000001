@@ -1,6 +1,7 @@
 // app/features/tasks/components/TaskItem.tsx
 import React, { useContext, useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+// StyleSheet と TextStyle を react-native からインポート
+import { View, Text, TouchableOpacity, StyleSheet, TextStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Task } from '../types';
 import { createStyles } from '../styles';
@@ -9,12 +10,12 @@ import { useTranslation } from 'react-i18next';
 import { FontSizeContext } from '@/context/FontSizeContext';
 import { useRouter } from 'expo-router';
 import dayjs from 'dayjs';
-import { getTimeColor, getTimeText, calculateNextDisplayInstanceDate } from '../utils'; // calculateNextDisplayInstanceDate をインポート
+import { getTimeColor, getTimeText, calculateNextDisplayInstanceDate, getDeadlineDisplayText, calculateActualDueDate } from '../utils';
 import { fontSizes } from '@/constants/fontSizes';
 
 type Props = {
   task: Task;
-  onToggle: (id: string, instanceDate?: string) => void; // instanceDate を渡せるように変更
+  onToggle: (id: string, instanceDate?: string) => void;
   isSelecting: boolean;
   selectedIds: string[];
   onLongPressSelect: (id: string) => void;
@@ -29,42 +30,58 @@ export function TaskItem({
 }: Props) {
   const { colorScheme, subColor } = useAppTheme();
   const isDark = colorScheme === 'dark';
-  const { t, i18n } = useTranslation(); // i18n を追加
+  const { t, i18n } = useTranslation();
   const { fontSizeKey } = useContext(FontSizeContext);
   const styles = createStyles(isDark, subColor, fontSizeKey);
   const router = useRouter();
-  const [now, setNow] = useState(dayjs()); // now の更新ロジックは既存のまま
+  const [now, setNow] = useState(dayjs());
 
-  // 繰り返しタスクの現在のインスタンスの日付を決定
+  const actualDueDate = calculateActualDueDate(task);
+
   const displayInstanceDate = task.deadlineDetails?.repeatFrequency
-    ? calculateNextDisplayInstanceDate(task)
-    : task.deadline ? dayjs(task.deadline) : null;
+    ? calculateNextDisplayInstanceDate(task, now)
+    : actualDueDate;
+
+  const displayStartDate = task.deadlineDetails?.isPeriodSettingEnabled && task.deadlineDetails.periodStartDate
+    ? dayjs(task.deadlineDetails.periodStartDate).set(
+        'hour',
+        task.deadlineDetails.periodStartTime?.hour ?? 0
+      ).set(
+        'minute',
+        task.deadlineDetails.periodStartTime?.minute ?? 0
+      )
+    : null;
 
   useEffect(() => {
     let intervalId: NodeJS.Timeout | undefined;
     const updateNow = () => setNow(dayjs());
 
-    if (displayInstanceDate) { // displayInstanceDate を使用
-        const diffMinutes = Math.abs(displayInstanceDate.diff(now, 'minute'));
-        const intervalMs = diffMinutes <= 120 ? 60000 : 300000; // 2時間以内なら毎分、それ以外は5分ごと
+    const dateToMonitor = displayStartDate?.isAfter(now) ? displayStartDate : displayInstanceDate;
+
+    if (dateToMonitor) {
+        const diffMinutesTotal = Math.abs(dateToMonitor.diff(now, 'minute'));
+        let intervalMs = 60000;
+        if (diffMinutesTotal <= 1) intervalMs = 5000;
+        else if (diffMinutesTotal <= 5) intervalMs = 10000;
+        else if (diffMinutesTotal <= 60) intervalMs = 30000;
         intervalId = setInterval(updateNow, intervalMs);
     }
-
     return () => {
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
+      if (intervalId) clearInterval(intervalId);
     };
-  }, [task, now, displayInstanceDate]);
+  }, [task, now, displayInstanceDate, displayStartDate]);
 
-  // getTimeText と getTimeColor に displayInstanceDate を渡す
-  const timeLabel = getTimeText(task, t, displayInstanceDate);
-  const timeColor = getTimeColor(task, isDark, displayInstanceDate);
+  const isPeriodStartInFuture = task.deadlineDetails?.isPeriodSettingEnabled && displayStartDate && displayStartDate.isAfter(now);
 
+  const deadlineDisplayText = getDeadlineDisplayText(actualDueDate, t);
+  const startTimeDisplayText = getTimeText(task, t, displayInstanceDate, displayStartDate);
+
+  const timeColor = getTimeColor(task, isDark, displayInstanceDate, displayStartDate);
 
   const handleToggle = () => {
     if (task.deadlineDetails?.repeatFrequency && displayInstanceDate) {
-      onToggle(task.id, displayInstanceDate.format('YYYY-MM-DD'));
+      const instanceDateForCompletion = calculateNextDisplayInstanceDate(task, dayjs(task.deadlineDetails.repeatStartDate ?? undefined))?.format('YYYY-MM-DD');
+      onToggle(task.id, instanceDateForCompletion ?? task.id);
     } else {
       onToggle(task.id);
     }
@@ -74,32 +91,63 @@ export function TaskItem({
     if (isSelecting) {
       onLongPressSelect(task.id);
     } else {
-      // 詳細画面に渡すIDは親タスクのIDのまま
       router.push(`/task-detail/${task.id}`);
     }
   };
 
   const isSelected = selectedIds.includes(task.id);
 
-  // 繰り返しタスクの特定の日付インスタンスが完了しているかチェック
-  let isCurrentInstanceDone = task.done; // デフォルトはtask.done
+  let isCurrentInstanceDone = task.done;
   if (task.deadlineDetails?.repeatFrequency && displayInstanceDate) {
-    const dateStr = displayInstanceDate.format('YYYY-MM-DD');
-    isCurrentInstanceDone = task.completedInstanceDates?.includes(dateStr) ?? false;
+    const instanceDateForCheck = calculateNextDisplayInstanceDate(task, dayjs(task.deadlineDetails.repeatStartDate ?? undefined))?.format('YYYY-MM-DD');
+    if (instanceDateForCheck) {
+        isCurrentInstanceDone = task.completedInstanceDates?.includes(instanceDateForCheck) ?? false;
+    }
+  }
+
+  let topText = "";
+  let bottomText: string | null = null;
+  // スタイルを TextStyle[] として型付けし、StyleSheet.flatten に渡せるようにする
+  let topTextStyleArray: TextStyle[] = [styles.taskTime, { color: timeColor }];
+  let bottomTextStyleArray: TextStyle[] = [styles.taskTime, { color: timeColor, fontSize: fontSizes[fontSizeKey] - 2, fontWeight: 'normal' }];
+
+
+  if (isPeriodStartInFuture) {
+    topText = deadlineDisplayText;
+    bottomText = startTimeDisplayText;
+    topTextStyleArray.push({ fontWeight: 'bold' });
+    // bottomTextStyleArray はデフォルトで細字・小さめなので変更なし
+  } else if (task.deadlineDetails?.repeatFrequency && displayInstanceDate) {
+    topText = displayInstanceDate.locale(i18n.language).format(t('common.month_day_format', 'M月D日'));
+    bottomText = startTimeDisplayText;
+    topTextStyleArray.push({ fontSize: fontSizes[fontSizeKey] - 2, fontWeight: 'normal' });
+    // bottomTextStyleArray を太字に変更
+    bottomTextStyleArray = [styles.taskTime, { color: timeColor, fontWeight: 'bold' }];
+     if (topText === t('task_list.no_deadline')) {
+        // styles.noDeadlineText は fontStyle:'italic' を含むので、直接マージする
+        topTextStyleArray.push(styles.noDeadlineText as TextStyle);
+    }
+  } else {
+    topText = startTimeDisplayText;
+    topTextStyleArray.push({ fontWeight: 'bold' });
+    if (topText === t('task_list.no_deadline')) {
+        topTextStyleArray.push(styles.noDeadlineText as TextStyle);
+    }
   }
 
 
   return (
     <TouchableOpacity
       onPress={handlePress}
-      onLongPress={() => onLongPressSelect(task.id)} // 親タスクのIDを選択対象とする
+      onLongPress={() => onLongPressSelect(task.id)}
       delayLongPress={200}
+      style={styles.taskItemContainer} // styles.ts に taskItemContainer を追加
     >
       <View style={styles.taskItem}>
         {!isSelecting && (
           <TouchableOpacity onPress={handleToggle} style={styles.checkboxContainer}>
             <Ionicons
-              name={isCurrentInstanceDone ? 'checkbox' : 'square-outline'} // isCurrentInstanceDone を使用
+              name={isCurrentInstanceDone ? 'checkbox' : 'square-outline'}
               size={24}
               color={subColor}
             />
@@ -110,6 +158,12 @@ export function TaskItem({
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             {task.deadlineDetails?.repeatFrequency && (
               <Ionicons name="repeat" size={fontSizes[fontSizeKey]} color={isDark ? '#999' : '#777'} style={{ marginRight: 4 }} />
+            )}
+             {task.deadlineDetails?.isPeriodSettingEnabled && task.deadlineDetails.periodStartDate && !isPeriodStartInFuture && (
+              <Ionicons name="calendar-outline" size={fontSizes[fontSizeKey]} color={isDark ? '#999' : '#777'} style={{ marginRight: 4 }} />
+            )}
+             {isPeriodStartInFuture && (
+              <Ionicons name="time-outline" size={fontSizes[fontSizeKey]} color={isDark ? '#999' : '#777'} style={{ marginRight: 4 }} />
             )}
             <Text style={styles.taskTitle} numberOfLines={1}>
               {task.title}
@@ -122,20 +176,15 @@ export function TaskItem({
           )}
         </View>
 
-        <View style={{alignItems: 'flex-end'}}>
-            {task.deadlineDetails?.repeatFrequency && displayInstanceDate ? (
-                 <Text style={[styles.taskTime, { color: timeColor, fontSize: fontSizes[fontSizeKey] -1 }]}>
-                    {displayInstanceDate.locale(i18n.language).format(t('common.month_day_format', 'M月D日'))} {/* 〇月〇日形式 */}
-                 </Text>
-            ) : null }
-            <Text style={[
-                styles.taskTime,
-                { color: timeColor },
-                (timeLabel === t('task_list.no_deadline')) && styles.noDeadlineText,
-                task.deadlineDetails?.repeatFrequency && displayInstanceDate ? {fontSize: fontSizes[fontSizeKey]-2, fontWeight: 'normal'} : {}
-            ]}>
-              {timeLabel}
+        <View style={{alignItems: 'flex-end', justifyContent: 'center', minHeight: 40 }}>
+            <Text style={StyleSheet.flatten(topTextStyleArray)} numberOfLines={1} ellipsizeMode="tail">
+                {topText}
             </Text>
+            {bottomText && (
+                <Text style={StyleSheet.flatten(bottomTextStyleArray)} numberOfLines={1} ellipsizeMode="tail">
+                    {bottomText}
+                </Text>
+            )}
         </View>
 
         {isSelecting && (

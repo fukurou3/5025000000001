@@ -44,13 +44,15 @@ const BACKDROP_OPACITY = 0.4;
 const getDefaultInitialSettings = (): DeadlineSettings => {
     const now = new Date();
     return {
-      endDate: undefined,
-      isEndTimeEnabled: false,
-      endTime: { hour: 15, minute: 0 },
+      taskDeadlineDate: undefined,
+      taskDeadlineTime: undefined,
+      isTaskDeadlineTimeEnabled: false,
+      isPeriodSettingEnabled: false,
+      periodStartDate: undefined,
+      periodStartTime: undefined,
 
       taskStartTime: { hour: now.getHours(), minute: now.getMinutes() },
       isTaskStartTimeEnabled: false,
-      // taskDuration: undefined, // 削除
 
       repeatFrequency: undefined,
       repeatStartDate: todayString,
@@ -94,13 +96,15 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
         if (initialSettings) {
            effectiveInitialSettings = {
             ...defaults,
-            endDate: initialSettings.endDate !== undefined ? initialSettings.endDate : defaults.endDate,
-            endTime: initialSettings.endTime !== undefined ? getSafeTimeWithDefault(initialSettings.endTime) : defaults.endTime,
-            isEndTimeEnabled: initialSettings.isEndTimeEnabled !== undefined ? initialSettings.isEndTimeEnabled : defaults.isEndTimeEnabled,
+            taskDeadlineDate: initialSettings.taskDeadlineDate,
+            taskDeadlineTime: initialSettings.taskDeadlineTime,
+            isTaskDeadlineTimeEnabled: initialSettings.isTaskDeadlineTimeEnabled,
+            isPeriodSettingEnabled: initialSettings.isPeriodSettingEnabled,
+            periodStartDate: initialSettings.periodStartDate,
+            periodStartTime: initialSettings.periodStartTime,
 
             taskStartTime: getSafeTimeWithDefault(initialSettings.taskStartTime),
             isTaskStartTimeEnabled: initialSettings.isTaskStartTimeEnabled ?? defaults.isTaskStartTimeEnabled,
-            // taskDuration: initialSettings.taskDuration, // 削除
             repeatFrequency: initialSettings.repeatFrequency,
             repeatStartDate: initialSettings.repeatStartDate || defaults.repeatStartDate,
             repeatDaysOfWeek: initialSettings.repeatDaysOfWeek,
@@ -109,10 +113,9 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
             customIntervalValue: initialSettings.customIntervalValue || defaults.customIntervalValue,
             customIntervalUnit: initialSettings.customIntervalUnit || defaults.customIntervalUnit,
           };
-           if (initialSettings.isEndTimeEnabled === true && initialSettings.endTime === undefined) {
-            effectiveInitialSettings.endTime = defaults.endTime;
+           if (initialSettings.isTaskDeadlineTimeEnabled === true && initialSettings.taskDeadlineTime === undefined) {
+            effectiveInitialSettings.taskDeadlineTime = defaults.taskDeadlineTime; // Ensure time is set if enabled
            }
-
         }
         setSettings(effectiveInitialSettings);
 
@@ -144,16 +147,29 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
   }, []);
 
   const handleSave = useCallback(() => {
-    if (activeTabIndex === 0) {
-        if (settings.isEndTimeEnabled && !settings.endTime) {
-             showErrorAlert(t('deadline_modal.end_time_requires_end_date_alert_message'));
-             return;
+    if (activeTabIndex === 0) { // 日付・期間タブ
+        if (settings.isPeriodSettingEnabled) { // 期間設定が有効な場合
+            if (!settings.periodStartDate) {
+                showErrorAlert(t('deadline_modal.period_start_date_missing_alert_message'));
+                return;
+            }
+            if (settings.taskDeadlineDate && settings.periodStartDate > settings.taskDeadlineDate) {
+                 showErrorAlert(t('deadline_modal.period_start_must_be_before_deadline_alert_message'));
+                 return;
+            }
+             if (settings.taskDeadlineDate && settings.periodStartDate === settings.taskDeadlineDate && settings.periodStartTime && settings.taskDeadlineTime &&
+                (settings.periodStartTime.hour > settings.taskDeadlineTime.hour ||
+                 (settings.periodStartTime.hour === settings.taskDeadlineTime.hour && settings.periodStartTime.minute >= settings.taskDeadlineTime.minute))) {
+                showErrorAlert(t('deadline_modal.period_start_time_must_be_before_deadline_time_alert_message'));
+                return;
+            }
+        } else { // 期間設定が無効（タスク期限のみ）
+            if (settings.isTaskDeadlineTimeEnabled && !settings.taskDeadlineDate) {
+                showErrorAlert(t('deadline_modal.date_missing_for_time_alert_message'));
+                return;
+            }
         }
-        if (settings.isEndTimeEnabled && !settings.endDate) {
-            showErrorAlert(t('deadline_modal.end_time_requires_end_date_alert_message'));
-            return;
-        }
-    } else if (activeTabIndex === 1 && settings.repeatFrequency) {
+    } else if (activeTabIndex === 1 && settings.repeatFrequency) { // 繰り返しタブ
         if (!settings.repeatStartDate) {
             showErrorAlert(t('deadline_modal.repeat_start_date_missing_alert_message'));
             return;
@@ -176,12 +192,16 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
 
     let finalSettingsOutput: DeadlineSettings | undefined;
 
-    if (activeTabIndex === 0) {
-        if (settings.endDate) {
+    if (activeTabIndex === 0) { // 日付・期間タブ
+        if (settings.taskDeadlineDate || settings.isPeriodSettingEnabled) { // タスク期限日または期間設定が有効な場合
             finalSettingsOutput = {
-                endDate: settings.endDate,
-                endTime: settings.isEndTimeEnabled ? settings.endTime : undefined,
-                isEndTimeEnabled: settings.isEndTimeEnabled,
+                taskDeadlineDate: settings.taskDeadlineDate,
+                taskDeadlineTime: settings.isTaskDeadlineTimeEnabled ? settings.taskDeadlineTime : undefined,
+                isTaskDeadlineTimeEnabled: settings.isTaskDeadlineTimeEnabled,
+                isPeriodSettingEnabled: settings.isPeriodSettingEnabled,
+                periodStartDate: settings.isPeriodSettingEnabled ? settings.periodStartDate : undefined,
+                periodStartTime: settings.isPeriodSettingEnabled ? settings.periodStartTime : undefined,
+                // 繰り返し関連はクリア
                 repeatFrequency: undefined,
                 repeatStartDate: undefined,
                 repeatDaysOfWeek: undefined,
@@ -189,19 +209,23 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
                 isExcludeHolidays: false,
                 customIntervalValue: undefined,
                 customIntervalUnit: undefined,
-                taskStartTime: undefined,
-                isTaskStartTimeEnabled: false,
-                // taskDuration: undefined, // 削除
+                taskStartTime: undefined, // 繰り返し用なのでクリア
+                isTaskStartTimeEnabled: false, // 繰り返し用なのでクリア
             };
         } else {
-            finalSettingsOutput = undefined;
+            finalSettingsOutput = undefined; // 何も設定されていない
         }
-    } else if (activeTabIndex === 1) {
+    } else if (activeTabIndex === 1) { // 繰り返しタブ
         if (settings.repeatFrequency && settings.repeatStartDate) {
             finalSettingsOutput = {
-                endDate: undefined,
-                endTime: undefined,
-                isEndTimeEnabled: false,
+                // 日付・期間関連はクリア
+                taskDeadlineDate: undefined,
+                taskDeadlineTime: undefined,
+                isTaskDeadlineTimeEnabled: false,
+                isPeriodSettingEnabled: false,
+                periodStartDate: undefined,
+                periodStartTime: undefined,
+                // 繰り返し関連を設定
                 repeatFrequency: settings.repeatFrequency,
                 repeatStartDate: settings.repeatStartDate,
                 repeatDaysOfWeek: settings.repeatFrequency === 'weekly' ? settings.repeatDaysOfWeek : undefined,
@@ -209,12 +233,11 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
                 isExcludeHolidays: settings.isExcludeHolidays,
                 taskStartTime: settings.isTaskStartTimeEnabled ? settings.taskStartTime : undefined,
                 isTaskStartTimeEnabled: settings.isTaskStartTimeEnabled,
-                // taskDuration: settings.isTaskStartTimeEnabled ? settings.taskDuration : undefined, // 削除
                 customIntervalValue: settings.repeatFrequency === 'custom' ? settings.customIntervalValue : undefined,
                 customIntervalUnit: settings.repeatFrequency === 'custom' ? settings.customIntervalUnit : undefined,
             };
         } else {
-            finalSettingsOutput = undefined;
+            finalSettingsOutput = undefined; // 繰り返し設定が無効
         }
     } else {
         finalSettingsOutput = undefined;
@@ -228,23 +251,9 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
 
   const handleConfirmUnset = useCallback(() => {
     setUnsetConfirmVisible(false);
-    const unsetSettings: DeadlineSettings = {
-        endDate: undefined,
-        endTime: undefined,
-        isEndTimeEnabled: false,
-        repeatFrequency: undefined,
-        repeatStartDate: getDefaultInitialSettings().repeatStartDate,
-        repeatDaysOfWeek: undefined,
-        repeatEnds: undefined,
-        isExcludeHolidays: false,
-        customIntervalValue: undefined,
-        customIntervalUnit: undefined,
-        taskStartTime: undefined,
-        isTaskStartTimeEnabled: false,
-        // taskDuration: undefined, // 削除
-    };
+    const unsetSettings: DeadlineSettings = getDefaultInitialSettings();
     setSettings(unsetSettings);
-    setActiveTabIndex(0);
+    setActiveTabIndex(0); // 「日付・期間」タブに戻す
     onSave(undefined);
   }, [onSave, setSettings]);
 
@@ -263,19 +272,21 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
 
   const dateTabProps = useMemo((): SpecificDateSelectionTabProps => ({
     styles,
-    selectedEndDate: settings.endDate,
-    selectedEndTime: settings.endTime,
-    isEndTimeEnabled: settings.isEndTimeEnabled,
+    selectedTaskDeadlineDate: settings.taskDeadlineDate,
+    selectedTaskDeadlineTime: settings.taskDeadlineTime,
+    isTaskDeadlineTimeEnabled: settings.isTaskDeadlineTimeEnabled,
+    isPeriodSettingEnabled: settings.isPeriodSettingEnabled,
+    selectedPeriodStartDate: settings.periodStartDate,
+    selectedPeriodStartTime: settings.periodStartTime,
     updateSettings: updateSettingsCallback as any,
     showErrorAlert,
-  }), [styles, settings.endDate, settings.endTime, settings.isEndTimeEnabled, updateSettingsCallback, showErrorAlert]);
+  }), [styles, settings, updateSettingsCallback, showErrorAlert]);
 
   const repeatTabProps = useMemo((): SpecificRepeatTabProps => ({
     styles,
     settings: {
         taskStartTime: settings.taskStartTime,
         isTaskStartTimeEnabled: settings.isTaskStartTimeEnabled,
-        // taskDuration: settings.taskDuration, // 削除
         repeatFrequency: settings.repeatFrequency,
         repeatStartDate: settings.repeatStartDate,
         repeatDaysOfWeek: settings.repeatDaysOfWeek,
@@ -291,7 +302,6 @@ export const DeadlineSettingModal: React.FC<DeadlineSettingModalProps> = ({
     styles,
     settings.taskStartTime,
     settings.isTaskStartTimeEnabled,
-    // settings.taskDuration, // 削除
     settings.repeatFrequency,
     settings.repeatStartDate,
     settings.repeatDaysOfWeek,
