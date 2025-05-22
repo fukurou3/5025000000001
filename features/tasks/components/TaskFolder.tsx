@@ -1,4 +1,4 @@
-// C:\Users\fukur\task-app\app\features\tasks\components\TaskFolder.tsx
+// app/features/tasks/components/TaskFolder.tsx
 import React, { useContext } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,15 +9,17 @@ import { Task } from '@/features/tasks/types';
 import { TaskItem } from '@/features/tasks/components/TaskItem';
 import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
-import { calculateActualDueDate } from '../utils';
+
+// TasksScreenから渡される displaySortDate を含む型定義
+// ★★★ この型定義が重要です: displaySortDate は Dayjs 型または null です ★★★
+type DisplayTaskInFolder = Task & { displaySortDate: dayjs.Dayjs | null };
 
 type Props = {
   folderName: string;
-  tasks: Task[];
+  tasks: DisplayTaskInFolder[]; // ★ 型を DisplayTaskInFolder[] に変更
   isCollapsed: boolean;
   toggleFolder: (folderName: string) => void;
-  onToggleTaskDone: (id: string) => void;
-  sortMode: 'deadline' | 'custom' | 'priority';
+  onToggleTaskDone: (id: string, instanceDate?: string) => void;
   onRefreshTasks: () => void;
   isReordering: boolean;
   setDraggingFolder: (folder: string | null) => void;
@@ -53,28 +55,15 @@ export function TaskFolder({
   const folderLabel = folderName || t('task_list.no_folder');
   const isSelected = selectedIds.includes(folderName);
 
-  const deadlineTasks: Task[] = [];
-  const noDeadlineTasks: Task[] = [];
+  const deadlineTasks: DisplayTaskInFolder[] = [];
+  const noDeadlineTasks: DisplayTaskInFolder[] = [];
 
   tasks.forEach((task) => {
-    // if (task.done) return; // この行を削除またはコメントアウト
-    const actualDueDate = calculateActualDueDate(task);
-    if (actualDueDate) {
+    if (task.displaySortDate) { // displaySortDate が null でないことをチェック
       deadlineTasks.push(task);
     } else {
       noDeadlineTasks.push(task);
     }
-  });
-
-  deadlineTasks.sort((a, b) => {
-    const dateA = calculateActualDueDate(a);
-    const dateB = calculateActualDueDate(b);
-    if (dateA && dateB) {
-      return dayjs(dateA).unix() - dayjs(dateB).unix();
-    }
-    if (dateA) return -1;
-    if (dateB) return 1;
-    return 0;
   });
 
   const handleFolderPress = () => {
@@ -137,8 +126,8 @@ export function TaskFolder({
         <View>
           {deadlineTasks.map((item) => (
             <TaskItem
-              key={item.id}
-              task={item}
+              key={item.id + (item.displaySortDate?.valueOf() || '')}
+              task={item} // item は DisplayTaskInFolder 型
               onToggle={onToggleTaskDone}
               isSelecting={isSelecting}
               selectedIds={selectedIds}
@@ -153,8 +142,8 @@ export function TaskFolder({
               </Text>
               {noDeadlineTasks.map((item) => (
                 <TaskItem
-                  key={item.id}
-                  task={item}
+                  key={item.id + '-no_deadline'}
+                  task={item} // item は DisplayTaskInFolder 型
                   onToggle={onToggleTaskDone}
                   isSelecting={isSelecting}
                   selectedIds={selectedIds}

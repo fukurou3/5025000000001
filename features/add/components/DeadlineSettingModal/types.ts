@@ -20,27 +20,16 @@ export interface RepeatEnds {
 
 export type RepeatFrequency = 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom';
 
-export type DurationUnit = 'minutes' | 'hours' | 'days' | 'months' | 'years';
 export type CustomIntervalUnit = 'hours' | 'days';
 
-
-export interface AmountAndUnit {
-  amount: number;
-  unit: DurationUnit;
-}
-
 export interface DeadlineSettings {
-  date?: string; // 単一の日付 or 期間の開始日
-  time?: DeadlineTime; // 単一の時刻 or 期間の開始時刻
-  isTimeEnabled?: boolean; // 単一の時刻有効 or 期間の開始時刻有効
-
-  endDate?: string; // 期間の終了日
-  endTime?: DeadlineTime; // 期間の終了時刻
-  isEndTimeEnabled?: boolean; // 期間の終了時刻有効
+  endDate?: string;
+  endTime?: DeadlineTime;
+  isEndTimeEnabled?: boolean;
 
   taskStartTime?: DeadlineTime;
   isTaskStartTimeEnabled?: boolean;
-  taskDuration?: AmountAndUnit;
+  // taskDuration?: AmountAndUnit; // 削除
 
   repeatFrequency?: RepeatFrequency;
   repeatStartDate?: string;
@@ -132,15 +121,12 @@ export interface DeadlineModalStyles {
 
 export interface SpecificDateSelectionTabProps {
   styles: DeadlineModalStyles;
-  selectedDate?: string;
-  selectedTime?: DeadlineTime;
-  isTimeEnabled?: boolean;
   selectedEndDate?: string;
   selectedEndTime?: DeadlineTime;
   isEndTimeEnabled?: boolean;
-  updateSettings: <K extends keyof Pick<DeadlineSettings, 'date' | 'time' | 'isTimeEnabled' | 'endDate' | 'endTime' | 'isEndTimeEnabled'>>(
+  updateSettings: <K extends keyof Pick<DeadlineSettings, 'endDate' | 'endTime' | 'isEndTimeEnabled'>>(
     key: K,
-    value: Pick<DeadlineSettings, 'date' | 'time' | 'isTimeEnabled' | 'endDate' | 'endTime' | 'isEndTimeEnabled'>[K]
+    value: Pick<DeadlineSettings, 'endDate' | 'endTime' | 'isEndTimeEnabled'>[K]
   ) => void;
   showErrorAlert: (message: string) => void;
 }
@@ -151,7 +137,7 @@ export interface SpecificRepeatTabProps {
     DeadlineSettings,
     | 'taskStartTime'
     | 'isTaskStartTimeEnabled'
-    | 'taskDuration'
+    // | 'taskDuration' // 削除
     | 'repeatFrequency'
     | 'repeatStartDate'
     | 'repeatDaysOfWeek'
@@ -165,7 +151,7 @@ export interface SpecificRepeatTabProps {
       DeadlineSettings,
       | 'taskStartTime'
       | 'isTaskStartTimeEnabled'
-      | 'taskDuration'
+      // | 'taskDuration' // 削除
       | 'repeatFrequency'
       | 'repeatStartDate'
       | 'repeatDaysOfWeek'
@@ -180,7 +166,7 @@ export interface SpecificRepeatTabProps {
       DeadlineSettings,
       | 'taskStartTime'
       | 'isTaskStartTimeEnabled'
-      | 'taskDuration'
+      // | 'taskDuration' // 削除
       | 'repeatFrequency'
       | 'repeatStartDate'
       | 'repeatDaysOfWeek'
@@ -196,7 +182,7 @@ export interface SpecificRepeatTabProps {
         DeadlineSettings,
         | 'taskStartTime'
         | 'isTaskStartTimeEnabled'
-        | 'taskDuration'
+        // | 'taskDuration' // 削除
         | 'repeatFrequency'
         | 'repeatStartDate'
         | 'repeatDaysOfWeek'
@@ -208,11 +194,6 @@ export interface SpecificRepeatTabProps {
     >
   ) => void;
   showErrorAlert: (message: string) => void;
-}
-
-export interface DurationOption {
-  label: string;
-  value: number;
 }
 
 export type AmPm = 'AM' | 'PM';
@@ -248,8 +229,8 @@ export type DeadlineModalTranslationKey =
   | 'ends_on_date'
   | 'repeat_frequency'
   | 'task_start_time_label'
-  | 'task_duration_label'
-  | 'set_task_duration_title'
+  // | 'task_duration_label' // 削除
+  // | 'set_task_duration_title' // 削除
   | 'days_of_week'
   | 'weekdays'
   | 'exclude_holidays'
@@ -309,16 +290,16 @@ export type CommonTranslationKey =
   | 'jan_short' | 'feb_short' | 'mar_short' | 'apr_short' | 'may_short' | 'jun_short'
   | 'jul_short' | 'aug_short' | 'sep_short' | 'oct_short' | 'nov_short' | 'dec_short'
   | 'year_unit' | 'month_unit' | 'day_unit' | 'hour_unit' | 'minute_unit'
-  | 'years_unit_after'
-  | 'months_unit_after'
-  | 'days_unit_after'
-  | 'hours_unit_after'
-  | 'minutes_unit_after'
+  // | 'years_unit_after' // 削除
+  // | 'months_unit_after' // 削除
+  // | 'days_unit_after' // 削除
+  // | 'hours_unit_after' // 削除
+  // | 'minutes_unit_after' // 削除
   | 'clear'
   | 'clear_date'
   | 'clear_start_date'
   | 'clear_end_date'
-  | 'clear_duration'
+  // | 'clear_duration' // 削除
   | 'ok'
   | 'save'
   | 'cancel'

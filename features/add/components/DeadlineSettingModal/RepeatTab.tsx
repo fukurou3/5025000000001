@@ -1,7 +1,7 @@
 // app/features/add/components/DeadlineSettingModal/RepeatTab.tsx
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { ScrollView, View, Text, TouchableOpacity, Modal, Pressable, Platform, StyleSheet, TextStyle, ViewStyle } from 'react-native';
-import { Switch } from 'react-native-elements';
+import { Switch } from 'react-native';
 import { CalendarUtils, LocaleConfig } from 'react-native-calendars';
 import { useTranslation } from 'react-i18next';
 import { isEqual } from 'lodash';
@@ -13,15 +13,13 @@ import type {
     RepeatFrequency,
     DeadlineModalTranslationKey,
     CommonTranslationKey,
-    DeadlineSettings, // DeadlineSettings のインポートは変更内容を反映
+    DeadlineSettings,
     DeadlineTime,
-    AmountAndUnit,
-    DurationUnit,
     CustomIntervalUnit,
+    RepeatEnds,
 } from './types';
 import { DatePickerModal } from './DatePickerModal';
 import { TimePickerModal } from './TimePickerModal';
-import { DurationPickerModal } from './DurationPickerModal';
 import { CustomIntervalModal } from './CustomIntervalModal';
 
 
@@ -40,21 +38,6 @@ const formatTimeToDisplay = (time: DeadlineTime | undefined, t: (key: string, op
 const formatDateToDisplay = (dateString: string | undefined, t: (key: string, options?: any) => string, defaultText?: string): string => {
     if (!dateString) return defaultText || t('common.select');
     return dateString;
-};
-
-const formatDurationToDisplay = (duration: AmountAndUnit | undefined, t: (key: string, options?: any) => string): string => {
-    if (!duration || !duration.amount || !duration.unit) {
-        return t('common.not_set');
-    }
-    const unitKeyMap: Record<DurationUnit, CommonTranslationKey> = {
-        minutes: 'minutes_unit_after',
-        hours: 'hours_unit_after',
-        days: 'days_unit_after',
-        months: 'months_unit_after',
-        years: 'years_unit_after',
-    };
-    const unitStr = t(`common.${unitKeyMap[duration.unit]}`);
-    return `${duration.amount}${unitStr}`;
 };
 
 const formatCustomIntervalToDisplay = (
@@ -104,7 +87,6 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
   const [isRepeatStartDatePickerVisible, setRepeatStartDatePickerVisible] = useState(false);
   const [isRepeatEndDatePickerVisible, setRepeatEndDatePickerVisible] = useState(false);
   const [isTaskStartTimePickerVisible, setTaskStartTimePickerVisible] = useState(false);
-  const [isDurationPickerVisible, setDurationPickerVisible] = useState(false);
   const [isCustomIntervalModalVisible, setCustomIntervalModalVisible] = useState(false);
 
 
@@ -112,7 +94,6 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
   const currentRepeatStartDate = settings.repeatStartDate;
   const currentTaskStartTime = settings.taskStartTime;
   const currentIsTaskStartTimeEnabled = settings.isTaskStartTimeEnabled ?? false;
-  const currentTaskDuration = settings.taskDuration;
   const currentDaysOfWeek = settings.repeatDaysOfWeek ?? weekdayKeys.reduce((acc, curr) => ({ ...acc, [curr.dayIndex]: false }), {});
   const currentExcludeHolidays = settings.isExcludeHolidays ?? false;
   const currentRepeatEndsDate = settings.repeatEnds?.date;
@@ -127,7 +108,7 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
 
 
   const handleFrequencyChange = useCallback((freq: RepeatFrequency) => {
-    const newSettingsUpdate: Partial<Pick<DeadlineSettings, 'repeatFrequency' | 'repeatDaysOfWeek' | 'isTaskStartTimeEnabled' | 'taskStartTime' | 'taskDuration' | 'customIntervalValue' | 'customIntervalUnit'>> = { repeatFrequency: freq };
+    const newSettingsUpdate: Partial<Pick<DeadlineSettings, 'repeatFrequency' | 'repeatDaysOfWeek' | 'isTaskStartTimeEnabled' | 'taskStartTime' | 'customIntervalValue' | 'customIntervalUnit'>> = { repeatFrequency: freq };
     if (freq === 'weekly') {
         const anyDaySelected = Object.values(settings.repeatDaysOfWeek || {}).some(v => v);
         if (!anyDaySelected) {
@@ -149,7 +130,6 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
     } else {
         newSettingsUpdate.isTaskStartTimeEnabled = false;
         newSettingsUpdate.taskStartTime = undefined;
-        newSettingsUpdate.taskDuration = undefined;
         newSettingsUpdate.customIntervalValue = undefined;
         newSettingsUpdate.customIntervalUnit = undefined;
     }
@@ -196,18 +176,12 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
   const handleRepeatStartDatePickerPress = useCallback(() => setRepeatStartDatePickerVisible(true), []);
   const handleRepeatEndDatePickerPress = useCallback(() => setRepeatEndDatePickerVisible(true), []);
   const handleTaskStartTimePickerPress = useCallback(() => setTaskStartTimePickerVisible(true), []);
-  const handleDurationPickerPress = useCallback(() => {
-    if (currentIsTaskStartTimeEnabled) {
-        setDurationPickerVisible(true);
-    }
-  }, [currentIsTaskStartTimeEnabled]);
   const handleCustomIntervalModalPress = useCallback(() => setCustomIntervalModalVisible(true), []);
 
 
   const handleRepeatStartDatePickerClose = useCallback(() => setRepeatStartDatePickerVisible(false), []);
   const handleRepeatEndDatePickerClose = useCallback(() => setRepeatEndDatePickerVisible(false), []);
   const handleTaskStartTimePickerClose = useCallback(() => setTaskStartTimePickerVisible(false), []);
-  const handleDurationPickerClose = useCallback(() => setDurationPickerVisible(false), []);
   const handleCustomIntervalModalClose = useCallback(() => setCustomIntervalModalVisible(false), []);
 
 
@@ -235,20 +209,9 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
     updateFullSettings({
         taskStartTime: undefined,
         isTaskStartTimeEnabled: false,
-        taskDuration: undefined
     });
     setTaskStartTimePickerVisible(false);
   }, [updateFullSettings]);
-
-  const handleDurationConfirm = useCallback((newDuration: AmountAndUnit) => {
-    updateSettings('taskDuration', newDuration);
-    setDurationPickerVisible(false);
-  }, [updateSettings]);
-
-  const handleDurationClear = useCallback(() => {
-    updateSettings('taskDuration', undefined);
-    setDurationPickerVisible(false);
-  }, [updateSettings]);
 
   const handleCustomIntervalConfirm = useCallback((value: number, unit: CustomIntervalUnit) => {
     updateFullSettings({ customIntervalValue: value, customIntervalUnit: unit });
@@ -277,11 +240,6 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
     }
     return t('common.select');
   }, [currentIsTaskStartTimeEnabled, currentTaskStartTime, t]);
-
-  const displayTaskDuration = useMemo(() => {
-    if (!currentIsTaskStartTimeEnabled) return t('common.not_set');
-    return formatDurationToDisplay(currentTaskDuration, t);
-  }, [currentTaskDuration, t, currentIsTaskStartTimeEnabled]);
 
   const displayRepeatEndDate = useMemo(() => {
     return formatDateToDisplay(currentRepeatEndsDate, t, t('common.not_set'));
@@ -340,6 +298,24 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
           </View>
         </TouchableOpacity>
 
+        {currentFrequency === 'weekly' && (
+          <View style={styles.weekdaySelectorContainer}>
+            {weekdayKeys.map(({ key, dayIndex }) => (
+              <TouchableOpacity
+                key={key}
+                style={[styles.daySelector, currentDaysOfWeek?.[dayIndex] && styles.daySelectorSelected]}
+                onPress={() => toggleWeekday(dayIndex)}
+              >
+                <Text style={[styles.daySelectorText, currentDaysOfWeek?.[dayIndex] && styles.daySelectorTextSelected]}>
+                  {t(`common.${key}` as const)}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        {/* ▼▼▼ 表示順変更 ▼▼▼ */}
+        {/* カスタムインターバル (カスタムの場合に表示) */}
         {currentFrequency === 'custom' && (
           <TouchableOpacity onPress={handleCustomIntervalModalPress} style={styles.settingRow}>
             <Text style={styles.label}>{t('deadline_modal.custom_interval')}</Text>
@@ -352,6 +328,36 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
           </TouchableOpacity>
         )}
 
+        {/* 祝日を除く (currentFrequency があり、かつ isJapanese の場合に表示) */}
+        {isJapanese && currentFrequency && (
+            <TouchableOpacity style={styles.settingRow} onPress={() => handleExcludeHolidaysChange(!currentExcludeHolidays)} activeOpacity={1}>
+            <Text style={styles.label}>
+                {t('deadline_modal.exclude_holidays')}
+            </Text>
+            <View
+                style={[
+                switchContainerBaseStyle,
+                {
+                    backgroundColor: currentExcludeHolidays ? switchTrackColorTrue : switchTrackColorFalse,
+                    borderWidth: Platform.OS === 'android' && !currentExcludeHolidays ? 1.5 : 0,
+                    borderColor: Platform.OS === 'android' && !currentExcludeHolidays ? switchTrackBorderColorFalse : 'transparent',
+                }
+                ]}
+            >
+                <Switch
+                value={currentExcludeHolidays}
+                onValueChange={handleExcludeHolidaysChange}
+                thumbColor={switchThumbColorValue}
+                trackColor={{ false: Platform.OS === 'ios' ? switchTrackColorFalse : 'transparent' , true: Platform.OS === 'ios' ? switchTrackColorTrue : 'transparent' }}
+                style={{ transform: [{ scaleX: 0.9 }, { scaleY: 0.9 }] }}
+                ios_backgroundColor={switchTrackColorFalse}
+                />
+            </View>
+            </TouchableOpacity>
+        )}
+        {/* ▲▲▲ 表示順変更 ▲▲▲ */}
+
+
         {currentFrequency && (
           <>
             <TouchableOpacity onPress={handleTaskStartTimePickerPress} style={styles.settingRow}>
@@ -361,54 +367,6 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
                 <Ionicons name="chevron-forward" size={labelFontSize + 2} color={mutedTextColor} />
               </View>
             </TouchableOpacity>
-
-            {currentIsTaskStartTimeEnabled && (
-              <TouchableOpacity
-                  onPress={handleDurationPickerPress}
-                  style={styles.settingRow}
-                  disabled={!currentIsTaskStartTimeEnabled}
-              >
-                <Text style={[styles.label, !currentIsTaskStartTimeEnabled && { color: mutedTextColor } ]}>
-                  {t('deadline_modal.task_duration_label')}
-                </Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Text style={[styles.pickerText, { marginRight: 4 }, !currentIsTaskStartTimeEnabled && { color: mutedTextColor }]}>
-                      {displayTaskDuration}
-                  </Text>
-                  <Ionicons
-                      name="chevron-forward"
-                      size={labelFontSize + 2}
-                      color={!currentIsTaskStartTimeEnabled ? ((styles.tabContentContainer as ViewStyle)?.backgroundColor || mutedTextColor) as string : mutedTextColor}
-                  />
-                </View>
-              </TouchableOpacity>
-            )}
-
-            {isJapanese && (currentFrequency === 'daily' || currentFrequency === 'weekly' || currentFrequency === 'monthly' || currentFrequency === 'yearly') && (
-              <TouchableOpacity style={styles.settingRow} onPress={() => handleExcludeHolidaysChange(!currentExcludeHolidays)}>
-                <Text style={styles.label}>
-                  {t('deadline_modal.exclude_holidays')}
-                </Text>
-                <View
-                  style={[
-                    switchContainerBaseStyle,
-                    {
-                      backgroundColor: currentExcludeHolidays ? switchTrackColorTrue : switchTrackColorFalse,
-                      borderWidth: 1,
-                      borderColor: currentExcludeHolidays ? switchTrackColorTrue : switchTrackBorderColorFalse,
-                    }
-                  ]}
-                >
-                  <Switch
-                    value={currentExcludeHolidays}
-                    onValueChange={handleExcludeHolidaysChange}
-                    thumbColor={switchThumbColorValue}
-                    trackColor={{ false: 'transparent', true: 'transparent' }}
-                    style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
-                  />
-                </View>
-              </TouchableOpacity>
-            )}
           </>
         )}
       </View>
@@ -445,30 +403,6 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
               <Ionicons name="chevron-forward" size={labelFontSize + 2} color={mutedTextColor}/>
               </View>
           </TouchableOpacity>
-
-          {currentFrequency === 'weekly' && (
-            <View style={styles.weekdaySelectorContainer}>
-              {weekdayKeys.map(({ key, dayIndex }) => (
-                <TouchableOpacity
-                  key={key}
-                  style={[styles.daySelector, currentDaysOfWeek?.[dayIndex] && styles.daySelectorSelected]}
-                  onPress={() => toggleWeekday(dayIndex)}
-                >
-                  <Text style={[styles.daySelectorText, currentDaysOfWeek?.[dayIndex] && styles.daySelectorTextSelected]}>
-                    {t(`common.${key}` as const)}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-
-          { (currentFrequency === 'monthly' || currentFrequency === 'yearly') && (
-            <View style={[styles.settingRow, styles.settingRowNoBottomBorder]}>
-                <Text style={{color: mutedTextColor, fontSize: labelFontSize-2}}>
-                    {t(`deadline_modal.${currentFrequency}` as const)} {t('common.settings_not_implemented')}
-                </Text>
-            </View>
-          )}
         </View>
       )}
 
@@ -499,14 +433,6 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
         onClose={handleTaskStartTimePickerClose}
         onConfirm={handleTaskStartTimeConfirm}
         onClear={handleTaskStartTimeClear}
-      />
-
-      <DurationPickerModal
-        visible={isDurationPickerVisible}
-        initialDuration={currentTaskDuration}
-        onClose={handleDurationPickerClose}
-        onConfirm={handleDurationConfirm}
-        onClear={handleDurationClear}
       />
 
       <DatePickerModal

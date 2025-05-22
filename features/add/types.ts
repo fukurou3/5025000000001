@@ -6,13 +6,14 @@ export interface Task {
   id: string;
   title: string;
   memo: string;
-  deadline: string;
+  deadline: string; // 繰り返しタスクの場合、最初のインスタンスの日時、または次の未完了インスタンスの日時など、表示上の主要な日時
   imageUris: string[];
   notifyEnabled: boolean;
   customUnit: 'minutes' | 'hours' | 'days';
   customAmount: number;
   folder: string;
-  deadlineDetails?: DeadlineSettings;
+  deadlineDetails?: DeadlineSettings; // 繰り返しルール全体
+  completedInstanceDates?: string[]; // 完了した繰り返しインスタンスの元の日付の配列 (例: "2024-05-21")
 }
 
 export type Draft = Task;
@@ -44,19 +45,14 @@ export type AddTaskStyles = {
   slotPickerRow: ViewStyle;
   slotPickerWrapper: ViewStyle;
   slotPicker: TextStyle;
-  photoPreviewContainer: ViewStyle; // こちらが追加されていることを確認してください
-  photoPreviewItem: ViewStyle;      // こちらが追加されていることを確認してください
-  photoPreviewImage: ImageStyle;    // こちらが追加されていることを確認してください
+  photoPreviewContainer: ViewStyle;
+  photoPreviewItem: ViewStyle;
+  photoPreviewImage: ImageStyle;
   removeIcon: ViewStyle;
   buttonRow: ViewStyle;
   saveButton: ViewStyle;
   saveButtonText: TextStyle;
   draftButton: ViewStyle;
-  // 不要になった古いスタイル定義は削除しても問題ありません
-  // imageWrapper?: ViewStyle; // 例: もし残っていたら削除
-  // image?: ImageStyle;     // 例: もし残っていたら削除
-  // previewImage?: ImageStyle;// 例: もし残っていたら削除
-  // previewWrapper?: ViewStyle;// 例: もし残っていたら削除
 };
 
 export interface FieldProps {

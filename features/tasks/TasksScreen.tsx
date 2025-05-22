@@ -1,5 +1,5 @@
-//C:\Users\fukur\task-app\app\features\tasks\TasksScreen.tsx
-import React, { useEffect, useState, useCallback, useContext } from 'react';
+// app/features/tasks/TasksScreen.tsx
+import React, { useEffect, useState, useCallback, useContext, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Modal,
   Animated,
   Alert,
+  StyleSheet, // StyleSheet をインポート
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -19,31 +20,40 @@ import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
-import isSameOrAfter from 'dayjs/plugin/isSameOrAfter'; // 追加
+import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
+import 'dayjs/locale/ja';
+
 import { useAppTheme } from '@/hooks/ThemeContext';
-import { useSelection } from '@/features/tasks/context'; // context パスを修正
+import { useSelection } from '@/features/tasks/context';
 import { useTranslation } from 'react-i18next';
-import { FontSizeContext } from '@/context/FontSizeContext';
+import { FontSizeContext, FontSizeKey } from '@/context/FontSizeContext'; // FontSizeKey をインポート
+import { fontSizes as appFontSizes } from '@/constants/fontSizes'; // appFontSizes をインポート
 import { createStyles } from '@/features/tasks/styles';
 import { Task, FolderOrder, SelectableItem } from '@/features/tasks/types';
 import { TaskFolder } from '@/features/tasks/components/TaskFolder';
-import { RenameFolderModal } from '@/features/tasks/components/RenameFolderModal'; // RenameFolderModal パスを修正
+import { RenameFolderModal } from '@/features/tasks/components/RenameFolderModal';
+import { calculateNextDisplayInstanceDate } from '@/features/tasks/utils';
 
 dayjs.locale('ja');
 dayjs.extend(relativeTime);
 dayjs.extend(localizedFormat);
 dayjs.extend(isSameOrBefore);
-dayjs.extend(isSameOrAfter); // 追加
+dayjs.extend(isSameOrAfter);
 
 const STORAGE_KEY = 'TASKS';
 const FOLDER_ORDER_KEY = 'FOLDER_ORDER';
 const TAB_HEIGHT = 56;
 
+// 表示用に拡張されたTask型
+export type DisplayTask = Task & {
+  displaySortDate: dayjs.Dayjs | null;
+};
+
 export default function TasksScreen() {
   const router = useRouter();
   const { colorScheme, subColor } = useAppTheme();
   const isDark = colorScheme === 'dark';
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation(); // i18n を追加
   const { fontSizeKey } = useContext(FontSizeContext);
   const styles = createStyles(isDark, subColor, fontSizeKey);
 
@@ -77,7 +87,7 @@ export default function TasksScreen() {
       duration: 300,
       useNativeDriver: false,
     }).start();
-  }, [isSelecting, selectionAnim]); // selectionAnim を依存配列に追加
+  }, [isSelecting, selectionAnim]);
 
   const loadTasks = useCallback(async () => {
     setLoading(true);
@@ -110,16 +120,35 @@ export default function TasksScreen() {
     }
   };
 
-  const toggleTaskDone = async (id: string) => {
-    const newTasks = tasks.map(task =>
-      task.id === id
-        ? {
+  const toggleTaskDone = async (id: string, instanceDateStr?: string) => {
+    const newTasks = tasks.map(task => {
+      if (task.id === id) {
+        if (task.deadlineDetails?.repeatFrequency && instanceDateStr) {
+          const completedDates = task.completedInstanceDates ? [...task.completedInstanceDates] : [];
+          const isAlreadyCompleted = completedDates.includes(instanceDateStr);
+          let newCompletedDates: string[];
+          let newDoneStatusForInstance: boolean;
+
+          if (isAlreadyCompleted) {
+            newCompletedDates = completedDates.filter(d => d !== instanceDateStr);
+            newDoneStatusForInstance = false;
+          } else {
+            newCompletedDates = [...completedDates, instanceDateStr];
+            newDoneStatusForInstance = true;
+          }
+          // 親タスクの `done` は、ここでは表示中のインスタンスの状態を反映させる
+          // (すべてのインスタンスの完了を追跡するなら、より複雑なロジックが必要)
+          return { ...task, completedInstanceDates: newCompletedDates, done: newDoneStatusForInstance };
+        } else {
+          return {
             ...task,
             done: !task.done,
-            completedAt: !task.done ? new Date().toISOString() : undefined,
-          }
-        : task
-    );
+            completedAt: !task.done ? dayjs().toISOString() : undefined,
+          };
+        }
+      }
+      return task;
+    });
     setTasks(newTasks);
     await saveTasks(newTasks);
   };
@@ -136,7 +165,7 @@ export default function TasksScreen() {
       if (swap < 0 || swap >= prev.length) return prev;
       const arr = [...prev];
       [arr[idx], arr[swap]] = [arr[swap], arr[idx]];
-      saveFolderOrder(arr); // saveFolderOrder を呼び出す
+      saveFolderOrder(arr);
       return arr;
     });
   };
@@ -150,33 +179,60 @@ export default function TasksScreen() {
     clearSelection();
   };
 
-  const handleSelectAll = () => {
-    // 表示されているタスクとフォルダのみを選択対象とする
-    const nowForFilter = dayjs();
-    const visibleTasks = tasks.filter(t => {
-        const isCorrectTab = tab === 'completed' ? t.done : !t.done;
-        if (!isCorrectTab) return false;
-        if (tab === 'incomplete' && t.deadline) {
-            const taskActiveTime = dayjs(t.deadline);
-            if (taskActiveTime.isAfter(nowForFilter)) {
-                return false;
-            }
-        }
-        return true;
+  const processedTasks: DisplayTask[] = useMemo(() => {
+    return tasks.map(task => {
+      const displayDate = task.deadlineDetails?.repeatFrequency && task.deadlineDetails.repeatStartDate
+        ? calculateNextDisplayInstanceDate(task, dayjs())
+        : task.deadline ? dayjs(task.deadline) : null;
+      return { ...task, displaySortDate: displayDate };
     });
+  }, [tasks]);
 
-    const taskItems: SelectableItem[] = visibleTasks.map(t => ({ id: t.id, type: 'task' }));
-    const folderNames = Array.from(new Set(visibleTasks.map(t => t.folder ?? '')));
-    // フォルダは現在表示されているタスクが含まれるフォルダのみを対象にする
-    const folderItems: SelectableItem[] = folderNames
-                                            .filter(name => sortedFolders.includes(name)) // 画面に表示されているフォルダのみ
-                                            .map(f => ({ id: f, type: 'folder' }));
+
+  const tasksToProcess = useMemo(() => {
+    return processedTasks.filter(task => {
+      if (tab === 'completed') {
+        if (task.deadlineDetails?.repeatFrequency) {
+          if (task.done && task.displaySortDate === null && task.deadlineDetails.repeatEnds?.date && dayjs(task.deadlineDetails.repeatEnds.date).isBefore(dayjs(),'day')) {
+             // 繰り返しが終了し、親がdoneなら完了扱い (全てのインスタンスが完了したとみなす)
+            return true;
+          }
+          const instanceDateStr = task.displaySortDate?.format('YYYY-MM-DD');
+          return !!(instanceDateStr && task.completedInstanceDates?.includes(instanceDateStr));
+        }
+        return task.done;
+      } else { // 未完了タブ
+        if (task.deadlineDetails?.repeatFrequency) {
+          const instanceDateStr = task.displaySortDate?.format('YYYY-MM-DD');
+          if (instanceDateStr) { // 表示すべき次のインスタンスがある
+            return !task.completedInstanceDates?.includes(instanceDateStr);
+          }
+          // 表示すべき次のインスタンスがない (繰り返しが終了したか、全て完了済みで次がない)
+          return false;
+        }
+        return !task.done;
+      }
+    });
+  }, [processedTasks, tab]);
+
+
+  const allFolders = useMemo(() => Array.from(new Set(tasksToProcess.map(t => t.folder ?? ''))), [tasksToProcess]);
+
+  const sortedFolders = useMemo(() => folderOrder.length
+    ? folderOrder
+        .filter(name => allFolders.includes(name))
+        .concat(allFolders.filter(name => !folderOrder.includes(name)))
+    : allFolders, [folderOrder, allFolders]);
+
+  const handleSelectAll = () => {
+    const taskItems: SelectableItem[] = tasksToProcess.map(t => ({ id: t.id, type: 'task' }));
+    const folderItems: SelectableItem[] = sortedFolders.map(f => ({ id: f, type: 'folder' }));
     setAllItems([...taskItems, ...folderItems]);
   };
 
   const handleDeleteSelected = () => {
     Alert.alert(
-      t('common.delete'), // タイトルを "削除" に変更 (翻訳キーがあればそちらを使用)
+      t('common.delete'),
       t('task_list.delete_confirm_message'),
       [
         { text: t('common.cancel'), style: 'cancel' },
@@ -185,11 +241,11 @@ export default function TasksScreen() {
           style: 'destructive',
           onPress: async () => {
             const updatedTasks = tasks.filter(task => {
-              const byTask = selectedItems.some(it => it.type === 'task' && it.id === task.id);
-              const byFolder = selectedItems.some(
+              const isTaskSelected = selectedItems.some(it => it.type === 'task' && it.id === task.id);
+              const isTaskInSelectedFolder = selectedItems.some(
                 it => it.type === 'folder' && (task.folder ?? '') === it.id
               );
-              return !byTask && !byFolder;
+              return !isTaskSelected && !isTaskInSelectedFolder;
             });
             setTasks(updatedTasks);
             await saveTasks(updatedTasks);
@@ -207,11 +263,10 @@ export default function TasksScreen() {
     );
     setTasks(newTasks);
     const newFolderOrder = folderOrder.map(name => (name === renameTarget ? newName : name));
-    // setFolderOrder(newFolderOrder); // saveFolderOrder 内で呼ばれる
     await saveTasks(newTasks);
     await saveFolderOrder(newFolderOrder);
     setRenameModalVisible(false);
-    setRenameTarget(null); // renameTarget をクリア
+    setRenameTarget(null);
     clearSelection();
   };
 
@@ -219,54 +274,21 @@ export default function TasksScreen() {
   const handleReorderFolder = () => {
     if (selectedItems.length === 1 && selectedItems[0].type === 'folder') {
       setIsReordering(true);
-      // clearSelection(); // ここでは選択解除しない方が操作性が良いかもしれない
     }
   };
 
   useEffect(() => {
     loadTasks();
-  }, [fontSizeKey, loadTasks]); // loadTasks を依存配列に追加
+  }, [fontSizeKey, loadTasks]);
 
   useFocusEffect(
     useCallback(() => {
       loadTasks();
-    }, [loadTasks])
+      dayjs.locale(i18n.language);
+    }, [loadTasks, i18n.language])
   );
 
-  // --- ここからフィルタリングロジックの修正 ---
-  const nowForFilter = dayjs();
-  const tasksToProcess = tasks.filter(t => {
-    const isCorrectTab = tab === 'completed' ? t.done : !t.done;
-    if (!isCorrectTab) return false;
-
-    // 未完了タブの場合のみ、開始時刻前のタスクをフィルタリング
-    // task.deadline には、繰り返しタスクの場合「最初のインスタンスの開始日時」が、
-    // 単発タスクの場合は「期限」または「実行日時」が入っている想定。
-    // いずれにしても、この日時が未来であれば、タスクはまだアクティブではない。
-    if (tab === 'incomplete' && t.deadline) {
-      const taskActiveTime = dayjs(t.deadline);
-      if (taskActiveTime.isAfter(nowForFilter)) {
-        return false; // 開始時刻/実行日時が未来なら表示しない
-      }
-    }
-    return true;
-  });
-  // --- フィルタリングロジックの修正ここまで ---
-
-
-  const allFolders = Array.from(new Set(tasksToProcess.map(t => t.folder ?? ''))); // tasksToProcess を使用
-
-  const sortedFolders = folderOrder.length
-    ? folderOrder
-        .filter(n => allFolders.includes(n))
-        .concat(allFolders.filter(n => !folderOrder.includes(n)))
-    : allFolders;
-
-  const fontSizeMap: Record<string, number> = {
-    small: 10,
-    medium: 12,
-    large: 14,
-  };
+  const baseFontSize = appFontSizes[fontSizeKey];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -278,7 +300,7 @@ export default function TasksScreen() {
         <View style={styles.tabs}>
           <TouchableOpacity
             style={[styles.tabButton, tab === 'incomplete' && styles.tabSelected]}
-            onPress={() => { setTab('incomplete'); clearSelection(); }} // タブ変更時に選択解除
+            onPress={() => { setTab('incomplete'); clearSelection(); }}
           >
             <Text style={[styles.tabText, tab === 'incomplete' && styles.tabSelectedText]}>
               {t('tab.incomplete')}
@@ -286,7 +308,7 @@ export default function TasksScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.tabButton, tab === 'completed' && styles.tabSelected]}
-            onPress={() => { setTab('completed'); clearSelection(); }} // タブ変更時に選択解除
+            onPress={() => { setTab('completed'); clearSelection(); }}
           >
             <Text style={[styles.tabText, tab === 'completed' && styles.tabSelectedText]}>
               {t('tab.completed')}
@@ -315,16 +337,16 @@ export default function TasksScreen() {
         <ActivityIndicator style={styles.loader} size="large" />
       ) : (
         <ScrollView contentContainerStyle={{ paddingBottom: isSelecting ? TAB_HEIGHT + 20 : 120, paddingTop: 8 }}>
-          {sortedFolders.map(folder => {
-            const folderTasks = tasksToProcess // tasksToProcess を使用
-              .filter(t => (t.folder ?? '') === folder)
+          {sortedFolders.map(folderName => {
+            const folderTasks = tasksToProcess
+              .filter(t => (t.folder ?? '') === folderName)
               .sort((a, b) => {
                 if (sortMode === 'deadline') {
-                  const aHasDeadline = !!a.deadline;
-                  const bHasDeadline = !!b.deadline;
+                  const aHasDeadline = !!a.displaySortDate;
+                  const bHasDeadline = !!b.displaySortDate;
 
                   if (aHasDeadline && bHasDeadline) {
-                    return dayjs(a.deadline).unix() - dayjs(b.deadline).unix();
+                    return a.displaySortDate!.unix() - b.displaySortDate!.unix();
                   } else if (aHasDeadline && !bHasDeadline) {
                     return -1;
                   } else if (!aHasDeadline && bHasDeadline) {
@@ -347,18 +369,17 @@ export default function TasksScreen() {
                 }
                 return priorityB - priorityA;
               });
-            if (!folderTasks.length) return null; // フィルタリング後にタスクがなければフォルダも表示しない
+            if (!folderTasks.length) return null;
             return (
               <TaskFolder
-                key={folder || 'none'}
-                folderName={folder}
-                tasks={folderTasks}
-                isCollapsed={!!collapsedFolders[folder]}
+                key={folderName || 'none'}
+                folderName={folderName}
+                tasks={folderTasks} // folderTasks は DisplayTask[] 型
+                isCollapsed={!!collapsedFolders[folderName]}
                 toggleFolder={toggleFolder}
                 onToggleTaskDone={toggleTaskDone}
-                sortMode={sortMode}
                 onRefreshTasks={loadTasks}
-                isReordering={isReordering && draggingFolder === folder} // 修正: selectedItemsの条件を削除
+                isReordering={isReordering && draggingFolder === folderName}
                 setDraggingFolder={setDraggingFolder}
                 draggingFolder={draggingFolder}
                 moveFolder={moveFolder}
@@ -372,7 +393,7 @@ export default function TasksScreen() {
               />
             );
           })}
-          {tasksToProcess.length === 0 && !loading && ( // tasksToProcess を使用
+          {tasksToProcess.length === 0 && !loading && (
              <View style={styles.emptyContainer}>
                <Text style={styles.emptyText}>
                  {tab === 'incomplete' ? t('task_list.empty') : t('task_list.no_tasks_completed', '完了したタスクはありません')}
@@ -382,7 +403,7 @@ export default function TasksScreen() {
         </ScrollView>
       )}
       {!isSelecting && (
-        <TouchableOpacity style={styles.fab} onPress={() => router.push('../add')}>
+        <TouchableOpacity style={styles.fab} onPress={() => router.push('/add/')}>
           <Ionicons name="add" size={32} color="#fff" />
         </TouchableOpacity>
       )}
@@ -396,14 +417,14 @@ export default function TasksScreen() {
         >
           <TouchableOpacity onPress={handleSelectAll} style={{ alignItems: 'center' }}>
             <Ionicons name="checkmark-done-outline" size={26} color={subColor} />
-            <Text style={[styles.selectionAction, {fontSize: fontSizeMap[fontSizeKey] ?? 12, color: subColor, marginTop: 2}]}>
+            <Text style={[styles.selectionAction, {fontSize: baseFontSize -2 , color: subColor, marginTop: 2}]}>
               {t('common.select_all')}
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity onPress={handleDeleteSelected} style={{ alignItems: 'center' }}>
             <Ionicons name="trash-outline" size={26} color={subColor} />
-            <Text style={[styles.selectionAction, {fontSize: fontSizeMap[fontSizeKey] ?? 12, color: subColor, marginTop: 2}]}>
+            <Text style={[styles.selectionAction, {fontSize: baseFontSize -2, color: subColor, marginTop: 2}]}>
               {t('common.delete')}
             </Text>
           </TouchableOpacity>
@@ -419,7 +440,7 @@ export default function TasksScreen() {
             style={{ alignItems: 'center', opacity: (selectedItems.length === 1 && selectedItems[0].type === 'folder') ? 1 : 0.4 }}
           >
             <Ionicons name="create-outline" size={26} color={subColor} />
-            <Text style={[styles.selectionAction, {fontSize: fontSizeMap[fontSizeKey] ?? 12, color: subColor, marginTop: 2}]}>
+            <Text style={[styles.selectionAction, {fontSize: baseFontSize -2, color: subColor, marginTop: 2}]}>
               {t('common.rename')}
             </Text>
           </TouchableOpacity>
@@ -430,14 +451,14 @@ export default function TasksScreen() {
             style={{ alignItems: 'center', opacity: (selectedItems.length === 1 && selectedItems[0].type === 'folder') ? 1 : 0.4 }}
           >
             <Ionicons name="swap-vertical-outline" size={26} color={subColor} />
-            <Text style={[styles.selectionAction, {fontSize: fontSizeMap[fontSizeKey] ?? 12, color: subColor, marginTop: 2}]}>
+            <Text style={[styles.selectionAction, {fontSize: baseFontSize -2, color: subColor, marginTop: 2}]}>
               {t('common.reorder')}
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity onPress={cancelSelecting} style={{ alignItems: 'center' }}>
             <Ionicons name="close-outline" size={26} color={subColor} />
-            <Text style={[styles.selectionAction, {fontSize: fontSizeMap[fontSizeKey] ?? 12, color: subColor, marginTop: 2}]}>
+            <Text style={[styles.selectionAction, {fontSize: baseFontSize -2, color: subColor, marginTop: 2}]}>
               {t('common.cancel')}
             </Text>
           </TouchableOpacity>
@@ -446,7 +467,7 @@ export default function TasksScreen() {
 
       <RenameFolderModal
         visible={renameModalVisible}
-        onClose={() => { setRenameModalVisible(false); setRenameTarget(null); }} // renameTarget もクリア
+        onClose={() => { setRenameModalVisible(false); setRenameTarget(null); }}
         initialName={renameTarget || ''}
         onSubmit={handleRenameFolder}
       />

@@ -10,7 +10,7 @@ import type { SpecificDateSelectionTabProps, DeadlineTime } from './types';
 import { TimePickerModal } from './TimePickerModal';
 import { DatePickerModal } from './DatePickerModal';
 
-const todayString = CalendarUtils.getCalendarDateString(new Date()); // 今日を表す文字列を定義
+const todayString = CalendarUtils.getCalendarDateString(new Date());
 
 const formatTimeToDisplay = (time: DeadlineTime | undefined, t: (key: string, options?: any) => string): string => {
     if (!time) return t('common.select');
@@ -59,16 +59,9 @@ const DateSelectionTabMemo: React.FC<SpecificDateSelectionTabProps> = ({
 
   const handleStartDateClear = useCallback(() => {
     const now = new Date();
-    // 開始日をクリアする場合、デフォルトの今日の日付と現在の時刻に戻す
     updateSettings('date', todayString);
     updateSettings('isTimeEnabled', true);
     updateSettings('time', { hour: now.getHours(), minute: now.getMinutes() });
-
-    // 終了日・時刻もクリアするかどうかは要件によるが、ここでは一旦クリアしない
-    // もし開始日クリア時に終了日もリセットするなら以下のコメントを外す
-    // updateSettings('endDate', undefined);
-    // updateSettings('isEndTimeEnabled', false);
-    // updateSettings('endTime', undefined);
     setStartDatePickerVisible(false);
   }, [updateSettings]);
 
@@ -91,10 +84,8 @@ const DateSelectionTabMemo: React.FC<SpecificDateSelectionTabProps> = ({
   }, [updateSettings]);
 
   const handleStartTimeClear = useCallback(() => {
-    // 開始時刻をクリアする場合、時刻を現在の時刻に戻し、有効状態は維持
-    const now = new Date();
-    updateSettings('time', { hour: now.getHours(), minute: now.getMinutes() });
-    updateSettings('isTimeEnabled', true); // 常に有効とするか、falseにするかは要件次第
+    updateSettings('time', undefined);
+    updateSettings('isTimeEnabled', false);
     setStartTimePickerVisible(false);
   }, [updateSettings]);
 
@@ -157,7 +148,7 @@ const DateSelectionTabMemo: React.FC<SpecificDateSelectionTabProps> = ({
   const displayStartDate = useMemo(() => {
     if (!selectedDate) return t('common.select');
     const formattedDate = formatDateToDisplay(selectedDate, t);
-    if (selectedDate === todayString) { // selectedDate が今日かどうかを判定
+    if (selectedDate === todayString) {
       return `${formattedDate} (${t('common.today')})`;
     }
     return formattedDate;
@@ -165,9 +156,7 @@ const DateSelectionTabMemo: React.FC<SpecificDateSelectionTabProps> = ({
 
   const displayStartTime = useMemo(() => {
     if (isTimeEnabled && selectedTime) return formatTimeToDisplay(selectedTime, t);
-    // isTimeEnabled が false でも、開始時刻はデフォルトで現在の時刻なので、何かしら表示する
-    // もし isTimeEnabled が false なら「未設定」や「選択」と表示したい場合は要調整
-    if (selectedTime) return formatTimeToDisplay(selectedTime,t); // isTimeEnabled が false でも時刻データがあれば表示
+    if (selectedTime) return formatTimeToDisplay(selectedTime,t);
     return t('common.select');
   }, [isTimeEnabled, selectedTime, t]);
 
@@ -195,7 +184,6 @@ const DateSelectionTabMemo: React.FC<SpecificDateSelectionTabProps> = ({
     marginHorizontal: 16,
   };
 
-
   const getInitialTimeForPicker = (type: 'start' | 'end'): DeadlineTime => {
     const now = new Date();
     let currentTime = { hour: now.getHours(), minute: now.getMinutes() };
@@ -213,7 +201,6 @@ const DateSelectionTabMemo: React.FC<SpecificDateSelectionTabProps> = ({
     return selectedDate || todayString;
   };
 
-
   return (
     <ScrollView style={styles.tabContentContainer} contentContainerStyle={{ paddingBottom: 20 }}>
       <Text style={sectionHeaderTextStyle}>{t('deadline_modal.start_date_section_title')}</Text>
@@ -228,7 +215,7 @@ const DateSelectionTabMemo: React.FC<SpecificDateSelectionTabProps> = ({
       <TouchableOpacity
         onPress={handleStartTimeSectionPress}
         style={styles.settingRow}
-        disabled={!selectedDate} // 開始日が選択されていなければ時刻選択は不可
+        disabled={!selectedDate}
       >
         <Text style={[styles.label, !selectedDate && { color: mutedTextColor }]}>
           {t('deadline_modal.specify_time')}
@@ -251,7 +238,7 @@ const DateSelectionTabMemo: React.FC<SpecificDateSelectionTabProps> = ({
       <TouchableOpacity
         onPress={handleEndDateSectionPress}
         style={styles.settingRow}
-        disabled={!selectedDate} // 開始日が選択されていなければ終了日選択は不可（または要件により変更）
+        disabled={!selectedDate}
       >
         <Text style={[styles.label, !selectedDate && { color: mutedTextColor }]}>
           {t('deadline_modal.end_date')}
@@ -271,7 +258,7 @@ const DateSelectionTabMemo: React.FC<SpecificDateSelectionTabProps> = ({
       <TouchableOpacity
         onPress={handleEndTimeSectionPress}
         style={styles.settingRow}
-        disabled={!selectedEndDate} // 終了日が選択されていなければ終了時刻選択は不可
+        disabled={!selectedEndDate}
       >
         <Text style={[styles.label, !selectedEndDate && { color: mutedTextColor }]}>
           {t('deadline_modal.specify_time')}
@@ -293,8 +280,8 @@ const DateSelectionTabMemo: React.FC<SpecificDateSelectionTabProps> = ({
         initialDate={getInitialDateForStartDatePicker()}
         onClose={handleStartDatePickerClose}
         onConfirm={handleStartDateConfirm}
-        onClear={handleStartDateClear} // 開始日はクリア時に今日に戻す
-        clearButtonText={t('common.clear_date')} // ボタン文言は汎用的でよいか、別途「今日に戻す」などにするか検討
+        onClear={handleStartDateClear}
+        clearButtonText={t('common.clear_date')}
       />
 
       <TimePickerModal
@@ -302,7 +289,7 @@ const DateSelectionTabMemo: React.FC<SpecificDateSelectionTabProps> = ({
         initialTime={getInitialTimeForPicker('start')}
         onClose={handleStartTimePickerClose}
         onConfirm={handleStartTimeConfirm}
-        onClear={handleStartTimeClear} // 開始時刻はクリア時に現在時刻に戻す
+        onClear={handleStartTimeClear}
       />
 
       <DatePickerModal

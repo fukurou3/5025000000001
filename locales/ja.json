@@ -84,8 +84,7 @@
     "days_unit_after": "日後",
     "months_unit_after": "ヶ月後",
     "years_unit_after": "年後",
-    "clear_duration": "所要時間クリア",
-    "settings_not_implemented": "この設定は現在利用できません。"
+    "clear_duration": "所要時間クリア"
   },
   "add_task": {
     "title": "タスク追加",
@@ -275,7 +274,7 @@
     "exclude_holidays": "祝日を除く",
     "exclude_holidays_jp_only": "日本の祝日のみ対応しています。",
     "start_date": "開始日",
-    "end_date": "終了日",
+    "end_date": "日付",
     "not_selected": "未選択",
     "ends_never": "なし",
     "ends_on_date": "指定日",
@@ -292,7 +291,7 @@
     "select_end_date": "終了日を選択",
     "unset_confirm_message": "タスクの期限が設定されません。本当によろしいですか？",
     "section_task_addition": "タスク追加設定",
-    "section_repeat_settings": "有効期間",
+    "section_repeat_settings": "設定有効期間",
     "date_label_header": "日付",
     "time_label_header": "時刻",
     "task_duration_label": "タスク期限",
@@ -308,9 +307,9 @@
     "interval_not_set": "未設定",
     "every_x_hours": "{{count}}時間ごと",
     "start_date_section_title": "開始日時",
-    "end_date_section_title": "終了日時",
-    "end_date_label": "終了日",
-    "end_time_label": "終了時刻",
+    "end_date_section_title": "タスク期限",
+    "end_date_label": "日付",
+    "end_time_label": "時刻",
     "start_date_required_for_end_date": "終了日時を設定するには、開始日の設定も必要です。",
     "end_date_before_start_date_alert_message": "終了日は開始日以降に設定してください。",
     "end_time_requires_end_date_alert_message": "終了時刻を設定する場合は、終了日も選択してください。"

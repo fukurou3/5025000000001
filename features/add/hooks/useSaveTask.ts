@@ -25,11 +25,11 @@ interface SaveTaskParams {
 
 const dateStringToDate = (dateStr: string, time?: DeadlineTime): Date => {
     const [year, month, day] = dateStr.split('-').map(Number);
-    const dateObj = new Date(year, month - 1, day); // month is 0-indexed
+    const dateObj = new Date(year, month - 1, day);
     if (time) {
         dateObj.setHours(time.hour, time.minute, 0, 0);
     } else {
-        dateObj.setHours(0, 0, 0, 0); // Default to midnight if no time
+        dateObj.setHours(0, 0, 0, 0);
     }
     return dateObj;
 };
@@ -47,15 +47,10 @@ const dateToLocalISOString = (dateObj: Date, includeTime: boolean = true): strin
     return `${year}-${month}-${day}`;
 };
 
-// task.deadline に設定する値を決定する。
-// 繰り返しタスクの場合は「最初のインスタンスの開始日時」。
-// それ以外の場合は「終了日時（期限）」または「単一の日時」。
 const formatTaskDeadlineISO = (settings?: DeadlineSettings): string | undefined => {
   if (!settings) return undefined;
 
   if (settings.repeatFrequency && settings.repeatStartDate) {
-    // --- 繰り返しタスクの場合 ---
-    // task.deadline には「最初のタスクの開始日時」を設定する
     let firstInstanceStartDate: Date;
     let includeTimeInOutput = false;
 
@@ -63,38 +58,24 @@ const formatTaskDeadlineISO = (settings?: DeadlineSettings): string | undefined 
       firstInstanceStartDate = dateStringToDate(settings.repeatStartDate, settings.taskStartTime);
       includeTimeInOutput = true;
     } else {
-      // taskStartTime が無効または未設定の場合、repeatStartDate の0時0分を開始とする
       firstInstanceStartDate = dateStringToDate(settings.repeatStartDate);
-      // この場合、時刻は含めない日付のみの締め切りとするか、0時0分とするかは設計次第。
-      // taskStartTimeEnabledがfalseなら時刻は重要でないという解釈もできる。
-      // ここでは時刻を含めない日付のみのISO文字列（YYYY-MM-DD）とする。
     }
-    // 実際の期限 (締め切り) は deadlineDetails.taskStartTime と deadlineDetails.taskDuration から計算されるべき。
-    // task.deadline はソートや「次にアクティブになるタイミング」の基準として「開始日時」を使う。
     return dateToLocalISOString(firstInstanceStartDate, includeTimeInOutput);
 
   } else if (settings.endDate) {
-    // --- 繰り返しなしで、終了日 (期限) が設定されている場合 ---
     if (settings.isEndTimeEnabled && settings.endTime) {
       const deadlineDate = dateStringToDate(settings.endDate, settings.endTime);
       return dateToLocalISOString(deadlineDate, true);
     }
-    // 終了日のみ (時刻なし)
     const deadlineDate = dateStringToDate(settings.endDate);
-    return dateToLocalISOString(deadlineDate, false); // YYYY-MM-DD
-  } else if (settings.date) {
-    // --- 繰り返しなし、終了日なしで、開始日 (単一日時指定) が設定されている場合 ---
-    // これがタスクの主要な期限/実行日時となる
-    if (settings.isTimeEnabled && settings.time) {
-      const deadlineDate = dateStringToDate(settings.date, settings.time);
-      return dateToLocalISOString(deadlineDate, true);
-    }
-    // 開始日のみ (時刻なし)
-    const deadlineDate = dateStringToDate(settings.date);
-    return dateToLocalISOString(deadlineDate, false); // YYYY-MM-DD
+    return dateToLocalISOString(deadlineDate, false);
+  } else if (settings) { // この条件は現在の DeadlineSettings には存在しないため、削除または DateSelectionTab の設定を指すように修正が必要
+    // DateSelectionTab の設定を想定する場合、settings.endDate, settings.endTime を使うべき
+    // もしこれが DateSelectionTab のことを指していて、endDate が settings.date の代わりなら、上記の endDate のロジックでカバーされる
+    // このエルス・イフは現状の型定義だと到達しない可能性が高い
   }
 
-  return undefined; // 上記いずれにも該当しない場合は期限なし
+  return undefined;
 };
 
 
@@ -125,13 +106,14 @@ export const useSaveTask = ({
       id: taskId,
       title: title.trim(),
       memo,
-      deadline: taskDeadlineValue, // 繰り返しなら最初の開始日時、それ以外なら期限
+      deadline: taskDeadlineValue,
       imageUris,
       notifyEnabled,
       customUnit: notifyEnabled ? customUnit : 'hours',
       customAmount: notifyEnabled ? customAmount : 1,
       folder,
-      deadlineDetails, // 開始日時、終了日時、繰り返し、タスク期限(Duration)の全ての情報を含む
+      deadlineDetails,
+      completedInstanceDates: [], // 新規作成時は空の配列で初期化
     };
 
     try {
@@ -141,12 +123,12 @@ export const useSaveTask = ({
         STORAGE_KEY,
         JSON.stringify([...tasks, newTask])
       );
-      Toast.show({ type: 'success', text1: t('add_task.task_added_successfully', 'タスクを追加しました') });
+      Toast.show({ type: 'success', text1: t('add_task.task_added_successfully', 'タスクを追加しました') }); //
       clearForm();
       router.replace('/(tabs)/tasks');
     } catch (error) {
       console.error("Failed to save task:", error);
-      Toast.show({ type: 'error', text1: t('add_task.error_saving_task', 'タスクの保存に失敗しました') });
+      Toast.show({ type: 'error', text1: t('add_task.error_saving_task', 'タスクの保存に失敗しました') }); //
     }
   }, [
     title,
@@ -181,6 +163,7 @@ export const useSaveTask = ({
       customAmount: notifyEnabled ? customAmount : 1,
       folder,
       deadlineDetails,
+      completedInstanceDates: deadlineDetails?.repeatFrequency ? [] : undefined, // 下書きの場合、繰り返しなら空配列、そうでなければundefined
     };
     try {
       const raw = await AsyncStorage.getItem(DRAFTS_KEY);
@@ -193,12 +176,12 @@ export const useSaveTask = ({
       );
       Toast.show({
         type: 'success',
-        text1: t('add_task.draft_saved_successfully', '下書きを保存しました'),
+        text1: t('add_task.draft_saved_successfully', '下書きを保存しました'), //
       });
       clearForm();
     } catch (error) {
       console.error("Failed to save draft:", error);
-      Toast.show({ type: 'error', text1: t('add_task.error_saving_draft', '下書きの保存に失敗しました') });
+      Toast.show({ type: 'error', text1: t('add_task.error_saving_draft', '下書きの保存に失敗しました') }); //
     }
   }, [
     title,
