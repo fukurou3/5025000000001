@@ -1,208 +1,277 @@
-// C:\Users\fukur\task-app\app\features\tasks\styles.ts
+// app/features/tasks/styles.ts
+import { StyleSheet, ViewStyle, TextStyle, ImageStyle } from 'react-native';
+import { fontSizes as appFontSizes } from '@/constants/fontSizes';
+import type { FontSizeKey } from '@/context/FontSizeContext';
 
-import { StyleSheet } from 'react-native';
-import { fontSizes } from '@/constants/fontSizes';
+export type TaskScreenStyles = {
+  taskItemContainer: ViewStyle;
+  taskItem: ViewStyle;
+  checkboxContainer: ViewStyle;
+  taskCenter: ViewStyle;
+  taskTitle: TextStyle;
+  taskMemo: TextStyle;
+  taskTime: TextStyle;
+  noDeadlineText: TextStyle;
+  selectionIconContainer: ViewStyle;
+  container: ViewStyle; // 必須
+  appBar: ViewStyle;   // 必須
+  title: TextStyle;
+  topRow: ViewStyle;
+  tabs: ViewStyle;
+  tabButton: ViewStyle;
+  tabSelected: ViewStyle;
+  tabText: TextStyle;
+  tabSelectedText: TextStyle;
+  sortLabel: TextStyle;
+  loader: ViewStyle;
+  fab: ViewStyle;
+  selectionBar: ViewStyle;
+  selectionAction: TextStyle;
+  modalBlur: ViewStyle;
+  modalContainer: ViewStyle;
+  modalContent: ViewStyle;
+  modalOption: TextStyle;
+  folderContainer: ViewStyle;
+  folderHeader: ViewStyle;
+  folderName: TextStyle;
+  emptyContainer: ViewStyle;
+  emptyText: TextStyle;
+  reorderButton: ViewStyle;
+  folderHeaderSelected: ViewStyle;
+  folderIconStyle: ViewStyle;
+  folderTaskItemContainer: ViewStyle;
+};
 
-export const createStyles = (
-  isDark: boolean,
-  subColor: string,
-  fsKey: keyof typeof fontSizes
-) =>
-  StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: isDark ? '#121212' : '#f2f2f2',
+export const createStyles = (isDark: boolean, subColor: string, fontSizeKey: FontSizeKey): TaskScreenStyles => {
+  const baseFontSize = appFontSizes[fontSizeKey];
+  const dynamicSubColor = subColor || (isDark ? '#4875B7' : '#2F5A8F');
+
+  return StyleSheet.create({
+    // --- 必須プロパティ ---
+    container: { //
+        flex: 1, //
+        backgroundColor: isDark ? '#000' : '#F2F2F7', //
     },
-    appBar: {
-      height: 56,
-      justifyContent: 'center',
-      alignItems: 'center',
+    appBar: { //
+        height: 50, //
+        justifyContent: 'center', //
+        alignItems: 'center', //
+        backgroundColor: isDark ? '#000' : '#F2F2F7', //
+        borderBottomWidth: StyleSheet.hairlineWidth, //
+        borderBottomColor: isDark ? '#3A3A3C' : '#C6C6C8', //
     },
-    title: {
-      fontSize: fontSizes[fsKey] + 6,
-      fontWeight: 'bold',
-      color: isDark ? '#fff' : '#000',
+    title: { //
+        fontSize: baseFontSize + 2, //
+        fontWeight: 'bold', //
+        color: isDark ? '#FFF' : '#000', //
     },
-    topRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginTop: 16,
-      paddingHorizontal: 16,
-      zIndex: 2,
+    topRow: { //
+        flexDirection: 'row', //
+        justifyContent: 'space-between', //
+        alignItems: 'center', //
+        paddingHorizontal: 16, //
+        paddingVertical: 8, //
+        backgroundColor: isDark ? '#000' : '#F2F2F7', //
     },
-    tabs: { flexDirection: 'row' },
-    tabButton: {
-      paddingVertical: 6,
-      paddingHorizontal: 14,
-      height: 36,
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: '#aaa',
-      marginRight: 8,
-      backgroundColor: '#eee',
-      justifyContent: 'center',
+    tabs: { //
+        flexDirection: 'row', //
+        backgroundColor: isDark ? '#2C2C2E' : '#E9E9ED', //
+        borderRadius: 8, //
+        padding:2, //
     },
-    tabSelected: { backgroundColor: subColor, borderColor: subColor },
-    tabText: {
-      fontSize: fontSizes[fsKey],
-      fontWeight: 'bold',
-      color: '#333',
-      textAlign: 'center',
+    tabButton: { //
+        paddingHorizontal: 12, //
+        paddingVertical: 6, //
+        borderRadius: 7, //
+        minWidth: 80, //
+        alignItems: 'center', //
     },
-    tabSelectedText: { color: '#fff' },
-    sortIconButton: { padding: 6 },
-    sortLabel: {
-      fontSize: fontSizes[fsKey] + 2,
-      color: isDark ? '#fff' : '#000',
-      marginRight: 4,
+    tabSelected: { //
+        backgroundColor: isDark ? dynamicSubColor : '#FFFFFF', //
+        shadowColor: '#000', //
+        shadowOffset: { width: 0, height: 1 }, //
+        shadowOpacity: isDark ? 0.3 : 0.1, //
+        shadowRadius: 2, //
+        elevation: 2, //
     },
-    loader: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    emptyContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      paddingHorizontal: 32,
+    tabText: { //
+        fontSize: baseFontSize -1, //
+        fontWeight: '500', //
+        color: isDark ? '#FFF' : '#000', //
     },
-    emptyText: {
-      fontSize: fontSizes[fsKey],
-      color: '#aaa',
-      fontStyle: 'italic',
-      textAlign: 'center',
+    tabSelectedText: { //
+        color: isDark ? '#FFF' : dynamicSubColor, //
+        fontWeight: '600', //
     },
-    sectionHeader: {
-      fontSize: fontSizes[fsKey],
-      fontWeight: 'bold',
-      color: subColor,
-      backgroundColor: isDark ? '#333' : '#eee',
-      paddingVertical: 4,
-      paddingHorizontal: 16,
-      borderRadius: 8,
-      marginTop: 8,
-      marginBottom: 4,
-      alignSelf: 'flex-start',
+    sortLabel: { //
+        fontSize: baseFontSize -1, //
+        color: dynamicSubColor, //
+        marginRight: 4, //
+    },
+    loader: { //
+        marginTop: 50, //
+    },
+    fab: { //
+        position: 'absolute', //
+        margin: 16, //
+        right: 10, //
+        bottom: 70, //
+        backgroundColor: dynamicSubColor, //
+        width: 56, //
+        height: 56, //
+        borderRadius: 28, //
+        justifyContent: 'center', //
+        alignItems: 'center', //
+        elevation: 4, //
+        shadowColor: '#000', //
+        shadowOffset: { width: 0, height: 2 }, //
+        shadowOpacity: 0.2, //
+        shadowRadius: 2, //
+    },
+    selectionBar: { //
+        position: 'absolute', //
+        left: 0, //
+        right: 0, //
+        backgroundColor: isDark ? '#2C2C2E' : '#F8F8F8', //
+        borderTopWidth: StyleSheet.hairlineWidth, //
+        borderColor: isDark ? '#3A3A3C' : '#C6C6C8', //
+        flexDirection: 'row', //
+        justifyContent: 'space-around', //
+        alignItems: 'center', //
+        paddingBottom: 4, //
+    },
+    selectionAction: { //
+    },
+    modalBlur: { //
+        flex: 1, //
+        justifyContent: 'center', //
+        alignItems: 'center', //
+    },
+    modalContainer: { //
+        justifyContent: 'center', //
+        alignItems: 'center', //
+        flex: 1, //
+    },
+    modalContent: { //
+        backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF', //
+        borderRadius: 14, //
+        padding: 20, //
+        minWidth: 270, //
+        alignItems: 'center', //
+        shadowColor: '#000', //
+        shadowOffset: { width: 0, height: 2 }, //
+        shadowOpacity: 0.25, //
+        shadowRadius: 3.84, //
+        elevation: 5, //
+    },
+    modalOption: { //
+        fontSize: baseFontSize +1, //
+        paddingVertical: 12, //
+        textAlign: 'center', //
+    },
+    emptyContainer: { //
+        flex: 1, //
+        justifyContent: 'center', //
+        alignItems: 'center', //
+        marginTop: 50, //
+        paddingHorizontal: 20, //
+    },
+    emptyText: { //
+        fontSize: baseFontSize, //
+        color: isDark ? '#8E8E93' : '#6D6D72', //
+        textAlign: 'center', //
+    },
+    reorderButton: { //
+        paddingHorizontal: 8, //
     },
 
-    taskItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: 'transparent',
-      marginHorizontal: 8,
-      marginVertical: 4,
-      paddingVertical: 8,
-      paddingHorizontal: 0,
+    // --- タスクアイテム関連 ---
+    taskItemContainer: { //
+      paddingHorizontal: 16, //
+      paddingVertical: 10, //
+      backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF', //
+      borderBottomWidth: StyleSheet.hairlineWidth, //
+      borderBottomColor: isDark ? '#3A3A3C' : '#E0E0E0', //
     },
-    checkboxContainer: {
-      marginLeft: 4,
-      marginRight: 8,
+    taskItem: { //
+        flexDirection: 'row', //
+        alignItems: 'center', //
+        flex: 1, //
     },
-    taskCenter: {
-      flex: 1,
-      marginRight: 8,
+    checkboxContainer: { //
+        paddingRight: 12, //
+        paddingLeft: 4, //
+        paddingVertical: 8, //
     },
-    taskTitle: {
-      fontSize: fontSizes[fsKey] + 2,
-      fontWeight: 'bold',
-      color: isDark ? '#fff' : '#000',
+    taskCenter: { //
+        flex: 1, //
+        justifyContent: 'center', //
+        marginRight: 8, //
     },
-    taskMemo: {
-      fontSize: fontSizes[fsKey],
-      color: isDark ? '#ccc' : '#555',
-      marginTop: 2,
+    taskTitle: { //
+        fontSize: baseFontSize, //
+        color: isDark ? '#FFFFFF' : '#000000', //
+        fontWeight: '500', //
     },
-    taskTime: { // このスタイルが残り時間に適用される
-      fontSize: fontSizes[fsKey],
-      fontWeight: 'bold',
-      // colorはTaskItem.tsxで動的に設定
-      marginHorizontal: 8,
+    taskMemo: { //
+        fontSize: baseFontSize - 2, //
+        color: isDark ? '#8E8E93' : '#6D6D72', //
+        marginTop: 2, //
     },
-    noDeadlineText: {
-      fontStyle: 'italic',
-      // colorはTaskItem.tsxで動的に設定 (getTimeColorで処理)
+    taskTime: { //
+        fontSize: baseFontSize - 1, //
     },
-    selectionIconContainer: {
-      marginLeft: 'auto',
-      paddingLeft: 8,
+    noDeadlineText: { //
+        fontStyle: 'italic', //
+        color: isDark ? '#8E8E93' : '#6D6D72', //
     },
-    fab: {
-      position: 'absolute',
-      bottom: 32,
-      right: 24,
-      width: 56,
-      height: 56,
-      borderRadius: 28,
-      backgroundColor: subColor,
-      justifyContent: 'center',
-      alignItems: 'center',
-      elevation: 5,
+    selectionIconContainer: { //
+        marginLeft: 'auto', //
+        paddingLeft: 10, //
     },
-    modalBlur: { flex: 1 },
-    modalContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    modalContent: {
-      backgroundColor: isDark ? '#1e1e1e' : '#ffffff',
-      width: '80%',
-      borderRadius: 12,
-      padding: 16,
-    },
-    modalOption: {
-      fontSize: fontSizes[fsKey] + 2,
-      paddingVertical: 8,
-    },
+
+    // --- 前回変更/追加したフォルダ関連スタイル ---
     folderContainer: {
-      backgroundColor: isDark ? '#2e2e2e' : '#ffffff',
-      borderRadius: 12,
       marginHorizontal: 16,
-      marginVertical: 8,
-      padding: 12,
-      elevation: 2,
+      marginVertical: 10,
+      backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
+      borderRadius: 10,
+      overflow: 'hidden',
+      elevation: 3,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: isDark ? 0.25 : 0.18,
+      shadowRadius: 2.84,
     },
     folderHeader: {
       flexDirection: 'row',
-      alignItems: 'center',
       justifyContent: 'space-between',
-      marginBottom: 8,
-    },
-    folderTitleRow: { flexDirection: 'row', alignItems: 'center' },
-    folderTitleText: {
-      fontSize: fontSizes[fsKey] + 2,
-      fontWeight: 'bold',
-      marginLeft: 8,
-      color: subColor,
-    },
-
-    selectionBar: {
-      position: 'absolute',
-      bottom: 0,
-      left: 0,
-      right: 0,
-      height: 56,
-      flexDirection: 'row',
-      justifyContent: 'space-around',
       alignItems: 'center',
-      backgroundColor: isDark ? '#121212' : '#fff',
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: isDark ? '#333' : '#ccc',
-      paddingTop: 6,
-      zIndex: 10,
-    },
-    selectionAction: {
-      fontSize: fontSizes[fsKey],
-      color: isDark ? '#888' : '#888',
-      textAlign: 'center',
-    },
-    row: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: 8,
+      paddingVertical: 14,
       paddingHorizontal: 12,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: isDark ? '#3A3A3C' : '#DDE1E6',
     },
-    right: {
-      marginLeft: 8,
-      justifyContent: 'center',
-      alignItems: 'flex-end',
+    folderHeaderSelected: { //
+        backgroundColor: isDark ? dynamicSubColor + '40' : dynamicSubColor + '20', //
     },
-    deadline: { // このスタイルは直接使用されていない可能性あり
-      fontSize: 12,
-      fontWeight: 'bold',
+    folderName: { //
+        fontSize: baseFontSize, //
+        fontWeight: '600', //
+        color: isDark ? '#FFFFFF' : '#000000', //
+        flex: 1, //
+    },
+    folderIconStyle: {
+        marginRight: 8,
+        marginLeft: 4,
+    },
+    folderTaskItemContainer: {
+        backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: isDark ? '#303030' : '#E8E8E8',
+        paddingLeft: 36,
     },
   });
+};

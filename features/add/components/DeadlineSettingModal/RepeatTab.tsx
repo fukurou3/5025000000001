@@ -14,17 +14,18 @@ import type {
     DeadlineModalTranslationKey,
     CommonTranslationKey,
     DeadlineSettings,
-    DeadlineTime,
+    // DeadlineTime, // 廃止のためコメントアウト
     CustomIntervalUnit,
-    RepeatEnds,
+    // RepeatEnds, // 廃止のためコメントアウト (未使用)
 } from './types';
 import { DatePickerModal } from './DatePickerModal';
-import { TimePickerModal } from './TimePickerModal';
+// import { TimePickerModal } from './TimePickerModal'; // 廃止のためコメントアウト
 import { CustomIntervalModal } from './CustomIntervalModal';
 
 
 const todayString = CalendarUtils.getCalendarDateString(new Date());
 
+/* 廃止のためコメントアウト
 const formatTimeToDisplay = (time: DeadlineTime | undefined, t: (key: string, options?: any) => string): string => {
     if (!time) return t('common.select');
     const hour24 = time.hour;
@@ -34,6 +35,7 @@ const formatTimeToDisplay = (time: DeadlineTime | undefined, t: (key: string, op
     if (hour12 === 0) hour12 = 12;
     return `${ampm} ${hour12}:${String(time.minute).padStart(2, '0')}`;
 };
+*/
 
 const formatDateToDisplay = (dateString: string | undefined, t: (key: string, options?: any) => string, defaultText?: string): string => {
     if (!dateString) return defaultText || t('common.select');
@@ -86,17 +88,17 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
   const [isFrequencyPickerVisible, setFrequencyPickerVisible] = useState(false);
   const [isRepeatStartDatePickerVisible, setRepeatStartDatePickerVisible] = useState(false);
   const [isRepeatEndDatePickerVisible, setRepeatEndDatePickerVisible] = useState(false);
-  const [isTaskStartTimePickerVisible, setTaskStartTimePickerVisible] = useState(false);
+  // const [isTaskStartTimePickerVisible, setTaskStartTimePickerVisible] = useState(false); // 廃止のためコメントアウト
   const [isCustomIntervalModalVisible, setCustomIntervalModalVisible] = useState(false);
 
 
   const currentFrequency = settings.repeatFrequency;
   const currentRepeatStartDate = settings.repeatStartDate;
-  const currentTaskStartTime = settings.taskStartTime;
-  const currentIsTaskStartTimeEnabled = settings.isTaskStartTimeEnabled ?? false;
+  // const currentTaskStartTime = settings.taskStartTime; // 廃止のためコメントアウト
+  // const currentIsTaskStartTimeEnabled = settings.isTaskStartTimeEnabled ?? false; // 廃止のためコメントアウト
   const currentDaysOfWeek = settings.repeatDaysOfWeek ?? weekdayKeys.reduce((acc, curr) => ({ ...acc, [curr.dayIndex]: false }), {});
   const currentExcludeHolidays = settings.isExcludeHolidays ?? false;
-  const currentRepeatEndsDate = settings.repeatEnds?.date;
+  const currentRepeatEndsDate = settings.repeatEnds?.type === 'on_date' ? settings.repeatEnds.date : undefined;
   const currentCustomIntervalValue = settings.customIntervalValue;
   const currentCustomIntervalUnit = settings.customIntervalUnit;
 
@@ -108,37 +110,24 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
 
 
   const handleFrequencyChange = useCallback((freq: RepeatFrequency) => {
-    const newSettingsUpdate: Partial<Pick<DeadlineSettings, 'repeatFrequency' | 'repeatDaysOfWeek' | 'isTaskStartTimeEnabled' | 'taskStartTime' | 'customIntervalValue' | 'customIntervalUnit'>> = { repeatFrequency: freq };
+    const newSettingsUpdate: Partial<Pick<DeadlineSettings, 'repeatFrequency' | 'repeatDaysOfWeek' | 'customIntervalValue' | 'customIntervalUnit'>> = { repeatFrequency: freq };
     if (freq === 'weekly') {
         const anyDaySelected = Object.values(settings.repeatDaysOfWeek || {}).some(v => v);
         if (!anyDaySelected) {
             newSettingsUpdate.repeatDaysOfWeek = weekdayKeys.reduce((acc, curr) => {
-                acc[curr.dayIndex] = curr.dayIndex !== 0 && curr.dayIndex !== 6;
+                acc[curr.dayIndex] = curr.dayIndex !== 0 && curr.dayIndex !== 6; // 月～金をデフォルト選択
                 return acc;
             }, {} as Record<number, boolean>);
         }
     }
 
-    if (freq) {
-        if (!currentIsTaskStartTimeEnabled) {
-            newSettingsUpdate.isTaskStartTimeEnabled = true;
-            if (!currentTaskStartTime) {
-                const now = new Date();
-                newSettingsUpdate.taskStartTime = { hour: now.getHours(), minute: now.getMinutes() };
-            }
-        }
-    } else {
-        newSettingsUpdate.isTaskStartTimeEnabled = false;
-        newSettingsUpdate.taskStartTime = undefined;
+    if (!freq) { // 繰り返し設定なしの場合
         newSettingsUpdate.customIntervalValue = undefined;
         newSettingsUpdate.customIntervalUnit = undefined;
-    }
-
-
-    if (freq !== 'custom') {
+    } else if (freq !== 'custom') { // カスタム以外の場合
         newSettingsUpdate.customIntervalValue = undefined;
         newSettingsUpdate.customIntervalUnit = undefined;
-    } else {
+    } else { // カスタムの場合
         if (!currentCustomIntervalValue || !currentCustomIntervalUnit) {
             newSettingsUpdate.customIntervalValue = 1;
             newSettingsUpdate.customIntervalUnit = 'days';
@@ -147,7 +136,7 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
 
     updateFullSettings(newSettingsUpdate);
     setFrequencyPickerVisible(false);
-  }, [updateFullSettings, settings.repeatDaysOfWeek, currentIsTaskStartTimeEnabled, currentTaskStartTime, currentCustomIntervalValue, currentCustomIntervalUnit]);
+  }, [updateFullSettings, settings.repeatDaysOfWeek, currentCustomIntervalValue, currentCustomIntervalUnit]);
 
   const toggleWeekday = useCallback((dayIndex: number) => {
     const currentSelection = settings.repeatDaysOfWeek || {};
@@ -175,13 +164,13 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
   const handleFrequencyPickerPress = useCallback(() => setFrequencyPickerVisible(true), []);
   const handleRepeatStartDatePickerPress = useCallback(() => setRepeatStartDatePickerVisible(true), []);
   const handleRepeatEndDatePickerPress = useCallback(() => setRepeatEndDatePickerVisible(true), []);
-  const handleTaskStartTimePickerPress = useCallback(() => setTaskStartTimePickerVisible(true), []);
+  // const handleTaskStartTimePickerPress = useCallback(() => setTaskStartTimePickerVisible(true), []); // 廃止のためコメントアウト
   const handleCustomIntervalModalPress = useCallback(() => setCustomIntervalModalVisible(true), []);
 
 
   const handleRepeatStartDatePickerClose = useCallback(() => setRepeatStartDatePickerVisible(false), []);
   const handleRepeatEndDatePickerClose = useCallback(() => setRepeatEndDatePickerVisible(false), []);
-  const handleTaskStartTimePickerClose = useCallback(() => setTaskStartTimePickerVisible(false), []);
+  // const handleTaskStartTimePickerClose = useCallback(() => setTaskStartTimePickerVisible(false), []); // 廃止のためコメントアウト
   const handleCustomIntervalModalClose = useCallback(() => setCustomIntervalModalVisible(false), []);
 
 
@@ -196,10 +185,11 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
   }, [updateSettings]);
 
   const handleRepeatEndDateClear = useCallback(() => {
-    updateSettings('repeatEnds', undefined);
+    updateSettings('repeatEnds', undefined); // または { type: 'never' }
     setRepeatEndDatePickerVisible(false);
   }, [updateSettings]);
 
+  /* 廃止のためコメントアウト
   const handleTaskStartTimeConfirm = useCallback((newTime: DeadlineTime) => {
     updateFullSettings({ taskStartTime: newTime, isTaskStartTimeEnabled: true });
     setTaskStartTimePickerVisible(false);
@@ -212,6 +202,7 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
     });
     setTaskStartTimePickerVisible(false);
   }, [updateFullSettings]);
+  */
 
   const handleCustomIntervalConfirm = useCallback((value: number, unit: CustomIntervalUnit) => {
     updateFullSettings({ customIntervalValue: value, customIntervalUnit: unit });
@@ -234,12 +225,14 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
     return formattedDate;
   }, [currentRepeatStartDate, t]);
 
+  /* 廃止のためコメントアウト
   const displayTaskStartTime = useMemo(() => {
     if (currentIsTaskStartTimeEnabled) {
       return formatTimeToDisplay(currentTaskStartTime, t);
     }
     return t('common.select');
   }, [currentIsTaskStartTimeEnabled, currentTaskStartTime, t]);
+  */
 
   const displayRepeatEndDate = useMemo(() => {
     return formatDateToDisplay(currentRepeatEndsDate, t, t('common.not_set'));
@@ -249,6 +242,7 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
     return formatCustomIntervalToDisplay(currentCustomIntervalValue, currentCustomIntervalUnit, t);
   }, [currentCustomIntervalValue, currentCustomIntervalUnit, t]);
 
+  /* 廃止のためコメントアウト
   const getInitialTaskStartTimeForPicker = (): DeadlineTime => {
     if (currentIsTaskStartTimeEnabled && currentTaskStartTime) {
         return currentTaskStartTime;
@@ -256,6 +250,7 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
     const now = new Date();
     return { hour: now.getHours(), minute: now.getMinutes() };
   };
+  */
 
 
   const labelFontSize = typeof styles.label?.fontSize === 'number' ? styles.label.fontSize : 16;
@@ -314,8 +309,6 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
           </View>
         )}
 
-        {/* ▼▼▼ 表示順変更 ▼▼▼ */}
-        {/* カスタムインターバル (カスタムの場合に表示) */}
         {currentFrequency === 'custom' && (
           <TouchableOpacity onPress={handleCustomIntervalModalPress} style={styles.settingRow}>
             <Text style={styles.label}>{t('deadline_modal.custom_interval')}</Text>
@@ -328,7 +321,6 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
           </TouchableOpacity>
         )}
 
-        {/* 祝日を除く (currentFrequency があり、かつ isJapanese の場合に表示) */}
         {isJapanese && currentFrequency && (
             <TouchableOpacity style={styles.settingRow} onPress={() => handleExcludeHolidaysChange(!currentExcludeHolidays)} activeOpacity={1}>
             <Text style={styles.label}>
@@ -355,9 +347,8 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
             </View>
             </TouchableOpacity>
         )}
-        {/* ▲▲▲ 表示順変更 ▲▲▲ */}
 
-
+        {/* 繰り返しタスクの開始時刻設定UIを削除
         {currentFrequency && (
           <>
             <TouchableOpacity onPress={handleTaskStartTimePickerPress} style={styles.settingRow}>
@@ -369,6 +360,7 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
             </TouchableOpacity>
           </>
         )}
+        */}
       </View>
 
 
@@ -427,6 +419,7 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
         </Pressable>
       </Modal>
 
+      {/* 繰り返しタスクの開始時刻設定モーダル呼び出しを削除
       <TimePickerModal
         visible={isTaskStartTimePickerVisible}
         initialTime={getInitialTaskStartTimeForPicker()}
@@ -434,13 +427,14 @@ const RepeatTabMemo: React.FC<SpecificRepeatTabProps> = ({ styles, settings, upd
         onConfirm={handleTaskStartTimeConfirm}
         onClear={handleTaskStartTimeClear}
       />
+      */}
 
       <DatePickerModal
         visible={isRepeatStartDatePickerVisible}
         initialDate={currentRepeatStartDate || todayString}
         onClose={handleRepeatStartDatePickerClose}
         onConfirm={handleRepeatStartDateConfirm}
-        onClear={undefined}
+        onClear={undefined} // 開始日はクリア不可
         clearButtonText={t('common.clear_date')}
       />
 
@@ -471,7 +465,7 @@ const areRepeatTabPropsEqual = (
 ): boolean => {
     return (
         prevProps.styles === nextProps.styles &&
-        isEqual(prevProps.settings, nextProps.settings) &&
+        isEqual(prevProps.settings, nextProps.settings) && // settings の比較は isEqual を使用
         prevProps.updateSettings === nextProps.updateSettings &&
         prevProps.updateFullSettings === nextProps.updateFullSettings &&
         prevProps.showErrorAlert === nextProps.showErrorAlert

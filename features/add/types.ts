@@ -6,14 +6,15 @@ export interface Task {
   id: string;
   title: string;
   memo: string;
-  deadline: string; // 繰り返しタスクの場合、最初のインスタンスの日時、または次の未完了インスタンスの日時など、表示上の主要な日時
+  deadline: string | undefined; // UTC ISO8601 string or undefined
   imageUris: string[];
   notifyEnabled: boolean;
   customUnit: 'minutes' | 'hours' | 'days';
   customAmount: number;
   folder: string;
-  deadlineDetails?: DeadlineSettings; // 繰り返しルール全体
-  completedInstanceDates?: string[]; // 完了した繰り返しインスタンスの元の日付の配列 (例: "2024-05-21")
+  deadlineDetails?: DeadlineSettings;
+  completedInstanceDates?: string[];
+  completedAt?: string; // For non-repeating tasks, UTC ISO8601 string
 }
 
 export type Draft = Task;

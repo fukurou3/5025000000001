@@ -78,13 +78,20 @@
     "hours": "時間前",
     "days": "日前",
     "today": "今日",
+    "info": "お知らせ",
     "notification_title": "お知らせ",
     "minutes_unit_after": "分後",
     "hours_unit_after": "時間後",
     "days_unit_after": "日後",
     "months_unit_after": "ヶ月後",
     "years_unit_after": "年後",
-    "clear_duration": "所要時間クリア"
+    "clear_duration": "所要時間クリア",
+        "month_day_format": "M月D日",
+    "date_time_format_short": "M/D HH:mm",
+    "date_format_short": "YYYY/M/D",
+    "time_format_simple": "H:mm",
+        "month_day_format_short": "M/D",
+    "month_day_format_deadline": "M月D日"
   },
   "add_task": {
     "title": "タスク追加",
@@ -194,7 +201,8 @@
     "delete_folder_only": "フォルダのみ削除してタスクを残す",
     "select_mode_title": "選択モード",
     "no_deadline": "期限なし",
-    "no_deadline_full": "このタスクには期限が設定されていません"
+    "no_deadline_full": "このタスクには期限が設定されていません",
+    "announce_next_occurrence": "このタスクは、{{date}}に再び追加されます。"
   },
   "tab": {
     "incomplete": "未完了",
@@ -334,5 +342,13 @@
     "period_start_must_be_before_deadline_alert_message": "期間の開始日はタスクの期限日より前に設定してください。",
     "period_start_time_must_be_before_deadline_time_alert_message": "期間の開始時刻はタスクの期限時刻より前に設定してください。"
   
+  },
+    "tasks": {
+    "display_repeating_today": "🔁今日",
+    "display_repeating_date": "🔁{{date}}分",
+    "no_upcoming_repeat": "🔁今後の予定なし",
+    "no_deadline": "期限なし",
+    "completed": "完了",
+    "completed_on_date": "完了 {{date}}"
   }
 }

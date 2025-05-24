@@ -5,9 +5,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import uuid from 'react-native-uuid';
 import Toast from 'react-native-toast-message';
 import { useRouter } from 'expo-router';
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
 import type { Task, Draft } from '../types';
 import { STORAGE_KEY, DRAFTS_KEY } from '../constants';
 import type { DeadlineSettings, DeadlineTime } from '../components/DeadlineSettingModal/types';
+
+dayjs.extend(utc);
 
 interface SaveTaskParams {
   title: string;
@@ -23,58 +27,40 @@ interface SaveTaskParams {
   deadlineDetails?: DeadlineSettings;
 }
 
-const dateStringToDate = (dateStr: string, time?: DeadlineTime): Date => {
+const dateStringToUTCDate = (dateStr: string, time?: DeadlineTime): dayjs.Dayjs => {
     const [year, month, day] = dateStr.split('-').map(Number);
-    const dateObj = new Date(year, month - 1, day);
+    let dateObj = dayjs.utc().year(year).month(month - 1).date(day);
     if (time) {
-        dateObj.setHours(time.hour, time.minute, 0, 0);
+        dateObj = dateObj.hour(time.hour).minute(time.minute).second(0).millisecond(0);
     } else {
-        dateObj.setHours(0, 0, 0, 0);
+        dateObj = dateObj.hour(0).minute(0).second(0).millisecond(0);
     }
     return dateObj;
 };
 
-const dateToLocalISOString = (dateObj: Date, includeTime: boolean = true): string => {
-    const year = dateObj.getFullYear();
-    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-    const day = String(dateObj.getDate()).padStart(2, '0');
+const dateToUTCISOString = (dateObj: dayjs.Dayjs, includeTime: boolean = true): string => {
     if (includeTime) {
-        const hours = String(dateObj.getHours()).padStart(2, '0');
-        const minutes = String(dateObj.getMinutes()).padStart(2, '0');
-        const seconds = String(dateObj.getSeconds()).padStart(2, '0');
-        return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+        return dateObj.toISOString();
     }
-    return `${year}-${month}-${day}`;
+    return dateObj.format('YYYY-MM-DD');
 };
 
 const formatTaskDeadlineISO = (settings?: DeadlineSettings): string | undefined => {
   if (!settings) return undefined;
 
   if (settings.repeatFrequency && settings.repeatStartDate) {
-    let firstInstanceStartDate: Date;
-    let includeTimeInOutput = false;
+    // 繰り返し設定の場合、時刻は含めず日付のみとする
+    const firstInstanceStartDate = dateStringToUTCDate(settings.repeatStartDate);
+    return dateToUTCISOString(firstInstanceStartDate, false); // 時刻を含めない
 
-    if (settings.isTaskStartTimeEnabled && settings.taskStartTime) {
-      firstInstanceStartDate = dateStringToDate(settings.repeatStartDate, settings.taskStartTime);
-      includeTimeInOutput = true;
-    } else {
-      firstInstanceStartDate = dateStringToDate(settings.repeatStartDate);
+  } else if (settings.taskDeadlineDate) {
+    if (settings.isTaskDeadlineTimeEnabled && settings.taskDeadlineTime) {
+      const deadlineDate = dateStringToUTCDate(settings.taskDeadlineDate, settings.taskDeadlineTime);
+      return dateToUTCISOString(deadlineDate, true);
     }
-    return dateToLocalISOString(firstInstanceStartDate, includeTimeInOutput);
-
-  } else if (settings.endDate) {
-    if (settings.isEndTimeEnabled && settings.endTime) {
-      const deadlineDate = dateStringToDate(settings.endDate, settings.endTime);
-      return dateToLocalISOString(deadlineDate, true);
-    }
-    const deadlineDate = dateStringToDate(settings.endDate);
-    return dateToLocalISOString(deadlineDate, false);
-  } else if (settings) { // この条件は現在の DeadlineSettings には存在しないため、削除または DateSelectionTab の設定を指すように修正が必要
-    // DateSelectionTab の設定を想定する場合、settings.endDate, settings.endTime を使うべき
-    // もしこれが DateSelectionTab のことを指していて、endDate が settings.date の代わりなら、上記の endDate のロジックでカバーされる
-    // このエルス・イフは現状の型定義だと到達しない可能性が高い
+    const deadlineDate = dateStringToUTCDate(settings.taskDeadlineDate);
+    return dateToUTCISOString(deadlineDate, false);
   }
-
   return undefined;
 };
 
@@ -100,7 +86,18 @@ export const useSaveTask = ({
       return;
     }
     const taskId = uuid.v4() as string;
-    const taskDeadlineValue = formatTaskDeadlineISO(deadlineDetails) || '';
+    const taskDeadlineValue = formatTaskDeadlineISO(deadlineDetails);
+
+    // 繰り返し設定の場合、deadlineDetails から時刻関連の情報を削除/調整
+    let finalDeadlineDetails = deadlineDetails;
+    if (finalDeadlineDetails?.repeatFrequency) {
+        finalDeadlineDetails = {
+            ...finalDeadlineDetails,
+            // isTaskStartTimeEnabled: false, // 廃止
+            // taskStartTime: undefined, // 廃止
+        };
+    }
+
 
     const newTask: Task = {
       id: taskId,
@@ -112,8 +109,9 @@ export const useSaveTask = ({
       customUnit: notifyEnabled ? customUnit : 'hours',
       customAmount: notifyEnabled ? customAmount : 1,
       folder,
-      deadlineDetails,
-      completedInstanceDates: [], // 新規作成時は空の配列で初期化
+      deadlineDetails: finalDeadlineDetails,
+      completedInstanceDates: [],
+      completedAt: undefined,
     };
 
     try {
@@ -123,12 +121,12 @@ export const useSaveTask = ({
         STORAGE_KEY,
         JSON.stringify([...tasks, newTask])
       );
-      Toast.show({ type: 'success', text1: t('add_task.task_added_successfully', 'タスクを追加しました') }); //
+      Toast.show({ type: 'success', text1: t('add_task.task_added_successfully', 'タスクを追加しました') });
       clearForm();
       router.replace('/(tabs)/tasks');
     } catch (error) {
       console.error("Failed to save task:", error);
-      Toast.show({ type: 'error', text1: t('add_task.error_saving_task', 'タスクの保存に失敗しました') }); //
+      Toast.show({ type: 'error', text1: t('add_task.error_saving_task', 'タスクの保存に失敗しました') });
     }
   }, [
     title,
@@ -150,7 +148,17 @@ export const useSaveTask = ({
       return;
     }
     const id = currentDraftId || (uuid.v4() as string);
-    const draftDeadlineValue = formatTaskDeadlineISO(deadlineDetails) || '';
+    const draftDeadlineValue = formatTaskDeadlineISO(deadlineDetails);
+
+    // 繰り返し設定の場合、deadlineDetails から時刻関連の情報を削除/調整
+    let finalDeadlineDetails = deadlineDetails;
+    if (finalDeadlineDetails?.repeatFrequency) {
+        finalDeadlineDetails = {
+            ...finalDeadlineDetails,
+            // isTaskStartTimeEnabled: false, // 廃止
+            // taskStartTime: undefined, // 廃止
+        };
+    }
 
     const draftTask: Draft = {
       id,
@@ -162,8 +170,9 @@ export const useSaveTask = ({
       customUnit: notifyEnabled ? customUnit : 'hours',
       customAmount: notifyEnabled ? customAmount : 1,
       folder,
-      deadlineDetails,
-      completedInstanceDates: deadlineDetails?.repeatFrequency ? [] : undefined, // 下書きの場合、繰り返しなら空配列、そうでなければundefined
+      deadlineDetails: finalDeadlineDetails,
+      completedInstanceDates: deadlineDetails?.repeatFrequency ? [] : undefined,
+      completedAt: undefined,
     };
     try {
       const raw = await AsyncStorage.getItem(DRAFTS_KEY);
@@ -176,12 +185,12 @@ export const useSaveTask = ({
       );
       Toast.show({
         type: 'success',
-        text1: t('add_task.draft_saved_successfully', '下書きを保存しました'), //
+        text1: t('add_task.draft_saved_successfully', '下書きを保存しました'),
       });
       clearForm();
     } catch (error) {
       console.error("Failed to save draft:", error);
-      Toast.show({ type: 'error', text1: t('add_task.error_saving_draft', '下書きの保存に失敗しました') }); //
+      Toast.show({ type: 'error', text1: t('add_task.error_saving_draft', '下書きの保存に失敗しました') });
     }
   }, [
     title,

@@ -79,12 +79,12 @@ const formatDeadlineForDisplay = (settings: DeadlineSettings | undefined, t: Fun
     periodStartDate,
     periodStartTime,
     repeatFrequency,
-    taskStartTime: repeatTaskStartTime, // 繰り返しの場合のタスク開始時刻
-    isTaskStartTimeEnabled: isRepeatTaskStartTimeEnabled, // 繰り返しの場合のタスク開始時刻が有効か
-    repeatStartDate: repeatPeriodStartDate, // 繰り返しの開始日
+    // taskStartTime: repeatTaskStartTime, // 廃止
+    // isTaskStartTimeEnabled: isRepeatTaskStartTimeEnabled, // 廃止
+    repeatStartDate: repeatPeriodStartDate,
   } = settings;
 
-  if (repeatFrequency) { // 繰り返し設定が有効な場合
+  if (repeatFrequency) {
     const frequencyKeyMap: Record<RepeatFrequency, string> = {
       daily: 'deadline_modal.daily',
       weekly: 'deadline_modal.weekly',
@@ -94,14 +94,12 @@ const formatDeadlineForDisplay = (settings: DeadlineSettings | undefined, t: Fun
     };
     let repeatText = t(frequencyKeyMap[repeatFrequency]);
     if (repeatPeriodStartDate) {
-      let detail = formatDateForDisplayInternal(repeatPeriodStartDate, t, i18nLanguage);
-      if (isRepeatTaskStartTimeEnabled && repeatTaskStartTime) {
-        detail += ` ${formatTimeForDisplayInternal(repeatTaskStartTime, t)}`;
-      }
+      // 繰り返し設定では時刻を表示しない
+      const detail = formatDateForDisplayInternal(repeatPeriodStartDate, t, i18nLanguage);
       repeatText += ` (${detail})`;
     }
     return repeatText;
-  } else if (isPeriodSettingEnabled) { // 期間設定が有効な場合
+  } else if (isPeriodSettingEnabled) {
     let startDateText = periodStartDate ? formatDateForDisplayInternal(periodStartDate, t, i18nLanguage) : t('common.not_set');
     if (periodStartTime) {
         startDateText += ` ${formatTimeForDisplayInternal(periodStartTime, t)}`;
@@ -121,7 +119,7 @@ const formatDeadlineForDisplay = (settings: DeadlineSettings | undefined, t: Fun
     }
     return t('add_task.period_not_fully_set', '期間未完了');
 
-  } else if (taskDeadlineDate) { // タスク期限のみ設定されている場合
+  } else if (taskDeadlineDate) {
     let mainDisplay = formatDateForDisplayInternal(taskDeadlineDate, t, i18nLanguage);
     if (isTaskDeadlineTimeEnabled && taskDeadlineTime) {
       mainDisplay += ` ${formatTimeForDisplayInternal(taskDeadlineTime, t)}`;
@@ -215,9 +213,9 @@ export default function AddTaskScreen() {
     const initialSettingsString = JSON.stringify(initialFormState.currentDeadlineSettings);
     const currentSettingsString = JSON.stringify(currentDeadlineSettings);
 
-    if (currentDraftId) { // 下書き編集時
+    if (currentDraftId) {
          formChanged =
-            title !== initialFormState.title || // 初期値は空のはずなので、下書きロード後の値と比較する
+            title !== initialFormState.title ||
             memo !== initialFormState.memo ||
             !selectedUris.every((uri, index) => uri === (initialFormState.selectedUris[index])) || selectedUris.length !== initialFormState.selectedUris.length ||
             folder !== initialFormState.folder ||
@@ -225,15 +223,15 @@ export default function AddTaskScreen() {
             notificationActive !== initialFormState.notificationActive ||
             customAmount !== initialFormState.customAmount ||
             customUnit !== initialFormState.customUnit;
-    } else { // 新規作成時
+    } else {
       formChanged =
         title !== initialFormState.title ||
         memo !== initialFormState.memo ||
-        selectedUris.length > 0 || // 新規で画像があれば変更あり
+        selectedUris.length > 0 ||
         folder !== initialFormState.folder ||
-        currentSettingsString !== initialSettingsString || // currentDeadlineSettingsが初期値から変わっていれば変更あり
+        currentSettingsString !== initialSettingsString ||
         notificationActive !== initialFormState.notificationActive ||
-        (notificationActive && // 通知が有効な場合のみ比較
+        (notificationActive &&
           (customAmount !== initialFormState.customAmount ||
            customUnit !== initialFormState.customUnit)
         );
@@ -305,16 +303,25 @@ export default function AddTaskScreen() {
             const draftToLoad = draftsArray.find(d => d.id === draftId);
             if (draftToLoad) {
               setCurrentDraftId(draftToLoad.id);
-              setTitle(draftToLoad.title || ''); // Ensure fallback to empty string
-              setMemo(draftToLoad.memo || ''); // Ensure fallback to empty string
-              setCurrentDeadlineSettings(draftToLoad.deadlineDetails); // Can be undefined
-              setSelectedUris(draftToLoad.imageUris || []); // Ensure fallback to empty array
-              setNotificationActive(draftToLoad.notifyEnabled !== undefined ? draftToLoad.notifyEnabled : false); // Default to false if undefined
-              setCustomUnit((draftToLoad.customUnit as NotificationUnit) || 'hours'); // Default to 'hours'
-              setCustomAmount(draftToLoad.customAmount || 1); // Default to 1
-              setFolder(draftToLoad.folder || ''); // Ensure fallback to empty string
+              setTitle(draftToLoad.title || '');
+              setMemo(draftToLoad.memo || '');
+              // 繰り返し設定の場合、ロード時に不要な時刻情報を削除する
+              let loadedDeadlineDetails = draftToLoad.deadlineDetails;
+              if (loadedDeadlineDetails?.repeatFrequency) {
+                const {
+                    // taskStartTime, // 廃止
+                    // isTaskStartTimeEnabled, // 廃止
+                    ...restOfDetails
+                } = loadedDeadlineDetails;
+                loadedDeadlineDetails = restOfDetails;
+              }
+              setCurrentDeadlineSettings(loadedDeadlineDetails);
+              setSelectedUris(draftToLoad.imageUris || []);
+              setNotificationActive(draftToLoad.notifyEnabled !== undefined ? draftToLoad.notifyEnabled : false);
+              setCustomUnit((draftToLoad.customUnit as NotificationUnit) || 'hours');
+              setCustomAmount(draftToLoad.customAmount || 1);
+              setFolder(draftToLoad.folder || '');
 
-              // 下書きロード直後は未保存状態ではない
               setTimeout(() => {
                 setUnsaved(false);
               }, 0);
@@ -334,7 +341,7 @@ export default function AddTaskScreen() {
     };
     loadDraft();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draftId, clearForm, setUnsaved]); // initialFormState を依存配列から削除し、代わりに clearForm 内で処理されるようにする
+  }, [draftId, clearForm, setUnsaved]);
 
 
   const handleSetNoNotificationInModal = () => {
@@ -561,7 +568,17 @@ export default function AddTaskScreen() {
           visible={showDeadlineModal}
           onClose={() => setShowDeadlineModal(false)}
           onSave={(newSettings) => {
-            setCurrentDeadlineSettings(newSettings);
+            // 保存時に不要な時刻情報を削除
+            let processedSettings = newSettings;
+            if (processedSettings.repeatFrequency) {
+                const {
+                    // taskStartTime, // 廃止
+                    // isTaskStartTimeEnabled, // 廃止
+                    ...restOfDetails
+                } = processedSettings;
+                processedSettings = restOfDetails;
+            }
+            setCurrentDeadlineSettings(processedSettings);
             setShowDeadlineModal(false);
           }}
           initialSettings={currentDeadlineSettings}
