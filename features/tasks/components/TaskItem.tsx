@@ -60,12 +60,12 @@ export function TaskItem({
 
 
   const displayStartDateUtc = useMemo(() => {
-    if (!task.isCompletedInstance && task.deadlineDetails?.isPeriodSettingEnabled && task.deadlineDetails.periodStartDate) {
-      let startDate = dayjs.utc(task.deadlineDetails.periodStartDate);
-      if (task.deadlineDetails.periodStartTime) {
+    if (!task.isCompletedInstance && (task.deadlineDetails as any)?.isPeriodSettingEnabled && (task.deadlineDetails as any).periodStartDate) {
+      let startDate = dayjs.utc((task.deadlineDetails as any).periodStartDate);
+      if ((task.deadlineDetails as any).periodStartTime) {
         startDate = startDate
-          .hour(task.deadlineDetails.periodStartTime.hour)
-          .minute(task.deadlineDetails.periodStartTime.minute);
+          .hour((task.deadlineDetails as any).periodStartTime.hour)
+          .minute((task.deadlineDetails as any).periodStartTime.minute);
       } else {
         startDate = startDate.startOf('day');
       }
@@ -211,24 +211,19 @@ export function TaskItem({
 
         <View style={styles.taskCenter}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            {!task.isCompletedInstance && task.deadlineDetails?.isPeriodSettingEnabled && task.deadlineDetails.periodStartDate && !(task.deadlineDetails?.isPeriodSettingEnabled && displayStartDateUtc && displayStartDateUtc.local().isAfter(dayjs())) && (
+            {!task.isCompletedInstance && (task.deadlineDetails as any)?.isPeriodSettingEnabled && (task.deadlineDetails as any).periodStartDate && !((task.deadlineDetails as any)?.isPeriodSettingEnabled && displayStartDateUtc && displayStartDateUtc.local().isAfter(dayjs())) && (
               <Ionicons name="calendar-outline" size={fontSizes[fontSizeKey]} color={isDark ? '#999' : '#777'} style={{ marginRight: 4 }} />
             )}
-             {!(task.isCompletedInstance) && task.deadlineDetails?.isPeriodSettingEnabled && displayStartDateUtc && displayStartDateUtc.local().isAfter(dayjs()) && (
+             {!(task.isCompletedInstance) && (task.deadlineDetails as any)?.isPeriodSettingEnabled && displayStartDateUtc && displayStartDateUtc.local().isAfter(dayjs()) && (
               <Ionicons name="time-outline" size={fontSizes[fontSizeKey]} color={isDark ? '#999' : '#777'} style={{ marginRight: 4 }} />
             )}
             <Text style={styles.taskTitle} numberOfLines={1}>
               {task.title}
             </Text>
           </View>
-          {task.memo && !task.isCompletedInstance && (
-            <Text style={styles.taskMemo} numberOfLines={2}>
-              {task.memo}
-            </Text>
-          )}
         </View>
 
-        <View style={{alignItems: 'flex-end', justifyContent: 'center', minHeight: 40 }}>
+        <View style={{alignItems: 'flex-end', justifyContent: 'center', minHeight: 30 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' }}>
               {isRepeatingTaskIconVisible && (
                 <Ionicons
