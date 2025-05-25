@@ -226,15 +226,10 @@ export default function TasksScreen() {
               instanceDate: instanceDate,
             });
           });
-          // The following block was causing the error and was determined to be redundant.
-          // If a repeating task is fully completed (isTaskFullyCompleted = true),
-          // all its relevant completed instances are already added above via completedInstanceDates.
-          // There's no need to add the "parent" task object again in this completed view
-          // if all its instances are being displayed.
         }
       });
       return completedDisplayItems.sort((a, b) => (b.displaySortDate?.unix() || 0) - (a.displaySortDate?.unix() || 0));
-    } else { // 'incomplete' tab
+    } else {
       const todayUtc = dayjs.utc();
       return baseProcessedTasks
         .filter(task => {
@@ -330,7 +325,7 @@ export default function TasksScreen() {
                 }
               }
               return task;
-            }).filter(task => { // Chain filter directly
+            }).filter(task => {
                 if (foldersToDelete.has(task.folder || noFolderName)) return false;
                 if (task.deadlineDetails?.repeatFrequency && taskItemsToDelete.has(task.id)) return false;
                 if (!task.deadlineDetails?.repeatFrequency && taskItemsToDelete.has(task.id)) return false;
@@ -436,13 +431,49 @@ export default function TasksScreen() {
             const folderTasks = tasksToProcess
               .filter(t => (t.folder || noFolderName) === folderName)
               .sort((a, b) => {
-                if (tab === 'completed' || sortMode === 'deadline') {
+                if (tab === 'incomplete' && sortMode === 'deadline') {
+                  const today = dayjs.utc().startOf('day');
+                  const getCategory = (task: DisplayableTaskItem): number => {
+                    const date = task.displaySortDate;
+                    if (!date) return 3;
+                    if (date.isBefore(today, 'day')) return 0;
+                    if (date.isSame(today, 'day')) return 1;
+                    return 2;
+                  };
+
+                  const categoryA = getCategory(a);
+                  const categoryB = getCategory(b);
+
+                  if (categoryA !== categoryB) {
+                    return categoryA - categoryB;
+                  }
+
+                  if (categoryA === 3) {
+                     return a.title.localeCompare(b.title);
+                  }
+
+                  const dateAVal = a.displaySortDate!;
+                  const dateBVal = b.displaySortDate!;
+
+                  if (dateAVal.isSame(dateBVal, 'day')) {
+                      const isTimeEffectivelyEnabledA = a.deadlineDetails?.isTaskDeadlineTimeEnabled === true && !a.deadlineDetails?.repeatFrequency;
+                      const isTimeEffectivelyEnabledB = b.deadlineDetails?.isTaskDeadlineTimeEnabled === true && !b.deadlineDetails?.repeatFrequency;
+
+                      if (isTimeEffectivelyEnabledA && !isTimeEffectivelyEnabledB) {
+                          return -1;
+                      }
+                      if (!isTimeEffectivelyEnabledA && isTimeEffectivelyEnabledB) {
+                          return 1;
+                      }
+                  }
+                  return dateAVal.unix() - dateBVal.unix();
+
+                } else if (tab === 'completed') {
                     const dateA = a.displaySortDate || dayjs.utc(0);
                     const dateB = b.displaySortDate || dayjs.utc(0);
-                    let comp = dateA.unix() - dateB.unix();
-                    if (tab === 'completed') comp = dateB.unix() - dateA.unix();
-                    if (comp !== 0) return comp;
+                    return dateB.unix() - dateA.unix();
                 }
+
                 if (sortMode === 'custom' && tab === 'incomplete') {
                     const orderA = a.customOrder ?? Infinity;
                     const orderB = b.customOrder ?? Infinity;
@@ -470,9 +501,7 @@ export default function TasksScreen() {
                  shouldRenderFolder = false;
             }
 
-
             if (!shouldRenderFolder) return null;
-
 
             const taskFolderProps: TaskFolderProps = {
                 folderName,

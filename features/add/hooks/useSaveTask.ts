@@ -28,20 +28,23 @@ interface SaveTaskParams {
 }
 
 const dateStringToUTCDate = (dateStr: string, time?: DeadlineTime): dayjs.Dayjs => {
-    const [year, month, day] = dateStr.split('-').map(Number);
-    let dateObj = dayjs.utc().year(year).month(month - 1).date(day);
     if (time) {
-        dateObj = dateObj.hour(time.hour).minute(time.minute).second(0).millisecond(0);
+        // 時刻が指定されている場合、ローカルの日付と時刻で dayjs オブジェクトを生成し、それをUTCに変換
+        const localDateTimeString = `${dateStr} ${String(time.hour).padStart(2, '0')}:${String(time.minute).padStart(2, '0')}`;
+        // dayjs(string) はローカルタイムゾーンとして解釈される
+        return dayjs(localDateTimeString).utc();
     } else {
-        dateObj = dateObj.hour(0).minute(0).second(0).millisecond(0);
+        // 時刻が指定されていない場合、日付文字列をUTCのその日の開始時刻 (00:00:00Z) として解釈
+        // dayjs.utc(string) は文字列をUTCとして解釈する
+        return dayjs.utc(dateStr).startOf('day');
     }
-    return dateObj;
 };
 
 const dateToUTCISOString = (dateObj: dayjs.Dayjs, includeTime: boolean = true): string => {
     if (includeTime) {
-        return dateObj.toISOString();
+        return dateObj.toISOString(); // 例: "2023-05-25T10:00:00.000Z"
     }
+    // 時刻を含めない場合、YYYY-MM-DD形式 (UTC基準の日付)
     return dateObj.format('YYYY-MM-DD');
 };
 
@@ -49,17 +52,21 @@ const formatTaskDeadlineISO = (settings?: DeadlineSettings): string | undefined 
   if (!settings) return undefined;
 
   if (settings.repeatFrequency && settings.repeatStartDate) {
-    // 繰り返し設定の場合、時刻は含めず日付のみとする
-    const firstInstanceStartDate = dateStringToUTCDate(settings.repeatStartDate);
-    return dateToUTCISOString(firstInstanceStartDate, false); // 時刻を含めない
-
-  } else if (settings.taskDeadlineDate) {
+    // 繰り返し設定の場合、時刻は含めず日付のみとする (UTCの0時基準の日付)
+    const firstInstanceStartDate = dateStringToUTCDate(settings.repeatStartDate); // timeなしで呼び出し
+    return dateToUTCISOString(firstInstanceStartDate, false); // YYYY-MM-DD
+  } else if (settings.taskDeadlineDate) { // 単発タスク
     if (settings.isTaskDeadlineTimeEnabled && settings.taskDeadlineTime) {
+      // 時刻設定ありの場合
       const deadlineDate = dateStringToUTCDate(settings.taskDeadlineDate, settings.taskDeadlineTime);
-      return dateToUTCISOString(deadlineDate, true);
+      return dateToUTCISOString(deadlineDate, true); // ISO文字列 (時刻あり)
     }
-    const deadlineDate = dateStringToUTCDate(settings.taskDeadlineDate);
-    return dateToUTCISOString(deadlineDate, false);
+    // 時刻設定なしの場合 (UTCの0時基準の日付)
+    const deadlineDate = dateStringToUTCDate(settings.taskDeadlineDate); // timeなしで呼び出し
+    return dateToUTCISOString(deadlineDate, true); // ISO文字列 (時刻あり、00:00:00Z)
+                                                      // もし時刻なし (YYYY-MM-DD) で保存したい場合は第二引数を false にするが、
+                                                      // DBや他機能との一貫性のため、時刻ありのISO文字列で統一する方が無難な場合もある
+                                                      // ここでは、時刻設定なしの場合も便宜上00:00:00Zを含むISO文字列で返す
   }
   return undefined;
 };
@@ -88,16 +95,14 @@ export const useSaveTask = ({
     const taskId = uuid.v4() as string;
     const taskDeadlineValue = formatTaskDeadlineISO(deadlineDetails);
 
-    // 繰り返し設定の場合、deadlineDetails から時刻関連の情報を削除/調整
     let finalDeadlineDetails = deadlineDetails;
     if (finalDeadlineDetails?.repeatFrequency) {
         finalDeadlineDetails = {
             ...finalDeadlineDetails,
-            // isTaskStartTimeEnabled: false, // 廃止
-            // taskStartTime: undefined, // 廃止
+            // isTaskStartTimeEnabled: false, // 廃止済み
+            // taskStartTime: undefined, // 廃止済み
         };
     }
-
 
     const newTask: Task = {
       id: taskId,
@@ -150,13 +155,12 @@ export const useSaveTask = ({
     const id = currentDraftId || (uuid.v4() as string);
     const draftDeadlineValue = formatTaskDeadlineISO(deadlineDetails);
 
-    // 繰り返し設定の場合、deadlineDetails から時刻関連の情報を削除/調整
     let finalDeadlineDetails = deadlineDetails;
     if (finalDeadlineDetails?.repeatFrequency) {
         finalDeadlineDetails = {
             ...finalDeadlineDetails,
-            // isTaskStartTimeEnabled: false, // 廃止
-            // taskStartTime: undefined, // 廃止
+            // isTaskStartTimeEnabled: false, // 廃止済み
+            // taskStartTime: undefined, // 廃止済み
         };
     }
 

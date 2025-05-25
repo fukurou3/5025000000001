@@ -98,10 +98,10 @@ const TimePickerModalMemo: React.FC<TimePickerModalProps> = ({
   const pickerItemFontSize = currentBaseFontSize + TIME_PICKER_BASE_FONT_SIZE_INCREASE;
   const ampmPickerItemFontSize = currentBaseFontSize + ampmPickerFontSizeIncrease;
   const accentLineColorValue = subColor as ColorValue;
-  const baseTextColorForPicker = isDark ? '#FFFFFF' : '#000000'; // ピッカー内テキスト用の基本色
+  const baseTextColorForPicker = isDark ? '#FFFFFF' : '#000000';
 
   const defaultDisplayTime = useMemo(() => {
-    return to12HourFormat(initialTime?.hour ?? 9, initialTime?.minute ?? 0);
+    return to12HourFormat(initialTime?.hour ?? 0, initialTime?.minute ?? 0); // MODIFIED: Default hour from 9 to 0
   }, [initialTime]);
 
   const [selectedAmPm, setSelectedAmPm] = useState<AmPm>(defaultDisplayTime.ampm);
@@ -110,7 +110,7 @@ const TimePickerModalMemo: React.FC<TimePickerModalProps> = ({
 
   useEffect(() => {
     if (visible) {
-      const displayTime = to12HourFormat(initialTime?.hour ?? 9, initialTime?.minute ?? 0);
+      const displayTime = to12HourFormat(initialTime?.hour ?? 0, initialTime?.minute ?? 0); // MODIFIED: Default hour from 9 to 0
       setSelectedAmPm(displayTime.ampm);
       setSelectedHour(displayTime.hour12);
       setSelectedMinute(displayTime.minute);
@@ -130,25 +130,22 @@ const TimePickerModalMemo: React.FC<TimePickerModalProps> = ({
   const hourPickerOptions = useMemo(() => hourData12.map(opt => opt.label), []);
   const minutePickerOptions = useMemo(() => minuteDataFull.map(opt => opt.label), []);
 
-  // MODIFIED: ピッカーモーダル内ヘッダーテキストスタイルを明示的に定義
   const pickerModalHeaderTextStyle = useMemo((): TextStyle => ({
-    fontSize: appFontSizes[fontSizeKey] + 3, // styles.ts の headerBaseFontSize + 3 に相当
+    fontSize: appFontSizes[fontSizeKey] + 3,
     fontWeight: '600',
-    color: baseTextColorForPicker, // ★通常色を指定
+    color: baseTextColorForPicker,
     textAlign: 'center',
-    lineHeight: appFontSizes[fontSizeKey] + 8, // styles.ts の headerBaseFontSize + 8 に相当
+    lineHeight: appFontSizes[fontSizeKey] + 8,
   }), [fontSizeKey, baseTextColorForPicker]);
 
-  // MODIFIED: 時・分ピッカーアイテムテキストスタイルを明示的に定義
   const wheelyItemHourMinuteTextStyle = useMemo((): TextStyle => ({
-    color: baseTextColorForPicker, // ★通常色を指定
+    color: baseTextColorForPicker,
     fontSize: pickerItemFontSize,
     fontWeight: Platform.OS === 'ios' ? '500' : '500',
   }), [baseTextColorForPicker, pickerItemFontSize]);
 
-  // MODIFIED: AM/PMピッカーアイテムテキストスタイルを明示的に定義
   const wheelyItemAmPmTextStyle = useMemo((): TextStyle => ({
-    color: baseTextColorForPicker, // ★通常色を指定
+    color: baseTextColorForPicker,
     fontSize: ampmPickerItemFontSize,
     fontWeight: Platform.OS === 'ios' ? '500' : '500',
   }), [baseTextColorForPicker, ampmPickerItemFontSize]);
@@ -160,14 +157,13 @@ const TimePickerModalMemo: React.FC<TimePickerModalProps> = ({
     borderColor: 'transparent',
   }), []);
 
-  // MODIFIED: 時刻単位ラベルスタイルを明示的に定義
   const timeUnitLabelStyle = useMemo((): TextStyle => ({
     fontSize: pickerItemFontSize - (Platform.OS === 'ios' ? 7 : 7),
     lineHeight: WHEELY_ITEM_HEIGHT,
     textAlignVertical: 'center',
     marginHorizontal: Platform.OS === 'ios' ? -9 : -9,
-    color: baseTextColorForPicker, // ★通常色を指定
-    fontWeight: (Platform.OS === 'ios' ? '300' : 'normal') as TextStyle['fontWeight'], // styles.ts の timeSeparator から流用
+    color: baseTextColorForPicker,
+    fontWeight: (Platform.OS === 'ios' ? '300' : 'normal') as TextStyle['fontWeight'],
   }), [baseTextColorForPicker, pickerItemFontSize]);
 
   const timePickerAreaPaddingVertical = useMemo((): number => {

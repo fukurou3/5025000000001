@@ -1,9 +1,11 @@
 // app/features/tasks/components/TaskItem.tsx
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useContext, useState, useEffect, useMemo, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, TextStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
+import relativeTime from 'dayjs/plugin/relativeTime';
 
 import { DisplayableTaskItem } from '../types';
 import { createStyles } from '../styles';
@@ -11,10 +13,13 @@ import { useAppTheme } from '@/hooks/ThemeContext';
 import { useTranslation } from 'react-i18next';
 import { FontSizeContext } from '@/context/FontSizeContext';
 import { useRouter } from 'expo-router';
-import { getTimeColor, getTimeText, getDeadlineDisplayText, calculateActualDueDate } from '../utils';
+import { getTimeColor, getTimeText, calculateActualDueDate } from '../utils';
 import { fontSizes } from '@/constants/fontSizes';
 
 dayjs.extend(utc);
+dayjs.extend(timezone);
+dayjs.extend(relativeTime);
+
 
 type Props = {
   task: DisplayableTaskItem;
@@ -43,49 +48,101 @@ export function TaskItem({
   const { fontSizeKey } = useContext(FontSizeContext);
   const styles = createStyles(isDark, subColor, fontSizeKey);
   const router = useRouter();
-  const [nowLocal, setNowLocal] = useState(dayjs());
+  const [, setTick] = useState(0);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const displayInstanceDateUtc = task.isCompletedInstance ? null : task.displaySortDate;
-  const actualDueDateUtc = task.isCompletedInstance ? dayjs.utc(task.instanceDate) : calculateActualDueDate(task);
-
-
-  let displayStartDateUtc: dayjs.Dayjs | null = null;
-  if (!task.isCompletedInstance && task.deadlineDetails?.isPeriodSettingEnabled && task.deadlineDetails.periodStartDate) {
-    displayStartDateUtc = dayjs.utc(task.deadlineDetails.periodStartDate);
-    if (task.deadlineDetails.periodStartTime) {
-      displayStartDateUtc = displayStartDateUtc
-        .hour(task.deadlineDetails.periodStartTime.hour)
-        .minute(task.deadlineDetails.periodStartTime.minute);
-    } else {
-      displayStartDateUtc = displayStartDateUtc.startOf('day');
+  const effectiveDueDateUtc = useMemo(() => {
+    if (task.isCompletedInstance && task.instanceDate) {
+        return dayjs.utc(task.instanceDate);
     }
-  }
+    return task.displaySortDate || calculateActualDueDate(task);
+  }, [task.isCompletedInstance, task.instanceDate, task.displaySortDate, task.deadline, task.deadlineDetails]);
+
+
+  const displayStartDateUtc = useMemo(() => {
+    if (!task.isCompletedInstance && task.deadlineDetails?.isPeriodSettingEnabled && task.deadlineDetails.periodStartDate) {
+      let startDate = dayjs.utc(task.deadlineDetails.periodStartDate);
+      if (task.deadlineDetails.periodStartTime) {
+        startDate = startDate
+          .hour(task.deadlineDetails.periodStartTime.hour)
+          .minute(task.deadlineDetails.periodStartTime.minute);
+      } else {
+        startDate = startDate.startOf('day');
+      }
+      return startDate;
+    }
+    return null;
+  }, [task.isCompletedInstance, task.deadlineDetails]);
+
 
   useEffect(() => {
-    if (task.isCompletedInstance) return;
-    let intervalId: NodeJS.Timeout | undefined;
-    const updateNow = () => setNowLocal(dayjs());
-
-    const dateToMonitorLocal = (displayStartDateUtc?.isAfter(nowLocal.utc()) ? displayStartDateUtc.local() : displayInstanceDateUtc?.local());
-
-    if (dateToMonitorLocal) {
-        const diffMinutesTotal = Math.abs(dateToMonitorLocal.diff(nowLocal, 'minute'));
-        let intervalMs = 60000;
-        if (diffMinutesTotal <= 1) intervalMs = 5000;
-        else if (diffMinutesTotal <= 5) intervalMs = 10000;
-        else if (diffMinutesTotal <= 60) intervalMs = 30000;
-        intervalId = setInterval(updateNow, intervalMs);
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
     }
-    return () => {
-      if (intervalId) clearInterval(intervalId);
+    if (task.isCompletedInstance) {
+      return;
+    }
+    const calculateNextIntervalMs = (): number => {
+      const dateToMonitorLocal = (displayStartDateUtc?.isAfter(dayjs().utc())
+          ? displayStartDateUtc.local()
+          : effectiveDueDateUtc?.local());
+      let intervalMs = 60000 * 5;
+      if (dateToMonitorLocal) {
+        const currentActualNow = dayjs();
+        if (dateToMonitorLocal.isAfter(currentActualNow)) {
+          const diffMinutesTotal = dateToMonitorLocal.diff(currentActualNow, 'minute');
+          if (diffMinutesTotal <= 1) intervalMs = 5000;
+          else if (diffMinutesTotal <= 5) intervalMs = 10000;
+          else if (diffMinutesTotal <= 60) intervalMs = 30000;
+          else intervalMs = 60000;
+        }
+      }
+      return intervalMs;
     };
-  }, [task, nowLocal, displayInstanceDateUtc, displayStartDateUtc]);
+    const tick = () => {
+      setTick(prevTick => prevTick + 1);
+      timeoutRef.current = setTimeout(tick, calculateNextIntervalMs());
+    };
+    timeoutRef.current = setTimeout(tick, calculateNextIntervalMs());
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    };
+  }, [task.isCompletedInstance, task.id, effectiveDueDateUtc, displayStartDateUtc]);
 
-  const isPeriodStartInFuture = !task.isCompletedInstance && task.deadlineDetails?.isPeriodSettingEnabled && displayStartDateUtc && displayStartDateUtc.local().isAfter(nowLocal);
+  const rawDeadlineText = task.isCompletedInstance
+    ? t('task_list.completed_on_date_time', { date: dayjs.utc(task.instanceDate).local().locale(i18n.language).format(t('common.date_time_format_short', "M/D H:mm"))})
+    : getTimeText(task, t, effectiveDueDateUtc, displayStartDateUtc);
 
-  const deadlineDisplayText = task.isCompletedInstance ? dayjs.utc(task.instanceDate).local().format(t('common.date_format_short', 'YYYY/M/D')) : getDeadlineDisplayText(actualDueDateUtc, t);
-  const timeColor = task.isCompletedInstance ? (isDark ? '#8E8E93' : '#6D6D72') : getTimeColor(task, isDark, displayInstanceDateUtc, displayStartDateUtc);
-  const startTimeDisplayText = task.isCompletedInstance ? t('task_list.completed_on_date_time', { date: dayjs.utc(task.instanceDate).local().format(t('common.date_time_format_short', "M/D H:mm"))}) : getTimeText(task, t, displayInstanceDateUtc, displayStartDateUtc);
+  const determinedTimeColor = task.isCompletedInstance
+    ? (isDark ? '#8E8E93' : '#6D6D72')
+    : getTimeColor(task, isDark, effectiveDueDateUtc, displayStartDateUtc);
+
+  let isCurrentDisplayInstanceDone = false;
+  if (task.isCompletedInstance) {
+    isCurrentDisplayInstanceDone = true;
+  } else if (currentTab === 'completed') {
+    isCurrentDisplayInstanceDone = true;
+  } else if (task.deadlineDetails?.repeatFrequency && effectiveDueDateUtc) {
+    const instanceDateStr = effectiveDueDateUtc.format('YYYY-MM-DD');
+    isCurrentDisplayInstanceDone = task.completedInstanceDates?.includes(instanceDateStr) ?? false;
+  } else if (!task.deadlineDetails?.repeatFrequency) {
+    isCurrentDisplayInstanceDone = !!task.completedAt;
+  }
+
+  const isRepeatingTaskIconVisible = !!(
+    task.deadlineDetails?.repeatFrequency &&
+    !task.isCompletedInstance &&
+    currentTab === 'incomplete' &&
+    !isCurrentDisplayInstanceDone
+  );
+
+  let deadlineTextForDisplay = rawDeadlineText;
+  if (task.deadlineDetails?.repeatFrequency && rawDeadlineText.startsWith('🔁')) {
+    deadlineTextForDisplay = rawDeadlineText.substring(1);
+  }
 
 
   const handleToggle = () => {
@@ -93,8 +150,8 @@ export function TaskItem({
       onToggle(task.id, task.instanceDate);
     } else if (currentTab === 'completed' && !task.isCompletedInstance) {
       onToggle(task.id);
-    } else if (task.deadlineDetails?.repeatFrequency && displayInstanceDateUtc) {
-      onToggle(task.id, displayInstanceDateUtc.format('YYYY-MM-DD'));
+    } else if (task.deadlineDetails?.repeatFrequency && effectiveDueDateUtc) {
+      onToggle(task.id, effectiveDueDateUtc.format('YYYY-MM-DD'));
     } else {
       onToggle(task.id);
     }
@@ -110,64 +167,15 @@ export function TaskItem({
 
   const isSelected = selectedIds.includes(task.keyId);
 
-  let isCurrentDisplayInstanceDone = false;
-  if (task.isCompletedInstance) {
-    isCurrentDisplayInstanceDone = true;
-  } else if (currentTab === 'completed') {
-    isCurrentDisplayInstanceDone = true;
-  } else if (task.deadlineDetails?.repeatFrequency && displayInstanceDateUtc) {
-    const instanceDateStr = displayInstanceDateUtc.format('YYYY-MM-DD');
-    isCurrentDisplayInstanceDone = task.completedInstanceDates?.includes(instanceDateStr) ?? false;
-  } else if (!task.deadlineDetails?.repeatFrequency) {
-    isCurrentDisplayInstanceDone = !!task.completedAt;
-  }
+  const topTextStyleArray: TextStyle[] = [
+    styles.taskDeadlineDisplayTextBase,
+    { color: determinedTimeColor }
+  ];
 
-
-  let topText = "";
-  let bottomText: string | null = null;
-  let topTextStyleArray: TextStyle[] = [styles.taskTime, { color: timeColor }];
-  let bottomTextStyleArray: TextStyle[] = [styles.taskTime, { color: timeColor, fontSize: fontSizes[fontSizeKey] - 2, fontWeight: 'normal' }];
-
-  if (task.isCompletedInstance && task.instanceDate) {
-    topText = dayjs.utc(task.instanceDate).local().locale(i18n.language).format(t('common.date_format_month_day', 'M月D日'));
-    bottomText = dayjs.utc(task.instanceDate).local().locale(i18n.language).format(t('common.time_format_simple', 'H:mm'));
-    topTextStyleArray.push({fontWeight: 'normal'});
-  } else if (isPeriodStartInFuture) {
-    topText = deadlineDisplayText;
-    bottomText = startTimeDisplayText;
-    topTextStyleArray.push({ fontWeight: 'bold' });
-  } else if (displayInstanceDateUtc) {
-    const displayDateLocal = displayInstanceDateUtc.local();
-    if (task.deadlineDetails?.repeatFrequency) {
-        topText = displayDateLocal.locale(i18n.language).format(t('common.month_day_format', 'M月D日'));
-        if (task.deadlineDetails.isTaskStartTimeEnabled && task.deadlineDetails.taskStartTime) {
-             bottomText = displayDateLocal.locale(i18n.language).format(t('common.time_format_simple', 'H:mm'));
-             topTextStyleArray.push({ fontSize: fontSizes[fontSizeKey] - 2, fontWeight: 'normal' });
-             bottomTextStyleArray = [styles.taskTime, { color: timeColor, fontWeight: 'bold' }];
-        } else {
-            bottomText = null;
-            topTextStyleArray.push({ fontWeight: 'bold' });
-        }
-    } else {
-        topText = startTimeDisplayText;
-        if (task.deadlineDetails?.isTaskDeadlineTimeEnabled && task.deadlineDetails.taskDeadlineTime) {
-             topTextStyleArray.push({ fontWeight: 'bold' });
-        } else {
-            topTextStyleArray.push({ fontWeight: 'normal' });
-        }
-        bottomText = null;
+   if (deadlineTextForDisplay === t('task_list.no_deadline') && styles.noDeadlineText) {
+        const { color, fontWeight, ...noDeadlineOtherStyles } = styles.noDeadlineText as TextStyle;
+        topTextStyleArray.push(noDeadlineOtherStyles);
     }
-
-    if (topText === t('task_list.no_deadline')) {
-        topTextStyleArray.push(styles.noDeadlineText as TextStyle);
-    }
-
-  } else {
-    topText = t('task_list.no_deadline');
-    topTextStyleArray.push(styles.noDeadlineText as TextStyle);
-    bottomText = null;
-  }
-
 
   const baseStyle = isInsideFolder
     ? styles.folderTaskItemContainer
@@ -175,10 +183,9 @@ export function TaskItem({
 
   const itemContainerStyle = StyleSheet.flatten([
     baseStyle,
-    (isInsideFolder && isLastItem && !task.isCompletedInstance) && { borderBottomWidth: 0 }, // 通常のタスクの最後のアイテムのみ罫線を消す
-    task.isCompletedInstance && isLastItem && { borderBottomWidth: 0 } // 完了インスタンスの場合も最後のアイテムは罫線を消す
+    (isInsideFolder && isLastItem && !task.isCompletedInstance) && { borderBottomWidth: 0 },
+    task.isCompletedInstance && isLastItem && { borderBottomWidth: 0 }
   ]);
-
 
   return (
     <TouchableOpacity
@@ -204,20 +211,17 @@ export function TaskItem({
 
         <View style={styles.taskCenter}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            {task.deadlineDetails?.repeatFrequency && !task.isCompletedInstance && (
-              <Ionicons name="repeat" size={fontSizes[fontSizeKey]} color={isDark ? '#999' : '#777'} style={{ marginRight: 4 }} />
-            )}
-             {task.deadlineDetails?.isPeriodSettingEnabled && task.deadlineDetails.periodStartDate && !isPeriodStartInFuture && !task.isCompletedInstance && (
+            {!task.isCompletedInstance && task.deadlineDetails?.isPeriodSettingEnabled && task.deadlineDetails.periodStartDate && !(task.deadlineDetails?.isPeriodSettingEnabled && displayStartDateUtc && displayStartDateUtc.local().isAfter(dayjs())) && (
               <Ionicons name="calendar-outline" size={fontSizes[fontSizeKey]} color={isDark ? '#999' : '#777'} style={{ marginRight: 4 }} />
             )}
-             {isPeriodStartInFuture && !task.isCompletedInstance && (
+             {!(task.isCompletedInstance) && task.deadlineDetails?.isPeriodSettingEnabled && displayStartDateUtc && displayStartDateUtc.local().isAfter(dayjs()) && (
               <Ionicons name="time-outline" size={fontSizes[fontSizeKey]} color={isDark ? '#999' : '#777'} style={{ marginRight: 4 }} />
             )}
             <Text style={styles.taskTitle} numberOfLines={1}>
               {task.title}
             </Text>
           </View>
-          {task.memo && (
+          {task.memo && !task.isCompletedInstance && (
             <Text style={styles.taskMemo} numberOfLines={2}>
               {task.memo}
             </Text>
@@ -225,14 +229,19 @@ export function TaskItem({
         </View>
 
         <View style={{alignItems: 'flex-end', justifyContent: 'center', minHeight: 40 }}>
-            <Text style={StyleSheet.flatten(topTextStyleArray)} numberOfLines={1} ellipsizeMode="tail">
-                {topText}
-            </Text>
-            {bottomText && (
-                <Text style={StyleSheet.flatten(bottomTextStyleArray)} numberOfLines={1} ellipsizeMode="tail">
-                    {bottomText}
-                </Text>
-            )}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' }}>
+              {isRepeatingTaskIconVisible && (
+                <Ionicons
+                  name="repeat"
+                  size={fontSizes[fontSizeKey] * 0.9}
+                  color={determinedTimeColor}
+                  style={{ marginRight: 3 }}
+                />
+              )}
+              <Text style={StyleSheet.flatten(topTextStyleArray)} numberOfLines={1} ellipsizeMode="tail">
+                {deadlineTextForDisplay}
+              </Text>
+            </View>
         </View>
 
         {isSelecting && (

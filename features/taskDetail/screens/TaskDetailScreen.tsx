@@ -18,6 +18,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppTheme } from '@/hooks/ThemeContext';
 import { useTranslation } from 'react-i18next';
+import dayjs from 'dayjs'; // dayjs をインポート
+import type { DeadlineSettings } from '@/features/add/components/DeadlineSettingModal/types'; // DeadlineSettings の型をインポート
 
 const STORAGE_KEY = 'TASKS';
 
@@ -25,11 +27,12 @@ type Task = {
   id: string;
   title: string;
   memo: string;
-  deadline: string;
+  deadline?: string; // deadline はオプショナルに変更
   imageUris: string[];
   notifyEnabled: boolean;
   customUnit: 'minutes' | 'hours' | 'days';
   customAmount: number;
+  deadlineDetails?: DeadlineSettings; // deadlineDetails プロパティを追加
 };
 
 type TaskDetailStyles = {
@@ -108,16 +111,17 @@ const createStyles = (isDark: boolean, subColor: string) =>
       fontWeight: 'bold',
     },
   });
+
   export default function TaskDetailScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const router = useRouter();
     const { colorScheme, subColor } = useAppTheme();
     const isDark = colorScheme === 'dark';
     const styles = createStyles(isDark, subColor);
-    const { t } = useTranslation();
-  
+    const { t, i18n } = useTranslation(); // i18n を追加
+
     const [task, setTask] = useState<Task | null>(null);
-  
+
     useEffect(() => {
       (async () => {
         const raw = await AsyncStorage.getItem(STORAGE_KEY);
@@ -127,7 +131,7 @@ const createStyles = (isDark: boolean, subColor: string) =>
         if (found) setTask(found);
       })();
     }, [id]);
-  
+
     const handleDelete = async () => {
       Alert.alert(
         t('task_detail.delete_confirm_title'),
@@ -144,7 +148,7 @@ const createStyles = (isDark: boolean, subColor: string) =>
                 const list = JSON.parse(raw);
                 const updated = list.filter((t: Task) => t.id !== id);
                 await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-                router.replace('/(tabs)/tasks/tasks');
+                router.replace('/(tabs)/tasks'); // パスを修正 (tasks ディレクトリは通常不要)
               } catch (error) {
                 console.error('Failed to delete task', error);
               }
@@ -153,7 +157,7 @@ const createStyles = (isDark: boolean, subColor: string) =>
         ]
       );
     };
-  
+
     if (!task) {
       return (
         <SafeAreaView style={styles.container}>
@@ -169,7 +173,7 @@ const createStyles = (isDark: boolean, subColor: string) =>
         </SafeAreaView>
       );
     }
-  
+
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.appBar}>
@@ -178,19 +182,22 @@ const createStyles = (isDark: boolean, subColor: string) =>
           </TouchableOpacity>
           <Text style={styles.appBarTitle}>{t('task_detail.title')}</Text>
         </View>
-  
+
         <ScrollView contentContainerStyle={{ padding: 20 }}>
           <Text style={styles.title}>{task.title}</Text>
-  
+
           <Text style={styles.label}>{t('task_detail.memo')}</Text>
           <Text style={styles.memo}>{task.memo || '-'}</Text>
-  
+
           <Text style={styles.label}>{t('task_detail.deadline')}</Text>
           <Text style={styles.field}>
-            {new Date(task.deadline).toLocaleDateString()} {new Date(task.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            {task.deadline ? dayjs(task.deadline).format(i18n.language.startsWith('ja') ? 'YYYY/MM/DD' : 'L') : t('common.not_set')}
+            {task.deadline && task.deadlineDetails?.isTaskDeadlineTimeEnabled ? (
+              ` ${dayjs(task.deadline).format('HH:mm')}`
+            ) : ''}
           </Text>
-  
-          {task.imageUris.length > 0 && (
+
+          {task.imageUris && task.imageUris.length > 0 && ( // task.imageUris が undefined でないかチェック
             <>
               <Text style={styles.label}>{t('task_detail.photo')}</Text>
               {task.imageUris.map((uri) => (
@@ -198,7 +205,7 @@ const createStyles = (isDark: boolean, subColor: string) =>
               ))}
             </>
           )}
-  
+
           <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
             <Text style={styles.deleteButtonText}>{t('common.delete')}</Text>
           </TouchableOpacity>
@@ -206,4 +213,3 @@ const createStyles = (isDark: boolean, subColor: string) =>
       </SafeAreaView>
     );
   }
-  

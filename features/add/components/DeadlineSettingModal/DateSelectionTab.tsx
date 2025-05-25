@@ -40,7 +40,7 @@ const DateSelectionTabMemo: React.FC<SpecificDateSelectionTabProps> = ({
   updateSettings,
   showErrorAlert,
 }) => {
-  const { colorScheme } = useAppTheme(); // subColor はここでは未使用なので削除
+  const { colorScheme } = useAppTheme();
   const isDark = colorScheme === 'dark';
   const { t } = useTranslation();
 
@@ -150,7 +150,13 @@ const DateSelectionTabMemo: React.FC<SpecificDateSelectionTabProps> = ({
   }, [selectedTaskDeadlineDate, t]);
 
   const displayTaskDeadlineTime = useMemo(() => {
-    if (isTaskDeadlineTimeEnabled && selectedTaskDeadlineTime) return formatTimeToDisplay(selectedTaskDeadlineTime, t);
+    if (isTaskDeadlineTimeEnabled && selectedTaskDeadlineTime) {
+      return formatTimeToDisplay(selectedTaskDeadlineTime, t);
+    }
+    // 時刻設定が有効で、時刻がまだない(0時が内部的に設定される)場合の表示
+    if (isTaskDeadlineTimeEnabled && !selectedTaskDeadlineTime) {
+      return formatTimeToDisplay({ hour: 0, minute: 0 }, t);
+    }
     return t('common.select');
   }, [isTaskDeadlineTimeEnabled, selectedTaskDeadlineTime, t]);
 
@@ -190,19 +196,22 @@ const DateSelectionTabMemo: React.FC<SpecificDateSelectionTabProps> = ({
     padding: 2,
   };
 
-
-  const getInitialTimeForPicker = (type: 'taskDeadline' | 'periodStart'): DeadlineTime => {
-    const now = new Date();
-    let currentTime = { hour: now.getHours(), minute: now.getMinutes() };
-
+  const getInitialTimeForPicker = useCallback((type: 'taskDeadline' | 'periodStart'): DeadlineTime | undefined => {
     if (type === 'taskDeadline') {
-        return selectedTaskDeadlineTime || currentTime;
+      if (isTaskDeadlineTimeEnabled && !selectedTaskDeadlineTime) {
+        return { hour: 0, minute: 0 }; // 時刻設定がONで時刻が未選択なら0時を初期値
+      }
+      return selectedTaskDeadlineTime; // それ以外は選択中の時刻かundefined (TimePickerModalのデフォルトへ)
     }
     if (type === 'periodStart') {
-        return selectedPeriodStartTime || currentTime;
+      if (selectedPeriodStartDate && !selectedPeriodStartTime) { // 開始日が設定されていて開始時刻が未選択
+        return { hour: 0, minute: 0 };
+      }
+      return selectedPeriodStartTime;
     }
-    return currentTime;
-  };
+    return undefined;
+  }, [isTaskDeadlineTimeEnabled, selectedTaskDeadlineTime, selectedPeriodStartDate, selectedPeriodStartTime]);
+
 
   return (
     <ScrollView style={styles.tabContentContainer} contentContainerStyle={{ paddingBottom: 20 }}>

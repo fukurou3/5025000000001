@@ -202,7 +202,11 @@
     "select_mode_title": "選択モード",
     "no_deadline": "期限なし",
     "no_deadline_full": "このタスクには期限が設定されていません",
-    "announce_next_occurrence": "このタスクは、{{date}}に再び追加されます。"
+    "announce_next_occurrence": "このタスクは、{{date}}に再び追加されます。",
+    "due_today": "今日",
+    "due_tomorrow": "明日",
+    "overdue": "期限切れ",
+    "completed_on_date_time": "{{date}} 完了"
   },
   "tab": {
     "incomplete": "未完了",
@@ -240,9 +244,10 @@
     "remainingYearsMonths": "残り{{years}}年{{months}}カ月",
     "justNow": "たった今",
     "dueNow": "期限です",
-        "overdue_days": "{{count}}日超過",
-    "overdue_hours": "{{count}}時間超過",
-    "overdue_minutes": "{{count}}分超過",
+    "dueTomorrowWithTime": "明日 {{time}}",
+     "overdue_days": "{{count}}日前",
+    "overdue_hours": "{{count}}時間前",
+    "overdue_minutes": "{{count}}分前",
     "startsInMinutes": "{{count}}分後開始",
     "startsInHours": "{{count}}時間後開始",
     "startsTomorrow": "明日開始",
@@ -349,6 +354,8 @@
     "no_upcoming_repeat": "🔁今後の予定なし",
     "no_deadline": "期限なし",
     "completed": "完了",
-    "completed_on_date": "完了 {{date}}"
+    "completed_on_date": "完了 {{date}}",
+    "display_repeating_overdue_short": "🔁{{date}}分",
+    "display_repeating_future_short": "🔁{{date}}予定"
   }
 }
