@@ -11,7 +11,7 @@ import { fontSizes as appFontSizes } from '@/constants/fontSizes';
 import { Ionicons } from '@expo/vector-icons';
 
 import type { Task } from '@/features/tasks/types';
-import type { DeadlineSettings, RepeatFrequency, DurationUnit } from '@/features/add/components/DeadlineSettingModal/types';
+import type { DeadlineSettings, RepeatFrequency, CustomIntervalUnit } from '@/features/add/components/DeadlineSettingModal/types';
 import { DeadlineSettingModal } from '@/features/add/components/DeadlineSettingModal';
 import { ConfirmModal } from '@/features/add/components/DeadlineSettingModal/ConfirmModal';
 
@@ -37,27 +37,10 @@ const formatRepeatSettingsForDisplay = (settings: DeadlineSettings | undefined, 
     displayText = t(`deadline_modal.every_x_${settings.customIntervalUnit}`, { count: settings.customIntervalValue });
   }
 
-  if (settings.isTaskStartTimeEnabled && settings.taskStartTime) {
-    const hour12 = settings.taskStartTime.hour % 12 === 0 ? 12 : settings.taskStartTime.hour % 12;
-    const ampmKey = (settings.taskStartTime.hour < 12 || settings.taskStartTime.hour === 24 || settings.taskStartTime.hour === 0) ? 'common.am' : 'common.pm';
-    const ampm = t(ampmKey);
-    displayText += ` ${ampm} ${hour12}:${String(settings.taskStartTime.minute).padStart(2, '0')}`;
-  } else if (settings.repeatFrequency) {
+  if (settings.repeatFrequency) {
       displayText += ` (${t('common.all_day')})`;
   }
 
-  if (settings.isTaskStartTimeEnabled && settings.taskDuration) {
-    const durationUnitKeyMap: Record<DurationUnit, string> = {
-        minutes: 'common.minutes_unit_after',
-        hours: 'common.hours_unit_after',
-        days: 'common.days_unit_after',
-        months: 'common.months_unit_after',
-        years: 'common.years_unit_after',
-    };
-    const durationLabel = t('deadline_modal.task_duration_label');
-    const durationUnitText = t(durationUnitKeyMap[settings.taskDuration.unit]);
-    displayText += ` (${durationLabel}: ${settings.taskDuration.amount}${durationUnitText})`;
-  }
   return displayText;
 };
 
@@ -113,22 +96,27 @@ export default function RepeatingTasksScreen() {
 
   const saveTaskUpdate = async (taskToUpdate: Task, newDeadlineSettings?: DeadlineSettings) => {
     const taskIdToUpdate = taskToUpdate.id;
-    let finalDeadlineDetails = newDeadlineSettings;
+    let finalDeadlineDetails: DeadlineSettings | undefined;
 
     if (newDeadlineSettings === undefined) {
+        const baseSettings = taskToUpdate.deadlineDetails || {};
         finalDeadlineDetails = {
-            ...(taskToUpdate.deadlineDetails || {}),
+            taskDeadlineDate: baseSettings.taskDeadlineDate,
+            taskDeadlineTime: baseSettings.taskDeadlineTime,
+            isTaskDeadlineTimeEnabled: baseSettings.isTaskDeadlineTimeEnabled,
+            // isPeriodSettingEnabled: baseSettings.isPeriodSettingEnabled, // プロパティが存在しないというエラー(107)に基づきコメントアウト
+            // periodStartDate: baseSettings.periodStartDate, // プロパティが存在しないというエラー(108)に基づきコメントアウト
+            // periodStartTime: baseSettings.periodStartTime, // プロパティが存在しないというエラー(109)に基づきコメントアウト
             repeatFrequency: undefined,
-            taskStartTime: undefined,
-            isTaskStartTimeEnabled: false,
-            taskDuration: undefined,
-            date: taskToUpdate.deadlineDetails?.date,
-            time: taskToUpdate.deadlineDetails?.time,
-            isTimeEnabled: taskToUpdate.deadlineDetails?.isTimeEnabled,
-            endDate: undefined,
-            endTime: undefined,
-            isEndTimeEnabled: false,
+            repeatStartDate: undefined,
+            repeatDaysOfWeek: undefined,
+            repeatEnds: undefined,
+            isExcludeHolidays: undefined,
+            customIntervalValue: undefined,
+            customIntervalUnit: undefined,
         };
+    } else {
+        finalDeadlineDetails = newDeadlineSettings;
     }
 
     try {
@@ -144,19 +132,18 @@ export default function RepeatingTasksScreen() {
             try {
                 const { formatTaskDeadlineISO } = require('@/features/add/hooks/useSaveTask');
                 if (typeof formatTaskDeadlineISO === 'function') {
-                     updatedTask.deadline = formatTaskDeadlineISO(finalDeadlineDetails) || null;
+                     updatedTask.deadline = formatTaskDeadlineISO(finalDeadlineDetails) || undefined;
                 } else {
-                    updatedTask.deadline = null;
+                    updatedTask.deadline = undefined;
                 }
             } catch (e) {
-                updatedTask.deadline = null;
+                updatedTask.deadline = undefined;
             }
             allTasks[taskIndex] = updatedTask;
             await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(allTasks));
             loadRepeatingTasks();
         }
     } catch (error) {
-        // Error saving, handle appropriately if needed
     }
   };
 
@@ -172,7 +159,7 @@ export default function RepeatingTasksScreen() {
     setTaskPendingStop(null);
   };
 
-  const handleSaveEditedTaskFromModal = async (newSettings: DeadlineSettings) => {
+  const handleSaveEditedTaskFromModal = async (newSettings?: DeadlineSettings) => {
     if (!editingTask) return;
     await saveTaskUpdate(editingTask, newSettings);
     setIsDeadlineModalVisible(false);
@@ -254,7 +241,7 @@ export default function RepeatingTasksScreen() {
         </ScrollView>
       )}
 
-      {editingTask && editingTask.deadlineDetails && (
+      {editingTask && (
         <DeadlineSettingModal
           visible={isDeadlineModalVisible}
           onClose={() => {

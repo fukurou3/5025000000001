@@ -35,13 +35,6 @@ export interface DeadlineSettings {
   taskDeadlineTime?: DeadlineTime;
   isTaskDeadlineTimeEnabled?: boolean;
 
-  isPeriodSettingEnabled?: boolean;
-  periodStartDate?: string;
-  periodStartTime?: DeadlineTime;
-
-  // taskStartTime?: DeadlineTime; // 繰り返しタスクの開始時刻設定を廃止
-  // isTaskStartTimeEnabled?: boolean; // 繰り返しタスクの開始時刻設定を廃止
-
   repeatFrequency?: RepeatFrequency;
   repeatStartDate?: string;
   repeatDaysOfWeek?: { [key: number]: boolean };
@@ -128,25 +121,16 @@ export interface SpecificDateSelectionTabProps {
   selectedTaskDeadlineDate?: string;
   selectedTaskDeadlineTime?: DeadlineTime;
   isTaskDeadlineTimeEnabled?: boolean;
-  isPeriodSettingEnabled?: boolean;
-  selectedPeriodStartDate?: string;
-  selectedPeriodStartTime?: DeadlineTime;
   updateSettings: <K extends keyof Pick<DeadlineSettings,
     'taskDeadlineDate' |
     'taskDeadlineTime' |
-    'isTaskDeadlineTimeEnabled' |
-    'isPeriodSettingEnabled' |
-    'periodStartDate' |
-    'periodStartTime'
+    'isTaskDeadlineTimeEnabled'
   >>(
     key: K,
     value: Pick<DeadlineSettings,
       'taskDeadlineDate' |
       'taskDeadlineTime' |
-      'isTaskDeadlineTimeEnabled' |
-      'isPeriodSettingEnabled' |
-      'periodStartDate' |
-      'periodStartTime'
+      'isTaskDeadlineTimeEnabled'
     >[K]
   ) => void;
   showErrorAlert: (message: string) => void;
@@ -157,8 +141,6 @@ export interface SpecificRepeatTabProps {
   styles: DeadlineModalStyles;
   settings: Pick<
     DeadlineSettings,
-    // | 'taskStartTime' // 廃止
-    // | 'isTaskStartTimeEnabled' // 廃止
     | 'repeatFrequency'
     | 'repeatStartDate'
     | 'repeatDaysOfWeek'
@@ -170,8 +152,6 @@ export interface SpecificRepeatTabProps {
   updateSettings: <
     K extends keyof Pick<
       DeadlineSettings,
-      // | 'taskStartTime' // 廃止
-      // | 'isTaskStartTimeEnabled' // 廃止
       | 'repeatFrequency'
       | 'repeatStartDate'
       | 'repeatDaysOfWeek'
@@ -184,8 +164,6 @@ export interface SpecificRepeatTabProps {
     key: K,
     value: Pick<
       DeadlineSettings,
-      // | 'taskStartTime' // 廃止
-      // | 'isTaskStartTimeEnabled' // 廃止
       | 'repeatFrequency'
       | 'repeatStartDate'
       | 'repeatDaysOfWeek'
@@ -199,8 +177,6 @@ export interface SpecificRepeatTabProps {
     newSettings: Partial<
       Pick<
         DeadlineSettings,
-        // | 'taskStartTime' // 廃止
-        // | 'isTaskStartTimeEnabled' // 廃止
         | 'repeatFrequency'
         | 'repeatStartDate'
         | 'repeatDaysOfWeek'
@@ -245,7 +221,7 @@ export type DeadlineModalTranslationKey =
   | 'custom'
   | 'ends_on_date'
   | 'repeat_frequency'
-  | 'task_start_time_label' // 翻訳キーは残すが、UIでは使用されなくなる
+  | 'task_start_time_label'
   | 'days_of_week'
   | 'weekdays'
   | 'exclude_holidays'
@@ -263,17 +239,17 @@ export type DeadlineModalTranslationKey =
   | 'tab_date'
   | 'tab_repeat'
   | 'unset_confirm_message'
-  | 'period_date_missing_alert_title'
-  | 'period_date_missing_alert_message'
-  | 'period_start_date_missing_alert_message'
+  // | 'period_date_missing_alert_title' // 期間設定廃止のためコメントアウト候補
+  // | 'period_date_missing_alert_message' // 期間設定廃止のためコメントアウト候補
+  // | 'period_start_date_missing_alert_message' // 期間設定廃止のためコメントアウト候補
   | 'repeat_start_date_missing_alert_message'
   | 'repeat_start_must_be_before_end_alert_message'
   | 'date_label_header'
   | 'time_label_header'
   | 'date_missing_for_time_alert_message'
   | 'weekly_day_missing_alert_message'
-  | 'period_start_must_be_before_deadline_alert_message'
-  | 'period_start_time_must_be_before_deadline_time_alert_message'
+  // | 'period_start_must_be_before_deadline_alert_message' // 期間設定廃止のためコメントアウト候補
+  // | 'period_start_time_must_be_before_deadline_time_alert_message' // 期間設定廃止のためコメントアウト候補
   | 'custom_interval'
   | 'set_custom_interval'
   | 'enter_interval_value'
@@ -285,11 +261,11 @@ export type DeadlineModalTranslationKey =
   | 'task_deadline_section_title'
   | 'date_label'
   | 'time_label'
-  | 'set_period_toggle_label'
-  | 'start_date_label'
-  | 'start_date_required_for_time'
-  | 'section_task_addition' // RepeatTabで使用
-  | 'section_repeat_settings' // RepeatTabで使用
+  // | 'set_period_toggle_label' // 期間設定廃止のためコメントアウト候補
+  // | 'start_date_label' // 期間設定廃止のためコメントアウト候補
+  // | 'start_date_required_for_time' // 期間設定廃止のためコメントアウト候補
+  | 'section_task_addition'
+  | 'section_repeat_settings'
   ;
 
 
@@ -325,4 +301,4 @@ export type CommonTranslationKey =
   | 'hours'
   | 'days'
   | 'month_day_format'
-  | 'clear_duration'; // DurationPickerModalで使用
+  | 'clear_duration';

@@ -75,12 +75,7 @@ const formatDeadlineForDisplay = (settings: DeadlineSettings | undefined, t: Fun
     taskDeadlineDate,
     isTaskDeadlineTimeEnabled,
     taskDeadlineTime,
-    isPeriodSettingEnabled,
-    periodStartDate,
-    periodStartTime,
     repeatFrequency,
-    // taskStartTime: repeatTaskStartTime, // 廃止
-    // isTaskStartTimeEnabled: isRepeatTaskStartTimeEnabled, // 廃止
     repeatStartDate: repeatPeriodStartDate,
   } = settings;
 
@@ -94,32 +89,11 @@ const formatDeadlineForDisplay = (settings: DeadlineSettings | undefined, t: Fun
     };
     let repeatText = t(frequencyKeyMap[repeatFrequency]);
     if (repeatPeriodStartDate) {
-      // 繰り返し設定では時刻を表示しない
       const detail = formatDateForDisplayInternal(repeatPeriodStartDate, t, i18nLanguage);
       repeatText += ` (${detail})`;
     }
     return repeatText;
-  } else if (isPeriodSettingEnabled) {
-    let startDateText = periodStartDate ? formatDateForDisplayInternal(periodStartDate, t, i18nLanguage) : t('common.not_set');
-    if (periodStartTime) {
-        startDateText += ` ${formatTimeForDisplayInternal(periodStartTime, t)}`;
-    }
-
-    let deadlineDateText = taskDeadlineDate ? formatDateForDisplayInternal(taskDeadlineDate, t, i18nLanguage) : t('common.not_set');
-    if (isTaskDeadlineTimeEnabled && taskDeadlineTime) {
-        deadlineDateText += ` ${formatTimeForDisplayInternal(taskDeadlineTime, t)}`;
-    }
-
-    if (periodStartDate && taskDeadlineDate) {
-        return `${startDateText} ${t('common.to', '～')} ${deadlineDateText}`;
-    } else if (periodStartDate) {
-        return `${t('add_task.period_start_prefix', '開始:')} ${startDateText}`;
-    } else if (taskDeadlineDate) {
-        return `${t('add_task.task_deadline_prefix', '期限:')} ${deadlineDateText}`;
-    }
-    return t('add_task.period_not_fully_set', '期間未完了');
-
-  } else if (taskDeadlineDate) {
+  } else if (taskDeadlineDate) { // 期間設定のロジックを削除し、単一期限の条件をこちらに統合
     let mainDisplay = formatDateForDisplayInternal(taskDeadlineDate, t, i18nLanguage);
     if (isTaskDeadlineTimeEnabled && taskDeadlineTime) {
       mainDisplay += ` ${formatTimeForDisplayInternal(taskDeadlineTime, t)}`;
@@ -129,7 +103,6 @@ const formatDeadlineForDisplay = (settings: DeadlineSettings | undefined, t: Fun
 
   return t('add_task.no_deadline_set', '未設定');
 };
-
 
 export default function AddTaskScreen() {
   const { colorScheme, subColor } = useAppTheme();
@@ -564,13 +537,14 @@ export default function AddTaskScreen() {
           onClose={() => setShowWheelModal(false)}
           onSetNoNotification={handleSetNoNotificationInModal}
         />
-        <DeadlineSettingModal
+         <DeadlineSettingModal
           visible={showDeadlineModal}
           onClose={() => setShowDeadlineModal(false)}
           onSave={(newSettings) => {
-            // 保存時に不要な時刻情報を削除
             let processedSettings = newSettings;
-            if (processedSettings.repeatFrequency) {
+            // newSettings (つまり processedSettings) が null または undefined でないことを確認してから
+            // repeatFrequency プロパティにアクセスします。
+            if (processedSettings && processedSettings.repeatFrequency) {
                 const {
                     // taskStartTime, // 廃止
                     // isTaskStartTimeEnabled, // 廃止

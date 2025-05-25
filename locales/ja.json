@@ -278,7 +278,7 @@
     "period_date_missing_alert_message": "開始日または終了日が設定されていません。",
     "specify_date": "日付指定",
     "specify_date_label": "日付",
-    "tab_date": "日付・期間",
+    "tab_date": "単発",
     "tab_repeat": "繰り返し",
     "specify_time": "時刻",
     "repeat_type": "繰り返し",
