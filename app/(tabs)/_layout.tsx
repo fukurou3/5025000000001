@@ -37,7 +37,7 @@ function InnerTabs() {
                 height: isSelecting ? 0 : TAB_HEIGHT,
                 paddingBottom: isSelecting ? 0 : insets.bottom > 0 ? insets.bottom : 0,
                 paddingTop: isSelecting ? 0 : 0,
-                backgroundColor: isDark ? '#121212' : '#FFFFFF',
+                backgroundColor: isDark ? '#121212' : '#f2f2f2',
                 borderTopWidth: 1,
                 borderColor: isDark ? '#555' : '#CCC',
                 overflow: 'hidden',
@@ -98,7 +98,7 @@ function InnerTabs() {
             'add/index',
             'add_edit/index',
             'add_edit/edit-draft',
-            
+
             'task-detail/[id]',
             'drafts',
             'explore',

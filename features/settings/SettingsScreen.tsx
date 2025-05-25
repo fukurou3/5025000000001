@@ -183,7 +183,7 @@ const createStyles = (
   isTablet: boolean
 ) =>
   StyleSheet.create({
-    container: { flex: 1, backgroundColor: isDark ? '#0C0C0C' : '#F2F2F7' }, // 背景色を微調整
+    container: { flex: 1, backgroundColor: isDark ? '#0C0C0C' : '#f2f2f4' }, // 背景色を微調整
     scrollContent: { // ScrollViewのcontentContainerStyle用
       paddingTop: 16,
       paddingBottom: 32, // 下部にも十分なパディング
@@ -203,9 +203,10 @@ const createStyles = (
       fontSize: fontSizes[fsKey] + (Platform.OS === 'ios' ? 2 : 1), // OS毎に微調整
       fontWeight: Platform.OS === 'ios' ? '600' : 'bold',
       color: isDark ? '#EFEFF0' : '#1C1C1E',
+      
     },
     card: {
-      backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF', // カード背景
+      backgroundColor: isDark ? '#1f1f21' : '#FFFFFF', // カード背景
       borderRadius: Platform.OS === 'ios' ? 10 : 8,
       paddingHorizontal: 16, // カード内の左右パディング
       // paddingVertical は各行で調整するため、ここでは設定しない
@@ -261,7 +262,7 @@ const createStyles = (
     },
     currentLanguageHint: { // "(現在)" の部分のスタイル
       fontSize: fontSizes[fsKey] -1,
-      color: isDark ? '#8E8E93' : '#6D6D72',
+      color: isDark ? '#bbbbbf' : '#2d2d2e',
     },
     colorRow: {
       flexDirection: 'row',

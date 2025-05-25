@@ -69,7 +69,9 @@
     "react-native-wheel-picker-expo": "^0.5.4",
     "react-native-wheely": "^0.6.0",
     "recharts": "^2.15.3",
-    "zustand": "^5.0.3"
+    "zustand": "^5.0.3",
+    "expo-secure-store": "~12.3.1",
+    "expo-navigation-bar": "~2.3.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

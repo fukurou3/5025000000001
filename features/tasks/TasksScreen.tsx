@@ -10,6 +10,7 @@ import {
   Animated,
   Alert,
   StyleSheet,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -44,7 +45,7 @@ dayjs.extend(isSameOrAfter);
 
 const STORAGE_KEY = 'TASKS';
 const FOLDER_ORDER_KEY = 'FOLDER_ORDER';
-const TAB_HEIGHT = 56;
+const SELECTION_BAR_HEIGHT = 60;
 
 export default function TasksScreen() {
   const router = useRouter();
@@ -76,14 +77,14 @@ export default function TasksScreen() {
   const [renameModalVisible, setRenameModalVisible] = useState(false);
   const [renameTarget, setRenameTarget] = useState<string | null>(null);
 
-  const [selectionAnim] = useState(new Animated.Value(-TAB_HEIGHT));
+  const [selectionAnim] = useState(new Animated.Value(-SELECTION_BAR_HEIGHT));
 
   const noFolderName = useMemo(() => t('common.no_folder_name', 'フォルダなし'), [t]);
 
   useEffect(() => {
     Animated.timing(selectionAnim, {
-      toValue: isSelecting ? 0 : -TAB_HEIGHT,
-      duration: 300,
+      toValue: isSelecting ? 0 : -SELECTION_BAR_HEIGHT,
+      duration: 250,
       useNativeDriver: false,
     }).start();
   }, [isSelecting, selectionAnim]);
@@ -189,7 +190,7 @@ export default function TasksScreen() {
           switch (repeatEnds.type) {
             case 'on_date':
               if (typeof repeatEnds.date === 'string') {
-                repeatEndsPassed = dayjs.utc(repeatEnds.date).isBefore(nowLocal.utc());
+                repeatEndsPassed = dayjs.utc(repeatEnds.date).endOf('day').isBefore(nowLocal.utc());
               }
               break;
             case 'count':
@@ -215,7 +216,7 @@ export default function TasksScreen() {
       const completedDisplayItems: DisplayableTaskItem[] = [];
       baseProcessedTasks.forEach(task => {
         if (task.isTaskFullyCompleted && !task.deadlineDetails?.repeatFrequency) {
-          completedDisplayItems.push({ ...task, keyId: task.id });
+          completedDisplayItems.push({ ...task, keyId: task.id, displaySortDate: task.completedAt ? dayjs.utc(task.completedAt) : null });
         } else if (task.deadlineDetails?.repeatFrequency && task.completedInstanceDates && task.completedInstanceDates.length > 0) {
           task.completedInstanceDates.forEach(instanceDate => {
             completedDisplayItems.push({
@@ -230,14 +231,19 @@ export default function TasksScreen() {
       });
       return completedDisplayItems.sort((a, b) => (b.displaySortDate?.unix() || 0) - (a.displaySortDate?.unix() || 0));
     } else {
-      const todayUtc = dayjs.utc();
+       const todayStartOfDayUtc = dayjs.utc().startOf('day');
       return baseProcessedTasks
         .filter(task => {
           if (task.isTaskFullyCompleted) {
             return false;
           }
-          if (task.deadlineDetails?.repeatFrequency) {
-            return task.displaySortDate && task.displaySortDate.isSameOrBefore(todayUtc, 'day');
+          if (task.deadlineDetails?.repeatFrequency &&
+              (task.deadlineDetails as any)?.isPeriodSettingEnabled && // Fixed
+              (task.deadlineDetails as any)?.periodStartDate) { // Fixed
+                const periodStartDateUtc = dayjs.utc((task.deadlineDetails as any).periodStartDate).startOf('day'); // Fixed
+                if (periodStartDateUtc.isAfter(todayStartOfDayUtc)) {
+                    return false;
+                }
           }
           return true;
         })
@@ -251,8 +257,11 @@ export default function TasksScreen() {
     tasksToProcess.forEach(t => {
         folderNameSet.add(t.folder || noFolderName);
     });
+    tasks.forEach(t => {
+        folderNameSet.add(t.folder || noFolderName);
+    })
     return Array.from(folderNameSet);
-  }, [tasksToProcess, noFolderName]);
+  }, [tasksToProcess, tasks, noFolderName]);
 
   const sortedFolders = useMemo(() => {
     const ordered = folderOrder.filter(name => allFolders.includes(name));
@@ -261,9 +270,9 @@ export default function TasksScreen() {
     const noFolderIndexInUnordered = unordered.indexOf(noFolderName);
     if (noFolderIndexInUnordered !== -1) {
         unordered.splice(noFolderIndexInUnordered, 1);
-         return [...ordered, ...unordered, noFolderName];
+         return [...ordered, ...unordered.sort((a,b) => a.localeCompare(b)), noFolderName];
     }
-    return [...ordered, ...unordered];
+    return [...ordered, ...unordered.sort((a,b) => a.localeCompare(b))];
   }, [folderOrder, allFolders, noFolderName]);
 
   const handleSelectAll = () => {
@@ -280,7 +289,6 @@ export default function TasksScreen() {
             folderNameSetForSelection.add(noFolderName);
         }
     });
-
 
     const folderItems: SelectableItem[] = Array.from(folderNameSetForSelection)
         .map(f => ({ id: f, type: 'folder' }));
@@ -307,7 +315,6 @@ export default function TasksScreen() {
                 let newCompletedInstanceDates = task.completedInstanceDates ? [...task.completedInstanceDates] : [];
                 let wasModified = false;
 
-                const originalInstanceCount = newCompletedInstanceDates.length;
                 newCompletedInstanceDates = newCompletedInstanceDates.filter(instanceDate => {
                   if (taskItemsToDelete.has(`${task.id}-${instanceDate}`)) {
                     wasModified = true;
@@ -327,7 +334,7 @@ export default function TasksScreen() {
               return task;
             }).filter(task => {
                 if (foldersToDelete.has(task.folder || noFolderName)) return false;
-                if (task.deadlineDetails?.repeatFrequency && taskItemsToDelete.has(task.id)) return false;
+                if (task.deadlineDetails?.repeatFrequency && taskItemsToDelete.has(task.id) && task.completedInstanceDates?.length === 0) return false;
                 if (!task.deadlineDetails?.repeatFrequency && taskItemsToDelete.has(task.id)) return false;
                 return true;
             });
@@ -343,11 +350,21 @@ export default function TasksScreen() {
 
   const handleRenameFolder = async (newName: string) => {
     if (!renameTarget || renameTarget === noFolderName) return;
+    const trimmedNewName = newName.trim();
+    if (!trimmedNewName) {
+        Alert.alert(t('task_list.rename_folder_error_empty_name_title'), t('task_list.rename_folder_error_empty_name_message'));
+        return;
+    }
+    if (folderOrder.includes(trimmedNewName) && trimmedNewName !== renameTarget) {
+        Alert.alert(t('task_list.rename_folder_error_exists_title'), t('task_list.rename_folder_error_exists_message'));
+        return;
+    }
+
     const newTasks = tasks.map(task =>
-        (task.folder || noFolderName) === renameTarget ? { ...task, folder: newName === noFolderName ? '' : newName } : task
+        (task.folder || noFolderName) === renameTarget ? { ...task, folder: trimmedNewName === noFolderName ? '' : trimmedNewName } : task
     );
     setTasks(newTasks);
-    const newFolderOrder = folderOrder.map(name => (name === renameTarget ? (newName === noFolderName ? '' : newName) : name));
+    const newFolderOrder = folderOrder.map(name => (name === renameTarget ? (trimmedNewName === noFolderName ? '' : trimmedNewName) : name));
     await saveTasks(newTasks);
     await saveFolderOrder(newFolderOrder);
     setRenameModalVisible(false);
@@ -359,6 +376,8 @@ export default function TasksScreen() {
   const handleReorderFolder = () => {
     if (selectedItems.length === 1 && selectedItems[0].type === 'folder' && selectedItems[0].id !== noFolderName) {
       setIsReordering(true);
+      setDraggingFolder(selectedItems[0].id);
+      clearSelection();
     }
   };
 
@@ -378,10 +397,8 @@ export default function TasksScreen() {
     }, [loadTasks, i18n.language])
   );
 
-  const baseFontSize = appFontSizes[fontSizeKey];
-
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.appBar}>
         <Text style={styles.title}>{t('task_list.title')}</Text>
       </View>
@@ -391,6 +408,7 @@ export default function TasksScreen() {
           <TouchableOpacity
             style={[styles.tabButton, tab === 'incomplete' && styles.tabSelected]}
             onPress={() => { setTab('incomplete'); clearSelection(); }}
+            activeOpacity={0.7}
           >
             <Text style={[styles.tabText, tab === 'incomplete' && styles.tabSelectedText]}>
               {t('tab.incomplete')}
@@ -399,6 +417,7 @@ export default function TasksScreen() {
           <TouchableOpacity
             style={[styles.tabButton, tab === 'completed' && styles.tabSelected]}
             onPress={() => { setTab('completed'); clearSelection(); }}
+            activeOpacity={0.7}
           >
             <Text style={[styles.tabText, tab === 'completed' && styles.tabSelectedText]}>
               {t('tab.completed')}
@@ -406,10 +425,11 @@ export default function TasksScreen() {
           </TouchableOpacity>
         </View>
 
-        {!isSelecting && tab !== 'completed' && (
+        {!isSelecting && tab === 'incomplete' && (
           <TouchableOpacity
-            style={{ flexDirection: 'row', alignItems: 'center' }}
+            style={styles.sortButton}
             onPress={() => setSortModalVisible(true)}
+            activeOpacity={0.7}
           >
             <Text style={styles.sortLabel}>
               {sortMode === 'deadline'
@@ -418,15 +438,21 @@ export default function TasksScreen() {
                 ? t('sort.custom')
                 : t('sort.priority')}
             </Text>
-            <Ionicons name="swap-vertical-outline" size={24} color={subColor} />
+            <Ionicons name="swap-vertical" size={22} color={subColor} />
           </TouchableOpacity>
         )}
       </View>
 
       {loading ? (
-        <ActivityIndicator style={styles.loader} size="large" />
+        <ActivityIndicator style={styles.loader} size="large" color={subColor} />
       ) : (
-        <ScrollView contentContainerStyle={{ paddingBottom: isSelecting ? TAB_HEIGHT + 20 : 120, paddingTop: 8 }}>
+        <ScrollView
+            contentContainerStyle={{
+                paddingBottom: isSelecting ? SELECTION_BAR_HEIGHT + 20 : 100,
+                paddingTop: 8
+            }}
+            keyboardShouldPersistTaps="handled"
+        >
           {sortedFolders.map(folderName => {
             const folderTasks = tasksToProcess
               .filter(t => (t.folder || noFolderName) === folderName)
@@ -456,15 +482,11 @@ export default function TasksScreen() {
                   const dateBVal = b.displaySortDate!;
 
                   if (dateAVal.isSame(dateBVal, 'day')) {
-                      const isTimeEffectivelyEnabledA = a.deadlineDetails?.isTaskDeadlineTimeEnabled === true && !a.deadlineDetails?.repeatFrequency;
-                      const isTimeEffectivelyEnabledB = b.deadlineDetails?.isTaskDeadlineTimeEnabled === true && !b.deadlineDetails?.repeatFrequency;
+                      const timeEnabledA = a.deadlineDetails?.isTaskDeadlineTimeEnabled === true && !a.deadlineDetails?.repeatFrequency;
+                      const timeEnabledB = b.deadlineDetails?.isTaskDeadlineTimeEnabled === true && !b.deadlineDetails?.repeatFrequency;
 
-                      if (isTimeEffectivelyEnabledA && !isTimeEffectivelyEnabledB) {
-                          return -1;
-                      }
-                      if (!isTimeEffectivelyEnabledA && isTimeEffectivelyEnabledB) {
-                          return 1;
-                      }
+                      if (timeEnabledA && !timeEnabledB) return -1;
+                      if (!timeEnabledA && timeEnabledB) return 1;
                   }
                   return dateAVal.unix() - dateBVal.unix();
 
@@ -484,8 +506,8 @@ export default function TasksScreen() {
                     }
                 }
                 if (sortMode === 'priority' && tab === 'incomplete') {
-                    const priorityA = a.priority ?? 0;
-                    const priorityB = b.priority ?? 0;
+                    const priorityA = a.priority ?? -1;
+                    const priorityB = b.priority ?? -1;
                     if (priorityA !== priorityB) {
                         return priorityB - priorityA;
                     }
@@ -493,20 +515,28 @@ export default function TasksScreen() {
                 return a.title.localeCompare(b.title);
               });
 
-            let shouldRenderFolder = folderTasks.length > 0;
-            if (folderName === noFolderName && folderTasks.length === 0 && tasksToProcess.every(t => !!t.folder && !t.isCompletedInstance)) {
+            let shouldRenderFolder = folderTasks.length > 0 || folderName !== noFolderName;
+            if (folderName === noFolderName && folderTasks.length === 0 && sortedFolders.length > 1) {
                  shouldRenderFolder = false;
             }
-            if (!shouldRenderFolder && folderName !== noFolderName && folderTasks.length === 0) {
-                 shouldRenderFolder = false;
+             if (isReordering && draggingFolder !== folderName) {
+                 shouldRenderFolder = true;
             }
 
-            if (!shouldRenderFolder) return null;
+
+            if (!shouldRenderFolder && tab === 'completed') return null;
+
+
+            if (!shouldRenderFolder && folderName !== noFolderName && folderTasks.length === 0 && !isReordering && !isSelecting) {
+                 const hasOriginalTaskInThisFolder = tasks.some(t => (t.folder || noFolderName) === folderName);
+                 if (!hasOriginalTaskInThisFolder) return null;
+            }
+
 
             const taskFolderProps: TaskFolderProps = {
                 folderName,
                 tasks: folderTasks,
-                isCollapsed: !!collapsedFolders[folderName],
+                isCollapsed: !!collapsedFolders[folderName] && folderTasks.length > 0,
                 toggleFolder,
                 onToggleTaskDone: toggleTaskDone,
                 onRefreshTasks: loadTasks,
@@ -539,8 +569,8 @@ export default function TasksScreen() {
            )}
         </ScrollView>
       )}
-      {!isSelecting && (
-        <TouchableOpacity style={styles.fab} onPress={() => router.push('/add/')}>
+      {!isSelecting && !isReordering && (
+        <TouchableOpacity style={[styles.fab, { bottom: Platform.OS === 'ios' ? 16 : 16 }]} onPress={() => router.push('/add/')}>
           <Ionicons name="add" size={32} color="#fff" />
         </TouchableOpacity>
       )}
@@ -549,19 +579,20 @@ export default function TasksScreen() {
         <Animated.View
           style={[
             styles.selectionBar,
-            { bottom: selectionAnim, height: TAB_HEIGHT },
+            { transform: [{ translateY: selectionAnim }] },
+            Platform.OS === 'ios' && { paddingBottom: 20 }
           ]}
         >
-          <TouchableOpacity onPress={handleSelectAll} style={{ alignItems: 'center' }}>
-            <Ionicons name="checkmark-done-outline" size={26} color={subColor} />
-            <Text style={[styles.selectionAction, {fontSize: baseFontSize -2 , color: subColor, marginTop: 2}]}>
+          <TouchableOpacity onPress={handleSelectAll} style={styles.selectionActionContainer} activeOpacity={0.7}>
+            <Ionicons name="checkmark-done-outline" size={28} color={subColor} />
+            <Text style={styles.selectionActionText}>
               {t('common.select_all')}
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={handleDeleteSelected} style={{ alignItems: 'center' }}>
-            <Ionicons name="trash-outline" size={26} color={subColor} />
-            <Text style={[styles.selectionAction, {fontSize: baseFontSize -2, color: subColor, marginTop: 2}]}>
+          <TouchableOpacity onPress={handleDeleteSelected} style={styles.selectionActionContainer} activeOpacity={0.7}>
+            <Ionicons name="trash-outline" size={28} color={subColor} />
+            <Text style={styles.selectionActionText}>
               {t('common.delete')}
             </Text>
           </TouchableOpacity>
@@ -574,28 +605,30 @@ export default function TasksScreen() {
                     setRenameModalVisible(true);
                 }
             }}
-            style={{ alignItems: 'center', opacity: (selectedItems.length === 1 && selectedItems[0].type === 'folder' && selectedItems[0].id !== noFolderName) ? 1 : 0.4 }}
+            style={[styles.selectionActionContainer, { opacity: (selectedItems.length === 1 && selectedItems[0].type === 'folder' && selectedItems[0].id !== noFolderName) ? 1 : 0.4 }]}
+            activeOpacity={0.7}
           >
-            <Ionicons name="create-outline" size={26} color={subColor} />
-            <Text style={[styles.selectionAction, {fontSize: baseFontSize -2, color: subColor, marginTop: 2}]}>
+            <Ionicons name="create-outline" size={28} color={subColor} />
+            <Text style={styles.selectionActionText}>
               {t('common.rename')}
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            disabled={!(selectedItems.length === 1 && selectedItems[0].type === 'folder' && selectedItems[0].id !== noFolderName)}
+            disabled={!(selectedItems.length === 1 && selectedItems[0].type === 'folder' && selectedItems[0].id !== noFolderName && folderOrder.filter(f => f !== noFolderName).length > 1)}
             onPress={handleReorderFolder}
-            style={{ alignItems: 'center', opacity: (selectedItems.length === 1 && selectedItems[0].type === 'folder' && selectedItems[0].id !== noFolderName) ? 1 : 0.4 }}
+            style={[styles.selectionActionContainer, { opacity: (selectedItems.length === 1 && selectedItems[0].type === 'folder' && selectedItems[0].id !== noFolderName && folderOrder.filter(f => f !== noFolderName).length > 1) ? 1 : 0.4 }]}
+            activeOpacity={0.7}
           >
-            <Ionicons name="swap-vertical-outline" size={26} color={subColor} />
-            <Text style={[styles.selectionAction, {fontSize: baseFontSize -2, color: subColor, marginTop: 2}]}>
+            <Ionicons name="swap-vertical" size={28} color={subColor} />
+            <Text style={styles.selectionActionText}>
               {t('common.reorder')}
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={cancelSelecting} style={{ alignItems: 'center' }}>
-            <Ionicons name="close-outline" size={26} color={subColor} />
-            <Text style={[styles.selectionAction, {fontSize: baseFontSize -2, color: subColor, marginTop: 2}]}>
+          <TouchableOpacity onPress={cancelSelecting} style={styles.selectionActionContainer} activeOpacity={0.7}>
+            <Ionicons name="close-circle-outline" size={28} color={subColor} />
+            <Text style={styles.selectionActionText}>
               {t('common.cancel')}
             </Text>
           </TouchableOpacity>
@@ -604,7 +637,7 @@ export default function TasksScreen() {
 
       <RenameFolderModal
         visible={renameModalVisible}
-        onClose={() => { setRenameModalVisible(false); setRenameTarget(null); }}
+        onClose={() => { setRenameModalVisible(false); setRenameTarget(null); clearSelection(); }}
         initialName={renameTarget || ''}
         onSubmit={handleRenameFolder}
       />
@@ -615,20 +648,25 @@ export default function TasksScreen() {
         animationType="fade"
         onRequestClose={() => setSortModalVisible(false)}
       >
-        <BlurView intensity={isDark ? 30 : 80} tint={isDark ? 'dark' : 'light'} style={styles.modalBlur}>
+        <BlurView intensity={isDark ? 20 : 70} tint={isDark ? 'dark' : 'light'} style={styles.modalBlur}>
+          <TouchableOpacity style={StyleSheet.absoluteFill} onPress={() => setSortModalVisible(false)} />
           <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
-              <TouchableOpacity onPress={() => { setSortMode('deadline'); setSortModalVisible(false); }}>
-                <Text style={[styles.modalOption, {color: isDark ? '#fff': '#000'}]}>{t('sort.date')}</Text>
+            <View style={[styles.modalContent, {width: '80%', maxWidth: 300}]}>
+                <Text style={styles.modalTitle}>{t('sort.title')}</Text>
+              <TouchableOpacity onPress={() => { setSortMode('deadline'); setSortModalVisible(false); }} activeOpacity={0.7}>
+                <Text style={[styles.modalOption, {color: sortMode === 'deadline' ? subColor : (isDark ? '#E0E0E0' : '#222222'), fontWeight: sortMode === 'deadline' ? '600' : '400'}]}>{t('sort.date')}</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => { setSortMode('custom'); setSortModalVisible(false); }}>
-                <Text style={[styles.modalOption, {color: isDark ? '#fff': '#000'}]}>{t('sort.custom')}</Text>
+              <View style={{height: StyleSheet.hairlineWidth, backgroundColor: isDark? '#444': '#DDD'}}/>
+              <TouchableOpacity onPress={() => { setSortMode('custom'); setSortModalVisible(false); }} activeOpacity={0.7}>
+                <Text style={[styles.modalOption, {color: sortMode === 'custom' ? subColor : (isDark ? '#E0E0E0' : '#222222'), fontWeight: sortMode === 'custom' ? '600' : '400'}]}>{t('sort.custom')}</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => { setSortMode('priority'); setSortModalVisible(false); }}>
-                <Text style={[styles.modalOption, {color: isDark ? '#fff': '#000'}]}>{t('sort.priority')}</Text>
+               <View style={{height: StyleSheet.hairlineWidth, backgroundColor: isDark? '#444': '#DDD'}}/>
+              <TouchableOpacity onPress={() => { setSortMode('priority'); setSortModalVisible(false); }} activeOpacity={0.7}>
+                <Text style={[styles.modalOption, {color: sortMode === 'priority' ? subColor : (isDark ? '#E0E0E0' : '#222222'), fontWeight: sortMode === 'priority' ? '600' : '400'}]}>{t('sort.priority')}</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => setSortModalVisible(false)} style={{ marginTop: 16 }}>
-                <Text style={[styles.modalOption, {color: isDark ? '#fff': '#000'}]}>{t('common.cancel')}</Text>
+              <View style={{height: StyleSheet.hairlineWidth, backgroundColor: isDark? '#444': '#DDD', marginTop: 10, marginBottom: 0 }}/>
+              <TouchableOpacity onPress={() => setSortModalVisible(false)} style={{ marginTop: 0 }} activeOpacity={0.7}>
+                <Text style={[styles.modalOption, {color: isDark ? '#CCCCCC' : '#555555', fontSize: appFontSizes[fontSizeKey]}]}>{t('common.cancel')}</Text>
               </TouchableOpacity>
             </View>
           </View>

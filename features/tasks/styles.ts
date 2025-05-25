@@ -4,275 +4,336 @@ import { fontSizes as appFontSizes } from '@/constants/fontSizes';
 import type { FontSizeKey } from '@/context/FontSizeContext';
 
 export type TaskScreenStyles = {
-  taskItemContainer: ViewStyle;
-  taskItem: ViewStyle;
-  checkboxContainer: ViewStyle;
-  taskCenter: ViewStyle;
-  taskTitle: TextStyle;
-  taskMemo: TextStyle;
-  taskTime: TextStyle;
-  noDeadlineText: TextStyle;
-  taskDeadlineDisplayTextBase: TextStyle; // 期限表示テキストの統一ベーススタイル
-  selectionIconContainer: ViewStyle;
-  container: ViewStyle;
-  appBar: ViewStyle;
-  title: TextStyle;
-  topRow: ViewStyle;
-  tabs: ViewStyle;
-  tabButton: ViewStyle;
-  tabSelected: ViewStyle;
-  tabText: TextStyle;
-  tabSelectedText: TextStyle;
-  sortLabel: TextStyle;
-  loader: ViewStyle;
-  fab: ViewStyle;
-  selectionBar: ViewStyle;
-  selectionAction: TextStyle;
-  modalBlur: ViewStyle;
-  modalContainer: ViewStyle;
-  modalContent: ViewStyle;
-  modalOption: TextStyle;
-  folderContainer: ViewStyle;
-  folderHeader: ViewStyle;
-  folderName: TextStyle;
-  emptyContainer: ViewStyle;
-  emptyText: TextStyle;
-  reorderButton: ViewStyle;
-  folderHeaderSelected: ViewStyle;
-  folderIconStyle: ViewStyle;
-  folderTaskItemContainer: ViewStyle;
+  // --- タスクアイテム関連 ---
+  taskItemContainer: ViewStyle; // 個々のタスクアイテム全体（背景、余白など）
+  taskItem: ViewStyle;          // タスクアイテム内の要素の配置（横並びなど）
+  checkboxContainer: ViewStyle; // タスクのチェックボックス部分
+  taskCenter: ViewStyle;        // タスク名とメモを表示する中央エリア
+  taskTitle: TextStyle;         // タスクのタイトル文字
+  taskMemo: TextStyle;          // タスクのメモ文字
+  taskTime: TextStyle;          // (現状のTaskItem.tsxでは直接使用されていないが、時刻表示用として定義)
+  noDeadlineText: TextStyle;    // 「期限なし」の文字
+  taskDeadlineDisplayTextBase: TextStyle; // 期限表示の基本スタイル
+  selectionIconContainer: ViewStyle; // 選択モード時の右端のチェックマークアイコンのコンテナ
+
+  // --- 画面全体・上部 ---
+  container: ViewStyle;         // 画面全体のコンテナ
+  appBar: ViewStyle;            // 画面上部のヘッダーバー
+  title: TextStyle;             // ヘッダーバーのタイトル文字
+  topRow: ViewStyle;            // タブとソートボタンが配置される行
+  tabs: ViewStyle;              // 「未完了」「完了」タブのコンテナ
+  tabButton: ViewStyle;         // 各タブボタン
+  tabSelected: ViewStyle;       // 選択中のタブボタン
+  tabText: TextStyle;           // タブボタンの文字
+  tabSelectedText: TextStyle;   // 選択中のタブボタンの文字
+  sortButton: ViewStyle;        // ソートボタンのタッチ領域
+  sortLabel: TextStyle;         // ソート条件表示の文字（「日付順」など）
+
+  // --- その他 ---
+  loader: ViewStyle;            // ローディング中のインジケーター
+  fab: ViewStyle;               // 右下の追加ボタン (Floating Action Button)
+  selectionBar: ViewStyle;      // 項目選択モード時に画面下部に表示されるバー
+  selectionActionContainer: ViewStyle; // 選択バー内の各操作項目（「すべて選択」など）のコンテナ
+  selectionActionText: TextStyle;    // 選択バー内の各操作項目の文字
+
+  // --- モーダル関連 ---
+  modalBlur: ViewStyle;         // モーダル表示時の背景ブラー効果
+  modalContainer: ViewStyle;    // モーダルウィンドウの配置用コンテナ
+  modalContent: ViewStyle;      // モーダルウィンドウ本体のスタイル
+  modalOption: TextStyle;       // モーダル内の選択肢の文字（ソートモーダルなど）
+  modalTitle: TextStyle;        // モーダルのタイトル文字
+
+  // --- フォルダ関連 ---
+  folderContainer: ViewStyle;   // フォルダ全体のコンテナ
+  folderHeader: ViewStyle;      // フォルダのヘッダー部分（フォルダ名や開閉アイコンがあるエリア）
+  folderName: TextStyle;        // フォルダ名の文字
+  emptyContainer: ViewStyle;    // タスクやフォルダがない場合に表示される「空です」などのメッセージエリア
+  emptyText: TextStyle;         // 「空です」などのメッセージ文字
+  reorderButton: ViewStyle;     // フォルダ並び替え時の上下矢印ボタン
+  folderHeaderSelected: ViewStyle; // 選択モードでフォルダが選択された時のヘッダースタイル
+  folderIconStyle: ViewStyle;   // フォルダヘッダーのフォルダアイコン
+  folderTaskItemContainer: ViewStyle; // フォルダ内のタスクアイテムのコンテナスタイル
 };
 
 export const createStyles = (isDark: boolean, subColor: string, fontSizeKey: FontSizeKey): TaskScreenStyles => {
   const baseFontSize = appFontSizes[fontSizeKey];
   const dynamicSubColor = subColor || (isDark ? '#4875B7' : '#2F5A8F');
 
+  const BORDER_RADIUS_SM = 8;
+  const BORDER_RADIUS_MD = 12;
+  const BORDER_RADIUS_LG = 16;
+
+  const shadowStyle = {
+    shadowColor: isDark ? '#000' : '#555',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: isDark ? 0.25 : 0.1,
+    shadowRadius: 3.84,
+    elevation: 3,
+  };
+
+  const cardBackground = isDark ? '#1f1f21' : '#FFFFFF';
+  const secondaryTextDark = '#AEAEB2';
+  const secondaryTextLight = '#6D6D72';
+
   return StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: isDark ? '#000' : '#F2F2F7',
+    // --- 画面全体・上部 ---
+    container: { // 画面全体の背景など
+      flex: 1,
+      backgroundColor: isDark ? '#000000' : '#f2f2f4',
     },
-    appBar: {
-        height: 50,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: isDark ? '#000' : '#F2F2F7',
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: isDark ? '#3A3A3C' : '#C6C6C8',
-    },
-    title: {
-        fontSize: baseFontSize + 2,
-        fontWeight: 'bold',
-        color: isDark ? '#FFF' : '#000',
-    },
-    topRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        backgroundColor: isDark ? '#000' : '#F2F2F7',
-    },
-    tabs: {
-        flexDirection: 'row',
-        backgroundColor: isDark ? '#2C2C2E' : '#E9E9ED',
-        borderRadius: 8,
-        padding:2,
-    },
-    tabButton: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 7,
-        minWidth: 80,
-        alignItems: 'center',
-    },
-    tabSelected: {
-        backgroundColor: isDark ? dynamicSubColor : '#FFFFFF',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: isDark ? 0.3 : 0.1,
-        shadowRadius: 2,
-        elevation: 2,
-    },
-    tabText: {
-        fontSize: baseFontSize -1,
-        fontWeight: '500',
-        color: isDark ? '#FFF' : '#000',
-    },
-    tabSelectedText: {
-        color: isDark ? '#FFF' : dynamicSubColor,
-        fontWeight: '600',
-    },
-    sortLabel: {
-        fontSize: baseFontSize -1,
-        color: dynamicSubColor,
-        marginRight: 4,
-    },
-    loader: {
-        marginTop: 50,
-    },
-    fab: {
-        position: 'absolute',
-        margin: 16,
-        right: 10,
-        bottom: 70,
-        backgroundColor: dynamicSubColor,
-        width: 56,
-        height: 56,
-        borderRadius: 28,
-        justifyContent: 'center',
-        alignItems: 'center',
-        elevation: 4,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 2,
-    },
-    selectionBar: {
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        backgroundColor: isDark ? '#2C2C2E' : '#F8F8F8',
-        borderTopWidth: StyleSheet.hairlineWidth,
-        borderColor: isDark ? '#3A3A3C' : '#C6C6C8',
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        alignItems: 'center',
-        paddingBottom: 4,
-    },
-    selectionAction: {
-    },
-    modalBlur: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    modalContainer: {
-        justifyContent: 'center',
-        alignItems: 'center',
-        flex: 1,
-    },
-    modalContent: {
-        backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF',
-        borderRadius: 14,
-        padding: 20,
-        minWidth: 270,
-        alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 5,
-    },
-    modalOption: {
-        fontSize: baseFontSize +1,
-        paddingVertical: 12,
-        textAlign: 'center',
-    },
-    emptyContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginTop: 50,
-        paddingHorizontal: 20,
-    },
-    emptyText: {
-        fontSize: baseFontSize,
-        color: isDark ? '#8E8E93' : '#6D6D72',
-        textAlign: 'center',
-    },
-    reorderButton: {
-        paddingHorizontal: 8,
-    },
-    taskItemContainer: {
-      paddingHorizontal: 16,
-      paddingVertical: 10,
-      backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
+    appBar: { // 画面上部のタイトルバー
+      height: 56,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: isDark ? '#000000' : '#f2f2f4',
       borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: isDark ? '#3A3A3C' : '#E0E0E0',
+      borderBottomColor: isDark ? '#3A3A3C' : '#D1D1D6',
     },
-    taskItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        flex: 1,
+    title: { // タイトルバーの文字
+      fontSize: baseFontSize + 3,
+      fontWeight: '600',
+      color: isDark ? '#FFFFFF' : '#000000',
     },
-    checkboxContainer: {
-        paddingRight: 12,
-        paddingLeft: 4,
-        paddingVertical: 8,
-    },
-    taskCenter: {
-        flex: 1,
-        justifyContent: 'center',
-        marginRight: 8,
-    },
-    taskTitle: {
-        fontSize: baseFontSize,
-        color: isDark ? '#FFFFFF' : '#000000',
-        fontWeight: '500',
-    },
-    taskMemo: {
-        fontSize: baseFontSize - 2,
-        color: isDark ? '#8E8E93' : '#6D6D72',
-        marginTop: 2,
-    },
-    taskTime: {
-        fontSize: baseFontSize - 1,
-    },
-    taskDeadlineDisplayTextBase: {
-      fontSize: baseFontSize - 2.5,
-      fontWeight: 'bold', // ★★★ すべて太字にするために 'bold' に変更 ★★★
-    },
-    noDeadlineText: {
-        fontStyle: 'italic',
-        color: isDark ? '#8E8E93' : '#6D6D72',
-        // fontWeight: 'bold', // 「期限なし」も太字にしたい場合はここにも指定、あるいはtaskDeadlineDisplayTextBaseに準拠させるなら指定不要
-    },
-    selectionIconContainer: {
-        marginLeft: 'auto',
-        paddingLeft: 10,
-    },
-    folderContainer: {
-      marginHorizontal: 16,
-      marginVertical: 10,
-      backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
-      borderRadius: 10,
-      overflow: 'hidden',
-      elevation: 3,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: isDark ? 0.25 : 0.18,
-      shadowRadius: 2.84,
-    },
-    folderHeader: {
+    topRow: { // タブとソートボタンを含む行のスタイル
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      paddingVertical: 14,
-      paddingHorizontal: 12,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: isDark ? '#3A3A3C' : '#DDE1E6',
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      backgroundColor: isDark ? '#000000' : '#f2f2f4',
     },
-    folderHeaderSelected: {
-        backgroundColor: isDark ? dynamicSubColor + '40' : dynamicSubColor + '20',
+    tabs: { // 「未完了」「完了」タブのコンテナ
+      flexDirection: 'row',
+      backgroundColor: isDark ? '#3A3A3C' : '#E0E0E0',
+      borderRadius: BORDER_RADIUS_MD,
+      padding: 3,
     },
-    folderName: {
-        fontSize: baseFontSize,
+    tabButton: { // 各タブボタン
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      borderRadius: BORDER_RADIUS_SM,
+      minWidth: 90,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    tabSelected: { // 選択されているタブボタン
+      backgroundColor: dynamicSubColor,
+      ...shadowStyle,
+      elevation: 4,
+    },
+    tabText: { // タブボタンの文字
+      fontSize: baseFontSize - 0.5,
+      fontWeight: '500',
+      color: isDark ? '#E0E0E0' : '#333333',
+    },
+    tabSelectedText: { // 選択されているタブボタンの文字
+      color: '#FFFFFF',
+      fontWeight: '600',
+    },
+    sortButton: { // ソートボタンのタッチ領域とアイコンの配置
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 8,
+      paddingHorizontal: 8,
+      borderRadius: BORDER_RADIUS_SM,
+    },
+    sortLabel: { // ソート条件表示の文字（「日付順」など）
+      fontSize: baseFontSize - 1,
+      color: dynamicSubColor,
+      marginRight: 6,
+      fontWeight: '500',
+    },
+    // --- ローディング ---
+    loader: { // ローディング中のスピナー表示領域
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    // --- FAB (Floating Action Button) ---
+    fab: { // 右下の「＋」ボタン
+      position: 'absolute',
+      margin: 16,
+      right: 16,
+      bottom: 16,
+      backgroundColor: dynamicSubColor,
+      width: 60,
+      height: 60,
+      borderRadius: 30,
+      justifyContent: 'center',
+      alignItems: 'center',
+      ...shadowStyle,
+      elevation: 6,
+    },
+    // --- 選択モード時の下部バー ---
+    selectionBar: { // 項目選択中に表示される下部のアクションバー
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: isDark ? '#1E1E1E' : '#F8F8F8',
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderColor: isDark ? '#3A3A3C' : '#C6C6C8',
+      flexDirection: 'row',
+      justifyContent: 'space-around',
+      alignItems: 'center',
+      paddingTop: 8,
+      paddingBottom: 8,
+      height: 60,
+    },
+    selectionActionContainer: { // 選択バー内の各アクションボタン（アイコンとテキスト）のコンテナ
+      alignItems: 'center',
+      paddingHorizontal: 8,
+    },
+    selectionActionText: { // 選択バー内のアクションボタンのテキスト
+      fontSize: baseFontSize - 2.5,
+      color: dynamicSubColor,
+      marginTop: 2,
+      fontWeight: '500',
+    },
+    // --- モーダル関連 ---
+    modalBlur: { // モーダル表示時の背景のブラー効果
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    modalContainer: { // モーダルウィンドウの位置調整用コンテナ
+      justifyContent: 'center',
+      alignItems: 'center',
+      flex: 1,
+      padding: 20,
+    },
+    modalContent: { // モーダルウィンドウ自体のスタイル（背景色、角丸、パディングなど）
+      backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF',
+      borderRadius: BORDER_RADIUS_LG,
+      padding: 24,
+      width: '90%',
+      maxWidth: 400,
+      alignItems: 'stretch',
+      ...shadowStyle,
+      elevation: 10,
+    },
+    modalTitle: { // モーダルのタイトル文字
+        fontSize: baseFontSize + 2,
         fontWeight: '600',
-        color: isDark ? '#FFFFFF' : '#000000',
-        flex: 1,
+        color: isDark ? '#FFF' : '#000',
+        marginBottom: 16,
+        textAlign: 'center',
     },
-    folderIconStyle: {
-        marginRight: 8,
+    modalOption: { // モーダル内の選択肢の文字スタイル（ソートモーダルなど）
+      fontSize: baseFontSize + 1,
+      paddingVertical: 14,
+      textAlign: 'center',
+      color: isDark ? '#E0E0E0' : '#222222',
+    },
+    // --- リストが空の場合の表示 ---
+    emptyContainer: { // タスクやフォルダが存在しない場合に表示されるメッセージのコンテナ
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 20,
+      marginTop: 30,
+    },
+    emptyText: { // 「タスクがありません」などのメッセージ文字
+      fontSize: baseFontSize,
+      color: isDark ? secondaryTextDark : secondaryTextLight,
+      textAlign: 'center',
+      lineHeight: baseFontSize * 1.5,
+    },
+    // --- タスクアイテム関連 ---
+    taskItemContainer: { // 個々のタスクアイテムのカードスタイル（背景、余白、影など）
+      backgroundColor: cardBackground,
+      marginHorizontal: 16,
+      marginTop: 8,
+      marginBottom: 4,
+      borderRadius: BORDER_RADIUS_MD,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      ...shadowStyle,
+    },
+    taskItem: { // タスクアイテム内の要素の配置（チェックボックス、タスク内容、時間など）
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    checkboxContainer: { // タスクのチェックボックスのタッチ領域とアイコンのパディング
+      paddingRight: 14,
+      paddingLeft: 2,
+      paddingVertical: 8,
+    },
+    taskCenter: { // タスク名とメモを表示する中央のエリア
+      flex: 1,
+      justifyContent: 'center',
+      marginRight: 10,
+    },
+    taskTitle: { // タスクのタイトル文字
+      fontSize: baseFontSize + 0.5,
+      color: isDark ? '#FFFFFF' : '#111111',
+      fontWeight: '500',
+      marginBottom: 2,
+    },
+    taskMemo: { // タスクのメモ文字
+      fontSize: baseFontSize - 1.5,
+      color: isDark ? secondaryTextDark : secondaryTextLight,
+      marginTop: 3,
+      lineHeight: baseFontSize * 1.2,
+    },
+    taskTime: { // (現状のTaskItem.tsxでは直接使用されていないが、時刻表示用として定義)
+      fontSize: baseFontSize - 1,
+    },
+    taskDeadlineDisplayTextBase: { // タスクの期限表示テキストの基本スタイル
+      fontSize: baseFontSize - 2,
+      fontWeight: '600',
+    },
+    noDeadlineText: { // 「期限なし」の場合のテキストスタイル
+      fontStyle: 'normal',
+      fontWeight: '500',
+      color: isDark ? '#999999' : '#777777',
+    },
+    selectionIconContainer: { // 選択モード時にタスクアイテム右端に表示される選択アイコンのコンテナ
+      marginLeft: 'auto',
+      paddingLeft: 12,
+    },
+    // --- フォルダ関連 ---
+    folderContainer: { // フォルダ全体のカードスタイル（背景、余白、影など）
+      marginHorizontal: 16,
+      marginVertical: 12,
+      backgroundColor: cardBackground,
+      borderRadius: BORDER_RADIUS_LG,
+      overflow: 'hidden', // 角丸を子要素にも適用するため
+      ...shadowStyle,
+      elevation: 4,
+    },
+    folderHeader: { // フォルダのヘッダー部分（フォルダ名と開閉アイコンのエリア）
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 16,
+      paddingHorizontal: 16,
+      backgroundColor: isDark ? '#1f1f21' : '#FFFFFF', // ヘッダーの背景色
+    },
+    folderHeaderSelected: { // 選択モードでフォルダが選択された時のヘッダー背景色
+        backgroundColor: isDark ? dynamicSubColor + '50' : dynamicSubColor + '25',
+    },
+    folderName: { // フォルダ名の文字
+      fontSize: baseFontSize + 1,
+      fontWeight: '600',
+      color: isDark ? '#FFFFFF' : '#000000',
+      flex: 1,
+    },
+    folderIconStyle: { // フォルダヘッダーのフォルダアイコンのスタイル
+        marginRight: 10,
         marginLeft: 4,
     },
-    folderTaskItemContainer: {
-        backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
+    reorderButton: { // フォルダ並び替え時の上下矢印ボタンのタッチ領域
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+    },
+    folderTaskItemContainer: { // フォルダ内に表示されるタスクアイテムのコンテナスタイル
+        backgroundColor: cardBackground,
         paddingHorizontal: 16,
-        paddingVertical: 10,
+        paddingVertical: 12,
         borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: isDark ? '#303030' : '#E8E8E8',
-        paddingLeft: 36,
+        borderBottomColor: isDark ? '#404040' : '#E8E8E8', // 区切り線
+        paddingLeft: 20, // フォルダ内のタスクを少しインデント
     },
   });
 };
