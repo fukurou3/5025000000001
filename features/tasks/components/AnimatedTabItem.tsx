@@ -9,7 +9,7 @@ type AnimatedTabItemProps = {
   styles: TaskScreenStyles;
   label: string;
   index: number;
-  isActive: boolean; // For fontWeight, determined by current settled page
+  // isActive prop は不要になります
   onPress: () => void;
   onLayout: (event: any) => void;
   pageScrollPosition: Reanimated.SharedValue<number>;
@@ -22,7 +22,6 @@ export const AnimatedTabItem: React.FC<AnimatedTabItemProps> = ({
   styles,
   label,
   index,
-  isActive,
   onPress,
   onLayout,
   pageScrollPosition,
@@ -35,21 +34,16 @@ export const AnimatedTabItem: React.FC<AnimatedTabItemProps> = ({
     const currentOffset = pageScrollOffset.value;
     let finalColor: string | number;
 
-    // Determine color based on scroll position and offset
-    // This tab is the current "from" tab or is fully selected
     if (index === Math.floor(currentPosition)) {
       finalColor = interpolateColor(currentOffset, [0, 1], [selectedColorString, unselectedColorString]);
     }
-    // This tab is the "to" tab
     else if (index === Math.floor(currentPosition) + 1) {
       finalColor = interpolateColor(currentOffset, [0, 1], [unselectedColorString, selectedColorString]);
     }
-    // This tab is not part of the current transition
     else {
       finalColor = unselectedColorString;
     }
 
-    // Ensure correct color when page is settled (offset is 0)
     if (currentOffset === 0) {
       finalColor = (index === Math.round(currentPosition)) ? selectedColorString : unselectedColorString;
     }
@@ -59,15 +53,20 @@ export const AnimatedTabItem: React.FC<AnimatedTabItemProps> = ({
     };
   });
 
-  // fontWeight is not smoothly interpolated here, it changes when isActive (settled page) changes.
-  // For smooth fontWeight interpolation, you might need different font files or advanced techniques.
-  const fontWeightStyle: TextStyle['fontWeight'] = isActive
-    ? styles.folderTabSelectedText.fontWeight
-    : styles.folderTabText.fontWeight;
+  const animatedFontWeightStyle = useAnimatedStyle(() => {
+    const effectivePage = pageScrollPosition.value + pageScrollOffset.value;
+    const shouldBeThick = effectivePage >= index - 0.6 && effectivePage < index + 0.6;
+
+    return {
+      fontWeight: shouldBeThick
+        ? styles.folderTabSelectedText.fontWeight
+        : styles.folderTabText.fontWeight,
+    };
+  });
 
   return (
     <TouchableOpacity
-      style={[styles.folderTabButton, { borderBottomWidth: 0, marginRight: TAB_MARGIN_RIGHT }]} // Added marginRight from constants
+      style={[styles.folderTabButton, { borderBottomWidth: 0, marginRight: TAB_MARGIN_RIGHT }]}
       onPress={onPress}
       onLayout={onLayout}
       activeOpacity={0.7}
@@ -76,7 +75,7 @@ export const AnimatedTabItem: React.FC<AnimatedTabItemProps> = ({
         style={[
           styles.folderTabText,
           tabAnimatedTextStyle,
-          { fontWeight: fontWeightStyle },
+          animatedFontWeightStyle, // fontWeight のスタイルを適用
         ]}
         numberOfLines={1}
       >

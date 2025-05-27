@@ -1,6 +1,6 @@
 // app/features/tasks/components/TaskViewPager.tsx
 import React from 'react';
-import { View, Text, ScrollView, Dimensions } from 'react-native';
+import { View, Text, ScrollView, Dimensions, RefreshControl } from 'react-native';
 import PagerView, { type PagerViewOnPageScrollEvent, type PagerViewOnPageSelectedEvent } from 'react-native-pager-view';
 import type { TaskScreenStyles } from '@/features/tasks/styles';
 import type { DisplayableTaskItem, SelectableItem } from '@/features/tasks/types';
@@ -22,7 +22,7 @@ type TaskViewPagerProps = {
   collapsedFolders: Record<string, boolean>;
   toggleFolderCollapse: (name: string) => void;
   toggleTaskDone: (id: string, instanceDate?: string) => void;
-  loadTasksAndFolders: () => void;
+  onRefreshTasks: () => void; // This will be the handleRefresh function
   isReordering: boolean;
   draggingFolder: string | null;
   setDraggingFolder: (name: string | null) => void;
@@ -30,11 +30,15 @@ type TaskViewPagerProps = {
   stopReordering: () => void;
   isSelecting: boolean;
   selectedItems: SelectableItem[];
-  onLongPressSelectItem: (type: 'task' | 'folder', id: string) => void; // 修正: onLongPressSelect -> onLongPressSelectItem
+  onLongPressSelectItem: (type: 'task' | 'folder', id: string) => void;
   noFolderName: string;
   folderOrder: string[];
   t: (key: string, options?: any) => string;
   baseTasksCount: number;
+  isRefreshing: boolean; // New prop for RefreshControl
+  // onRefresh prop is already named onRefreshTasks effectively
+  // Let's rename onRefreshTasks to onRefresh to match RefreshControl for clarity if desired
+  // For now, we'll assume onRefreshTasks is the correct prop name expected by TaskFolder for its refresh logic
 };
 
 const windowWidth = Dimensions.get('window').width;
@@ -52,7 +56,7 @@ export const TaskViewPager: React.FC<TaskViewPagerProps> = ({
   collapsedFolders,
   toggleFolderCollapse,
   toggleTaskDone,
-  loadTasksAndFolders,
+  onRefreshTasks, // This is effectively the onRefresh handler for the ScrollView
   isReordering,
   draggingFolder,
   setDraggingFolder,
@@ -60,11 +64,12 @@ export const TaskViewPager: React.FC<TaskViewPagerProps> = ({
   stopReordering,
   isSelecting,
   selectedItems,
-  onLongPressSelectItem, // 修正: onLongPressSelect -> onLongPressSelectItem
+  onLongPressSelectItem,
   noFolderName,
   folderOrder,
   t,
   baseTasksCount,
+  isRefreshing, // New prop
 }) => {
 
   const renderPageContent = (pageFolderName: string, pageIndex: number) => {
@@ -94,6 +99,12 @@ export const TaskViewPager: React.FC<TaskViewPagerProps> = ({
           contentContainerStyle={{ paddingBottom: isSelecting ? SELECTION_BAR_HEIGHT + 20 : 100, paddingTop: 8 }}
           keyboardShouldPersistTaps="handled"
           nestedScrollEnabled={true}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={onRefreshTasks} // Use the passed 'onRefreshTasks' as the onRefresh handler
+            />
+          }
         >
           {foldersToRenderOnThisPage.map(folderName => {
             const tasksInThisFolder = tasksForPage.filter(t => (t.folder || noFolderName) === folderName);
@@ -107,53 +118,53 @@ export const TaskViewPager: React.FC<TaskViewPagerProps> = ({
                   const today = dayjs.utc().startOf('day');
                   const getCategory = (task: DisplayableTaskItem): number => {
                     const date = task.displaySortDate;
-                    if (!date) return 3; 
-                    if (date.isBefore(today, 'day')) return 0; 
-                    if (date.isSame(today, 'day')) return 1; 
-                    return 2; 
+                    if (!date) return 3;
+                    if (date.isBefore(today, 'day')) return 0;
+                    if (date.isSame(today, 'day')) return 1;
+                    return 2;
                   };
                   const categoryA = getCategory(a);
                   const categoryB = getCategory(b);
                   if (categoryA !== categoryB) return categoryA - categoryB;
-                  if (categoryA === 3) return a.title.localeCompare(b.title); 
-                  const dateAVal = a.displaySortDate!; 
+                  if (categoryA === 3) return a.title.localeCompare(b.title);
+                  const dateAVal = a.displaySortDate!;
                   const dateBVal = b.displaySortDate!;
                   if (dateAVal.isSame(dateBVal, 'day')) {
                       const timeEnabledA = a.deadlineDetails?.isTaskDeadlineTimeEnabled === true && !a.deadlineDetails?.repeatFrequency;
                       const timeEnabledB = b.deadlineDetails?.isTaskDeadlineTimeEnabled === true && !b.deadlineDetails?.repeatFrequency;
-                      if (timeEnabledA && !timeEnabledB) return -1; 
-                      if (!timeEnabledA && timeEnabledB) return 1; 
+                      if (timeEnabledA && !timeEnabledB) return -1;
+                      if (!timeEnabledA && timeEnabledB) return 1;
                   }
-                  return dateAVal.unix() - dateBVal.unix(); 
+                  return dateAVal.unix() - dateBVal.unix();
                 } else if (activeTab === 'completed') {
-                    const dateA = a.displaySortDate || dayjs.utc(0); 
+                    const dateA = a.displaySortDate || dayjs.utc(0);
                     const dateB = b.displaySortDate || dayjs.utc(0);
-                    return dateB.unix() - dateA.unix(); 
+                    return dateB.unix() - dateA.unix();
                 }
                 if (sortMode === 'custom' && activeTab === 'incomplete') {
                     const orderA = a.customOrder ?? Infinity;
                     const orderB = b.customOrder ?? Infinity;
-                    if (orderA !== Infinity || orderB !== Infinity) { 
-                        if (orderA === Infinity) return 1; 
+                    if (orderA !== Infinity || orderB !== Infinity) {
+                        if (orderA === Infinity) return 1;
                         if (orderB === Infinity) return -1;
                         return orderA - orderB;
                     }
                 }
                 if (sortMode === 'priority' && activeTab === 'incomplete') {
-                    const priorityA = a.priority ?? -1; 
+                    const priorityA = a.priority ?? -1;
                     const priorityB = b.priority ?? -1;
-                    if (priorityA !== priorityB) return priorityB - priorityA; 
+                    if (priorityA !== priorityB) return priorityB - priorityA;
                 }
-                return a.title.localeCompare(b.title); 
+                return a.title.localeCompare(b.title);
             });
-            
+
             const taskFolderProps: TaskFolderProps = {
               folderName,
               tasks: sortedFolderTasks,
               isCollapsed: !!collapsedFolders[folderName] && sortedFolderTasks.length > 0,
               toggleFolder: toggleFolderCollapse,
               onToggleTaskDone: toggleTaskDone,
-              onRefreshTasks: loadTasksAndFolders,
+              onRefreshTasks: onRefreshTasks, // Pass down the refresh handler
               isReordering: isReordering && draggingFolder === folderName && folderName !== noFolderName && pageFolderName === 'all',
               setDraggingFolder,
               draggingFolder,
@@ -161,7 +172,7 @@ export const TaskViewPager: React.FC<TaskViewPagerProps> = ({
               stopReordering,
               isSelecting,
               selectedIds: selectedItems.map(it => it.id),
-              onLongPressSelect: onLongPressSelectItem, // 修正: onLongPressSelect -> onLongPressSelectItem
+              onLongPressSelect: onLongPressSelectItem,
               currentTab: activeTab,
             };
             return <TaskFolder key={`${pageFolderName}-${folderName}-${pageIndex}`} {...taskFolderProps} />;

@@ -8,12 +8,11 @@ import {
   Modal,
   StyleSheet,
   Platform,
-  Animated, // Keep for selectionAnim if it's Animated.Value
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
-import { useAnimatedStyle } from 'react-native-reanimated'; // Import for selectionAnim if it's a SharedValue
+import { useAnimatedStyle } from 'react-native-reanimated';
 
 import { useAppTheme } from '@/hooks/ThemeContext';
 import { FontSizeContext } from '@/context/FontSizeContext';
@@ -24,8 +23,6 @@ import { useTasksScreenLogic, type SortMode } from './hooks/useTasksScreenLogic'
 import { FolderTabsBar } from './components/FolderTabsBar';
 import { TaskViewPager } from './components/TaskViewPager';
 import { SelectionBottomBar } from './components/SelectionBottomBar';
-import { SELECTION_BAR_HEIGHT } from './constants';
-
 
 export default function TasksScreen() {
   const { colorScheme, subColor } = useAppTheme();
@@ -37,9 +34,9 @@ export default function TasksScreen() {
   const {
     loading, activeTab, sortMode, sortModalVisible,
     isReordering,
-    selectionAnim, // This is now a SharedValue if changed in useTasksScreenLogic
+    selectionAnim,
     folderTabLayouts, currentContentPage,
-    pageScrollPosition, pageScrollOffset, // Replaced pageScrollData and accentLineStyle
+    pageScrollPosition, pageScrollOffset,
     noFolderName, folderTabs,
     pagerRef, folderTabsScrollViewRef,
     isSelecting, selectedItems,
@@ -51,11 +48,13 @@ export default function TasksScreen() {
     handleRenameFolderSubmit, handleReorderSelectedFolder, openRenameModalForSelectedFolder,
     cancelSelectionMode,
     router, t,
-    collapsedFolders, toggleFolderCollapse, toggleTaskDone, loadTasksAndFolders,
+    collapsedFolders, toggleFolderCollapse, toggleTaskDone,
     draggingFolder, setDraggingFolder, moveFolderOrder, stopReordering,
     onLongPressSelectItem, folderOrder,
     renameModalVisible, renameTarget, setRenameModalVisible, setRenameTarget,
-    tasks
+    tasks,
+    isRefreshing, // New
+    handleRefresh, // New
   } = logic;
 
   const animatedSelectionBarStyle = useAnimatedStyle(() => {
@@ -135,7 +134,7 @@ export default function TasksScreen() {
           collapsedFolders={collapsedFolders}
           toggleFolderCollapse={toggleFolderCollapse}
           toggleTaskDone={toggleTaskDone}
-          loadTasksAndFolders={loadTasksAndFolders}
+          onRefreshTasks={handleRefresh} // Pass handleRefresh as onRefreshTasks
           isReordering={isReordering}
           draggingFolder={draggingFolder}
           setDraggingFolder={setDraggingFolder}
@@ -148,6 +147,7 @@ export default function TasksScreen() {
           folderOrder={folderOrder}
           t={t}
           baseTasksCount={tasks.length}
+          isRefreshing={isRefreshing} // Pass isRefreshing
         />
       )}
 
@@ -163,7 +163,7 @@ export default function TasksScreen() {
       <SelectionBottomBar
         styles={styles}
         isSelecting={isSelecting}
-        selectionAnimSharedValue={selectionAnim} // Pass the shared value
+        selectionAnimSharedValue={selectionAnim}
         selectedItems={selectedItems}
         subColor={subColor}
         noFolderName={noFolderName}

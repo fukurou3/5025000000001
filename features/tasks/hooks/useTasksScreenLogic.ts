@@ -19,8 +19,6 @@ const windowWidth = Dimensions.get('window').width;
 export type SortMode = 'deadline' | 'custom' | 'priority';
 export type ActiveTab = 'incomplete' | 'completed';
 export type FolderTab = { name: string; label: string };
-// FolderTabLayout のキーは FolderTabsBar でインデックスになるため、
-// useTasksScreenLogic で管理する Record のキーも number にする
 export type FolderTabLayout = { x: number; width: number; index: number };
 
 
@@ -32,6 +30,8 @@ export const useTasksScreenLogic = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [folderOrder, setFolderOrder] = useState<FolderOrder>([]);
   const [loading, setLoading] = useState(true);
+  const [isDataInitialized, setIsDataInitialized] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>('incomplete');
   const [selectedFolderTabName, setSelectedFolderTabName] = useState<string>('all');
   const [sortMode, setSortMode] = useState<SortMode>('deadline');
@@ -45,7 +45,6 @@ export const useTasksScreenLogic = () => {
   const selectionAnim = useSharedValue(SELECTION_BAR_HEIGHT);
   const pagerRef = useRef<PagerView>(null);
   const folderTabsScrollViewRef = useRef<ScrollView>(null);
-  // キーを string から number に変更
   const [folderTabLayouts, setFolderTabLayouts] = useState<Record<number, FolderTabLayout>>({});
   const [currentContentPage, setCurrentContentPage] = useState(0);
 
@@ -76,6 +75,39 @@ export const useTasksScreenLogic = () => {
   }, [tasks, folderOrder, noFolderName, t]);
 
   useEffect(() => {
+    const initializeData = async () => {
+      try {
+        const rawTasksData = await AsyncStorage.getItem(STORAGE_KEY);
+        setTasks(rawTasksData ? JSON.parse(rawTasksData) : []);
+
+        const rawOrderData = await AsyncStorage.getItem(FOLDER_ORDER_KEY);
+        setFolderOrder(rawOrderData ? JSON.parse(rawOrderData) : []);
+
+        setIsDataInitialized(true);
+      } catch (e) {
+        console.error('Failed to initialize data from AsyncStorage:', e);
+        setTasks([]);
+        setFolderOrder([]);
+        setIsDataInitialized(true);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (!isDataInitialized) {
+      initializeData();
+    }
+  }, [isDataInitialized]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const langForDayjs = i18n.language.split('-')[0];
+      if (dayjs.Ls[langForDayjs]) { dayjs.locale(langForDayjs); } else { dayjs.locale('en'); }
+      return () => { /* cleanup if needed */ };
+    }, [i18n.language])
+  );
+
+  useEffect(() => {
     const initialIndex = folderTabs.findIndex(ft => ft.name === selectedFolderTabName);
     if (initialIndex !== -1 && currentContentPage !== initialIndex) {
       setCurrentContentPage(initialIndex);
@@ -84,22 +116,15 @@ export const useTasksScreenLogic = () => {
   }, [folderTabs, selectedFolderTabName, currentContentPage, pageScrollPosition]);
 
   useEffect(() => {
-    // folderTabLayouts のキーがインデックスになったため、参照方法を変更
     const currentTabInfo = folderTabLayouts[currentContentPage];
-
     if (currentTabInfo && folderTabs.length > 0 && currentContentPage < folderTabs.length) {
         if (folderTabsScrollViewRef.current && windowWidth > 0) {
             const screenCenter = windowWidth / 2;
             let targetScrollXForTabs = currentTabInfo.x + currentTabInfo.width / 2 - screenCenter;
             targetScrollXForTabs = Math.max(0, targetScrollXForTabs);
-
             let totalFolderTabsContentWidth = 0;
-            // folderTabs と folderTabLayouts を使って全体の幅を計算する部分は、
-            // folderTabLayouts がインデックスキーであることを考慮する必要がある。
-            // もし folderTabLayouts を直接イテレートする場合は Object.values() などを使う。
-            // ここでは folderTabs をイテレートし、対応するインデックスで folderTabLayouts を引く。
-            folderTabs.forEach((_ft, idx) => { // ft は未使用なので _ft
-                const layout = folderTabLayouts[idx]; // インデックスでレイアウトを取得
+            folderTabs.forEach((_ft, idx) => {
+                const layout = folderTabLayouts[idx];
                 if (layout) {
                     totalFolderTabsContentWidth += layout.width;
                     if (idx < folderTabs.length - 1) {
@@ -108,14 +133,11 @@ export const useTasksScreenLogic = () => {
                 }
             });
             totalFolderTabsContentWidth += FOLDER_TABS_CONTAINER_PADDING_HORIZONTAL * 2;
-
             const maxScrollX = Math.max(0, totalFolderTabsContentWidth - windowWidth);
             targetScrollXForTabs = Math.min(targetScrollXForTabs, maxScrollX);
-
             folderTabsScrollViewRef.current.scrollTo({ x: targetScrollXForTabs, animated: true });
         }
     }
-  // pageScrollOffset.value と pageScrollPosition.value の変更も検知する
   }, [currentContentPage, folderTabLayouts, folderTabs, pageScrollOffset.value, pageScrollPosition.value]);
 
 
@@ -123,45 +145,21 @@ export const useTasksScreenLogic = () => {
     selectionAnim.value = selectionHook.isSelecting ? 0 : SELECTION_BAR_HEIGHT;
   }, [selectionHook.isSelecting, selectionAnim]);
 
-  const loadTasksAndFolders = useCallback(async () => {
+  const saveTasksToStorage = async (tasksToSave: Task[]) => {
     try {
-      const rawTasksData = await AsyncStorage.getItem(STORAGE_KEY);
-      setTasks(rawTasksData ? JSON.parse(rawTasksData) : []);
-      const rawOrderData = await AsyncStorage.getItem(FOLDER_ORDER_KEY);
-      setFolderOrder(rawOrderData ? JSON.parse(rawOrderData) : []);
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(tasksToSave));
     } catch (e) {
-      console.error('Failed to load tasks or folder order:', e);
-      setTasks([]);
-      setFolderOrder([]);
-    }
-  }, []);
-
-  const saveTasks = async (updatedTasks: Task[]) => {
-    try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTasks));
-    } catch (e) {
-      console.error('Failed to save tasks:', e);
+      console.error('Failed to save tasks to storage:', e);
     }
   };
 
-  const saveFolderOrder = async (order: FolderOrder) => {
+  const saveFolderOrderToStorage = async (orderToSave: FolderOrder) => {
     try {
-      await AsyncStorage.setItem(FOLDER_ORDER_KEY, JSON.stringify(order));
-      setFolderOrder(order);
+      await AsyncStorage.setItem(FOLDER_ORDER_KEY, JSON.stringify(orderToSave));
     } catch (e) {
-      console.error('Failed to save folder order:', e);
+      console.error('Failed to save folder order to storage:', e);
     }
   };
-
-  useFocusEffect(
-    useCallback(() => {
-      setLoading(true);
-      loadTasksAndFolders().finally(() => setLoading(false));
-      const langForDayjs = i18n.language.split('-')[0];
-      if (dayjs.Ls[langForDayjs]) { dayjs.locale(langForDayjs); } else { dayjs.locale('en'); }
-      return () => { /* cleanup if needed */ };
-    }, [loadTasksAndFolders, i18n.language])
-  );
 
   const toggleTaskDone = useCallback(async (id: string, instanceDateStr?: string) => {
     const newTasks = tasks.map(task => {
@@ -184,26 +182,24 @@ export const useTasksScreenLogic = () => {
       return task;
     });
     setTasks(newTasks);
-    await saveTasks(newTasks);
-  }, [tasks, saveTasks]);
+    await saveTasksToStorage(newTasks);
+  }, [tasks]);
 
   const toggleFolderCollapse = useCallback((name: string) => {
     setCollapsedFolders(prev => ({ ...prev, [name]: !prev[name] }));
   }, []);
 
-  const moveFolderOrder = useCallback((folderName: string, direction: 'up' | 'down') => {
-    setFolderOrder(prevOrder => {
-      const idx = prevOrder.indexOf(folderName);
-      if (idx < 0) return prevOrder;
-      const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-      if (swapIdx < 0 || swapIdx >= prevOrder.length) return prevOrder;
+  const moveFolderOrder = useCallback(async (folderName: string, direction: 'up' | 'down') => {
+    const idx = folderOrder.indexOf(folderName);
+    if (idx < 0) return;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= folderOrder.length) return;
 
-      const newOrder = [...prevOrder];
-      [newOrder[idx], newOrder[swapIdx]] = [newOrder[swapIdx], newOrder[idx]];
-      saveFolderOrder(newOrder);
-      return newOrder;
-    });
-  }, [saveFolderOrder]);
+    const newOrder = [...folderOrder];
+    [newOrder[idx], newOrder[swapIdx]] = [newOrder[swapIdx], newOrder[idx]];
+    setFolderOrder(newOrder);
+    await saveFolderOrderToStorage(newOrder);
+  }, [folderOrder]);
 
   const onLongPressSelectItem = useCallback((type: 'task' | 'folder', id: string) => {
     selectionHook.startSelecting();
@@ -329,11 +325,10 @@ export const useTasksScreenLogic = () => {
     selectionHook.setAllItems(itemsToSelect);
   }, [selectionHook, folderTabs, currentContentPage, getTasksToDisplayForPage, noFolderName, baseProcessedTasks, folderOrder]);
 
-  const confirmDelete = useCallback((mode: 'delete_all' | 'only_folder' | 'delete_tasks_only') => {
-    let updatedTasks = [...tasks];
-    let updatedFolderOrder = [...folderOrder];
+  const confirmDelete = useCallback(async (mode: 'delete_all' | 'only_folder' | 'delete_tasks_only') => {
+    let finalTasks = [...tasks];
+    let finalFolderOrder = [...folderOrder];
     const folderBeingDeleted = selectionHook.selectedItems.find(item => item.type === 'folder')?.id;
-
     const selectedTaskRootIds = new Set<string>();
     const selectedTaskInstances = new Map<string, Set<string>>();
 
@@ -351,20 +346,20 @@ export const useTasksScreenLogic = () => {
     });
 
     if (mode === 'delete_all' && folderBeingDeleted) {
-        updatedTasks = tasks.filter(task => {
+        finalTasks = tasks.filter(task => {
             const taskFolder = task.folder || noFolderName;
             if (taskFolder === folderBeingDeleted) return false;
             return !selectedTaskRootIds.has(task.id);
         });
-        updatedFolderOrder = folderOrder.filter(name => name !== folderBeingDeleted);
+        finalFolderOrder = folderOrder.filter(name => name !== folderBeingDeleted);
     } else if (mode === 'only_folder' && folderBeingDeleted) {
-        updatedTasks = tasks.map(task => {
+        finalTasks = tasks.map(task => {
             if ((task.folder || noFolderName) === folderBeingDeleted) {
                 return { ...task, folder: undefined };
             }
             return task;
         });
-        updatedTasks = updatedTasks.filter(task => {
+        finalTasks = finalTasks.filter(task => {
             if (selectedTaskRootIds.has(task.id)) {
                 if (task.deadlineDetails?.repeatFrequency && selectedTaskInstances.has(task.id)) {
                     return true;
@@ -373,9 +368,9 @@ export const useTasksScreenLogic = () => {
             }
             return true;
         });
-        updatedFolderOrder = folderOrder.filter(name => name !== folderBeingDeleted);
+        finalFolderOrder = folderOrder.filter(name => name !== folderBeingDeleted);
     } else {
-         updatedTasks = tasks.filter(task => {
+         finalTasks = tasks.filter(task => {
             if (selectedTaskRootIds.has(task.id)) {
                  if (task.deadlineDetails?.repeatFrequency && selectedTaskInstances.has(task.id)) {
                     return true;
@@ -386,7 +381,7 @@ export const useTasksScreenLogic = () => {
          });
     }
 
-    updatedTasks = updatedTasks.map(task => {
+    finalTasks = finalTasks.map(task => {
         if (task.deadlineDetails?.repeatFrequency && selectedTaskInstances.has(task.id) && task.completedInstanceDates) {
             const instancesToDeleteForThisTask = selectedTaskInstances.get(task.id)!;
             const newCompletedDates = task.completedInstanceDates.filter(date => !instancesToDeleteForThisTask.has(date));
@@ -395,14 +390,20 @@ export const useTasksScreenLogic = () => {
         return task;
     });
 
-
-    setTasks(updatedTasks);
-    saveTasks(updatedTasks);
-    if (JSON.stringify(folderOrder) !== JSON.stringify(updatedFolderOrder)) {
-        saveFolderOrder(updatedFolderOrder);
+    setTasks(finalTasks);
+    const folderOrderActuallyChanged = JSON.stringify(folderOrder) !== JSON.stringify(finalFolderOrder);
+    if (folderOrderActuallyChanged) {
+      setFolderOrder(finalFolderOrder);
     }
+
+    const savePromises = [saveTasksToStorage(finalTasks)];
+    if (folderOrderActuallyChanged) {
+      savePromises.push(saveFolderOrderToStorage(finalFolderOrder));
+    }
+    await Promise.all(savePromises);
+
     selectionHook.clearSelection();
-  }, [tasks, folderOrder, selectionHook, noFolderName, saveTasks, saveFolderOrder]);
+  }, [tasks, folderOrder, selectionHook, noFolderName]);
 
 
   const handleDeleteSelected = useCallback(() => {
@@ -449,14 +450,18 @@ export const useTasksScreenLogic = () => {
     const newFolderOrder = folderOrder.map(name => (name === renameTarget ? trimmedNewName : name));
 
     setTasks(newTasks);
-    await saveTasks(newTasks);
-    await saveFolderOrder(newFolderOrder);
+    setFolderOrder(newFolderOrder);
+
+    await Promise.all([
+        saveTasksToStorage(newTasks),
+        saveFolderOrderToStorage(newFolderOrder)
+    ]);
 
     setRenameModalVisible(false);
     setRenameTarget(null);
     selectionHook.clearSelection();
     setSelectedFolderTabName(trimmedNewName);
-  }, [tasks, folderOrder, renameTarget, noFolderName, selectionHook, saveTasks, saveFolderOrder]);
+  }, [tasks, folderOrder, renameTarget, noFolderName, selectionHook, setSelectedFolderTabName]);
 
   const handleReorderSelectedFolder = useCallback(() => {
     if (selectionHook.selectedItems.length === 1 && selectionHook.selectedItems[0].type === 'folder' && selectionHook.selectedItems[0].id !== noFolderName) {
@@ -473,6 +478,21 @@ export const useTasksScreenLogic = () => {
     }
   }, [selectionHook, noFolderName]);
 
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      const rawTasksData = await AsyncStorage.getItem(STORAGE_KEY);
+      setTasks(rawTasksData ? JSON.parse(rawTasksData) : []);
+
+      const rawOrderData = await AsyncStorage.getItem(FOLDER_ORDER_KEY);
+      setFolderOrder(rawOrderData ? JSON.parse(rawOrderData) : []);
+    } catch (e) {
+      console.error('Failed to refresh data from AsyncStorage:', e);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, []);
+
 
   return {
     tasks, folderOrder, loading, activeTab, selectedFolderTabName, sortMode, sortModalVisible,
@@ -483,15 +503,17 @@ export const useTasksScreenLogic = () => {
     pagerRef, folderTabsScrollViewRef,
     isSelecting: selectionHook.isSelecting,
     selectedItems: selectionHook.selectedItems,
+    isRefreshing,
     setActiveTab, setSelectedFolderTabName, setSortMode, setSortModalVisible,
     setCollapsedFolders, setIsReordering, setDraggingFolder, setRenameModalVisible, setRenameTarget,
     setFolderTabLayouts,
-    loadTasksAndFolders, saveTasks, saveFolderOrder, toggleTaskDone, toggleFolderCollapse, moveFolderOrder, stopReordering,
+    toggleTaskDone, toggleFolderCollapse, moveFolderOrder, stopReordering,
     onLongPressSelectItem, cancelSelectionMode,
     getTasksToDisplayForPage,
     handleFolderTabPress, handlePageScroll, handlePageSelected,
     handleSelectAll, handleDeleteSelected, confirmDelete,
     handleRenameFolderSubmit, handleReorderSelectedFolder, openRenameModalForSelectedFolder,
+    handleRefresh,
     router, t,
   };
 };

@@ -18,7 +18,7 @@ type FolderTabsBarProps = {
   pageScrollPosition: Reanimated.SharedValue<number>;
   pageScrollOffset: Reanimated.SharedValue<number>;
   folderTabsScrollViewRef: React.RefObject<ScrollView>;
-  currentContentPage: number;
+  currentContentPage: number; // このプロパティは AnimatedTabItem には直接渡されなくなりますが、FolderTabsBar の他のロジックで使われている可能性があるため残します
 };
 
 export const FolderTabsBar: React.FC<FolderTabsBarProps> = ({
@@ -32,7 +32,7 @@ export const FolderTabsBar: React.FC<FolderTabsBarProps> = ({
   pageScrollPosition,
   pageScrollOffset,
   folderTabsScrollViewRef,
-  currentContentPage,
+  currentContentPage, // この変数は AnimatedTabItem には渡されません
 }) => {
   const animatedAccentLineStyle = useAnimatedStyle(() => {
     const currentViewPosition = pageScrollPosition.value;
@@ -98,7 +98,7 @@ export const FolderTabsBar: React.FC<FolderTabsBarProps> = ({
                 styles={styles}
                 label={folder.label}
                 index={index}
-                isActive={index === currentContentPage}
+                // isActive={index === currentContentPage} // この行を削除
                 onPress={() => handleFolderTabPress(folder.name, index)}
                 onLayout={(event) => {
                   const { x, width } = event.nativeEvent.layout;
