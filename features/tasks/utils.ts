@@ -3,12 +3,15 @@ import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import relativeTime from 'dayjs/plugin/relativeTime';
-import type { Task } from './types';
+import isSameOrAfter from 'dayjs/plugin/isSameOrAfter'; // 追加
+import type { TextStyle } from 'react-native';
+import type { Task, DeadlineSettings } from './types'; // DeadlineSettings をインポート
 import i18n from '@/lib/i18n';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.extend(relativeTime);
+dayjs.extend(isSameOrAfter); // 追加
 
 export const calculateActualDueDate = (task: Task): dayjs.Dayjs | null => {
   const { deadlineDetails, deadline: taskDeadlineISO } = task;
@@ -110,7 +113,7 @@ export const calculateNextDisplayInstanceDate = (task: Task, fromDateLocal: dayj
                 isValidInstance = false;
             }
         }
-        if (isValidInstance && currentDateCandidateUtc.isSameOrAfter(fromDateUtc.startOf('day')) && !completedDates.includes(currentDateStr)) {
+        if (isValidInstance && currentDateCandidateUtc.isSameOrAfter(fromDateUtc.startOf('day')) && !completedDates.includes(currentDateStr)) { // isSameOrAfter を使用
             return currentDateCandidateUtc;
         }
     }
@@ -165,7 +168,7 @@ export const getTimeText = (
 ): string => {
   const nowLocal = dayjs();
 
-  if (task.deadlineDetails?.isPeriodSettingEnabled && displayStartDateUtc && displayStartDateUtc.local().isAfter(nowLocal)) {
+  if ((task.deadlineDetails as any)?.isPeriodSettingEnabled && displayStartDateUtc && displayStartDateUtc.local().isAfter(nowLocal)) { // isPeriodSettingEnabled に as any を使用
     const displayStartDateLocal = displayStartDateUtc.local();
     const diffMinutes = displayStartDateLocal.diff(nowLocal, 'minute');
     if (diffMinutes < 1) return t('time.startsInMinutes', { count: 1 });
@@ -302,6 +305,52 @@ export const getTimeColor = (
   
   return isDark ? '#E0E0E0' : '#212121';
 };
+
+export const interpolateNumeric = (start: number, end: number, factor: number): number => {
+  return Math.round(start + (end - start) * factor);
+};
+
+export const hexToRgb = (hex: string | undefined): { r: number; g: number; b: number } | null => {
+  if (typeof hex !== 'string') return null;
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result
+    ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16),
+      }
+    : null;
+};
+
+export const rgbToHex = (r: number, g: number, b: number): string => {
+  return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase();
+};
+
+export const interpolateColor = (colorA: string | undefined, colorB: string | undefined, factor: number): string => {
+  const rgbA = hexToRgb(colorA);
+  const rgbB = hexToRgb(colorB);
+
+  if (!rgbA && rgbB && colorB) return colorB; // 修正: colorB (string) を返す
+  if (rgbA && !rgbB && colorA) return colorA; // 修正: colorA (string) を返す
+  if (!rgbA || !rgbB) return '#000000'; // Default or error color if either is undefined or parsing failed for both
+
+
+  const r = interpolateNumeric(rgbA.r, rgbB.r, factor);
+  const g = interpolateNumeric(rgbA.g, rgbB.g, factor);
+  const b = interpolateNumeric(rgbA.b, rgbB.b, factor);
+
+  return rgbToHex(r, g, b);
+};
+
+export const interpolateFontWeight = (
+  factor: number,
+  activeWeight: TextStyle['fontWeight'],
+  inactiveWeight: TextStyle['fontWeight']
+): TextStyle['fontWeight'] => {
+  if (factor >= 0.5) return activeWeight;
+  return inactiveWeight;
+};
+
 
 if (i18n.isInitialized) {
     const lang = i18n.language.split('-')[0];

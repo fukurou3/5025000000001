@@ -1,6 +1,8 @@
 // app/features/tasks/types.ts
+import { DeadlineSettings } from '@/features/add/components/DeadlineSettingModal/types';
 import type dayjs from 'dayjs';
-import type { DeadlineSettings } from '@/features/add/components/DeadlineSettingModal/types';
+// DeadlineSettings をインポートし、同時に再エクスポートします
+export type { DeadlineSettings } from '@/features/add/components/DeadlineSettingModal/types';
 
 export type Task = {
   id: string;
