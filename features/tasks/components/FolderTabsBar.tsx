@@ -18,7 +18,7 @@ type FolderTabsBarProps = {
   pageScrollPosition: Reanimated.SharedValue<number>;
   pageScrollOffset: Reanimated.SharedValue<number>;
   folderTabsScrollViewRef: React.RefObject<ScrollView>;
-  currentContentPage: number; // このプロパティは AnimatedTabItem には直接渡されなくなりますが、FolderTabsBar の他のロジックで使われている可能性があるため残します
+  currentContentPage: number;
 };
 
 export const FolderTabsBar: React.FC<FolderTabsBarProps> = ({
@@ -32,7 +32,7 @@ export const FolderTabsBar: React.FC<FolderTabsBarProps> = ({
   pageScrollPosition,
   pageScrollOffset,
   folderTabsScrollViewRef,
-  currentContentPage, // この変数は AnimatedTabItem には渡されません
+  currentContentPage,
 }) => {
   const animatedAccentLineStyle = useAnimatedStyle(() => {
     const currentViewPosition = pageScrollPosition.value;
@@ -44,31 +44,36 @@ export const FolderTabsBar: React.FC<FolderTabsBarProps> = ({
     const currentLayout = folderTabLayouts[currentTabIndex];
     const nextLayout = folderTabLayouts[nextTabIndex];
 
-    if (!currentLayout) {
-      const firstTabLayout = folderTabLayouts[0];
-      if (firstTabLayout) {
-        return {
-          width: firstTabLayout.width,
-          transform: [{ translateX: firstTabLayout.x }],
-        };
-      }
+    if (Object.keys(folderTabLayouts).length === 0) {
       return {
         width: 0,
         transform: [{ translateX: 0 }],
       };
     }
 
-    const targetLayoutForInterpolation = (nextLayout && scrollOffset !== 0) ? nextLayout : currentLayout;
+    if (!currentLayout && folderTabLayouts[0]) {
+      return {
+        width: folderTabLayouts[0].width,
+        transform: [{ translateX: folderTabLayouts[0].x }],
+      };
+    }
+
+    if (!currentLayout) {
+      return {
+        width: 0,
+        transform: [{ translateX: 0 }],
+      };
+    }
 
     const width = interpolate(
       scrollOffset,
       [0, 1],
-      [currentLayout.width, targetLayoutForInterpolation.width]
+      [currentLayout.width, nextLayout ? nextLayout.width : currentLayout.width]
     );
     const translateX = interpolate(
       scrollOffset,
       [0, 1],
-      [currentLayout.x, targetLayoutForInterpolation.x]
+      [currentLayout.x, nextLayout ? nextLayout.x : currentLayout.x]
     );
 
     return {
@@ -77,8 +82,8 @@ export const FolderTabsBar: React.FC<FolderTabsBarProps> = ({
     };
   });
 
-  const selectedColor = isDark ? styles.folderTabSelectedText.color : styles.folderTabSelectedText.color;
-  const unselectedColor = isDark ? styles.folderTabText.color : styles.folderTabText.color;
+  const selectedColor = styles.folderTabSelectedText.color;
+  const unselectedColor = styles.folderTabText.color;
 
   return (
     <View style={[styles.folderTabsContainer]}>
@@ -98,7 +103,6 @@ export const FolderTabsBar: React.FC<FolderTabsBarProps> = ({
                 styles={styles}
                 label={folder.label}
                 index={index}
-                // isActive={index === currentContentPage} // この行を削除
                 onPress={() => handleFolderTabPress(folder.name, index)}
                 onLayout={(event) => {
                   const { x, width } = event.nativeEvent.layout;

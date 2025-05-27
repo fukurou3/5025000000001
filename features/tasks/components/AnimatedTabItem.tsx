@@ -9,7 +9,6 @@ type AnimatedTabItemProps = {
   styles: TaskScreenStyles;
   label: string;
   index: number;
-  // isActive prop は不要になります
   onPress: () => void;
   onLayout: (event: any) => void;
   pageScrollPosition: Reanimated.SharedValue<number>;
@@ -54,11 +53,23 @@ export const AnimatedTabItem: React.FC<AnimatedTabItemProps> = ({
   });
 
   const animatedFontWeightStyle = useAnimatedStyle(() => {
-    const effectivePage = pageScrollPosition.value + pageScrollOffset.value;
-    const shouldBeThick = effectivePage >= index - 0.6 && effectivePage < index + 0.6;
+    const currentPosition = pageScrollPosition.value;
+    const currentOffset = pageScrollOffset.value;
+    let isActive = false;
+    const activeThreshold = 0.5;
+
+    if (index === Math.floor(currentPosition)) {
+        isActive = currentOffset < activeThreshold;
+    } else if (index === Math.floor(currentPosition) + 1) {
+        isActive = currentOffset >= activeThreshold;
+    }
+
+    if (currentOffset === 0) {
+        isActive = (index === Math.round(currentPosition));
+    }
 
     return {
-      fontWeight: shouldBeThick
+      fontWeight: isActive
         ? styles.folderTabSelectedText.fontWeight
         : styles.folderTabText.fontWeight,
     };
@@ -75,7 +86,7 @@ export const AnimatedTabItem: React.FC<AnimatedTabItemProps> = ({
         style={[
           styles.folderTabText,
           tabAnimatedTextStyle,
-          animatedFontWeightStyle, // fontWeight のスタイルを適用
+          animatedFontWeightStyle,
         ]}
         numberOfLines={1}
       >
