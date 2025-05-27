@@ -1,6 +1,7 @@
 // app/features/tasks/components/SelectionBottomBar.tsx
 import React from 'react';
-import { View, Text, TouchableOpacity, Animated, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, Platform } from 'react-native';
+import Reanimated, { useAnimatedStyle } from 'react-native-reanimated'; // Import Reanimated
 import { Ionicons } from '@expo/vector-icons';
 import type { TaskScreenStyles } from '@/features/tasks/styles';
 import type { SelectableItem } from '@/features/tasks/types';
@@ -9,7 +10,7 @@ import type { FolderOrder } from '@/features/tasks/types';
 type SelectionBottomBarProps = {
   styles: TaskScreenStyles;
   isSelecting: boolean;
-  selectionAnim: Animated.Value;
+  selectionAnimSharedValue: Reanimated.SharedValue<number>; // Changed from selectionAnim
   selectedItems: SelectableItem[];
   subColor: string;
   noFolderName: string;
@@ -26,7 +27,7 @@ type SelectionBottomBarProps = {
 export const SelectionBottomBar: React.FC<SelectionBottomBarProps> = ({
   styles,
   isSelecting,
-  selectionAnim,
+  selectionAnimSharedValue,
   selectedItems,
   subColor,
   noFolderName,
@@ -39,6 +40,12 @@ export const SelectionBottomBar: React.FC<SelectionBottomBarProps> = ({
   onCancelSelection,
   t,
 }) => {
+  const animatedBarStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ translateY: selectionAnimSharedValue.value }],
+    };
+  });
+
   if (!isSelecting) {
     return null;
   }
@@ -47,7 +54,7 @@ export const SelectionBottomBar: React.FC<SelectionBottomBarProps> = ({
   const canReorder = selectedItems.length === 1 && selectedItems[0].type === 'folder' && selectedItems[0].id !== noFolderName && folderOrder.filter(f => f !== noFolderName).length > 1 && selectedFolderTabName === 'all';
 
   return (
-    <Animated.View style={[ styles.selectionBar, { transform: [{ translateY: selectionAnim }] }, Platform.OS === 'ios' && { paddingBottom: 20 } ]}>
+    <Reanimated.View style={[ styles.selectionBar, animatedBarStyle, Platform.OS === 'ios' && { paddingBottom: 20 } ]}>
       <TouchableOpacity onPress={onSelectAll} style={styles.selectionActionContainer} activeOpacity={0.7}>
         <Ionicons name="checkmark-done-outline" size={28} color={subColor} />
         <Text style={styles.selectionActionText}>{t('common.select_all')}</Text>
@@ -78,6 +85,6 @@ export const SelectionBottomBar: React.FC<SelectionBottomBarProps> = ({
         <Ionicons name="close-circle-outline" size={28} color={subColor} />
         <Text style={styles.selectionActionText}>{t('common.cancel')}</Text>
       </TouchableOpacity>
-    </Animated.View>
+    </Reanimated.View>
   );
 };

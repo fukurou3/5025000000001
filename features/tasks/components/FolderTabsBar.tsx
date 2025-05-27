@@ -1,22 +1,24 @@
 // app/features/tasks/components/FolderTabsBar.tsx
 import React from 'react';
-import { ScrollView, TouchableOpacity, Text, View, type TextStyle, type ViewStyle, type ColorValue, Animated } from 'react-native'; // Animated を削除 (ScrollView はデフォルトで Animated)
+import { ScrollView, View, Platform } from 'react-native';
+import Reanimated, { useAnimatedStyle, interpolate } from 'react-native-reanimated';
 import type { TaskScreenStyles } from '@/features/tasks/styles';
-import type { FolderTab, FolderTabLayout, AccentLineStyle, PageScrollData } from '@/features/tasks/hooks/useTasksScreenLogic';
-import { interpolateColor, interpolateFontWeight } from '@/features/tasks/utils';
-import { ACCENT_LINE_HEIGHT, FOLDER_TABS_CONTAINER_PADDING_HORIZONTAL } from '@/features/tasks/constants';
+import type { FolderTab, FolderTabLayout } from '@/features/tasks/hooks/useTasksScreenLogic';
+import { ACCENT_LINE_HEIGHT, FOLDER_TABS_CONTAINER_PADDING_HORIZONTAL, TAB_MARGIN_RIGHT } from '@/features/tasks/constants';
+import { AnimatedTabItem } from './AnimatedTabItem';
 
 type FolderTabsBarProps = {
   styles: TaskScreenStyles;
   isDark: boolean;
   subColor: string;
   folderTabs: FolderTab[];
-  folderTabLayouts: Record<string, FolderTabLayout>;
-  setFolderTabLayouts: (updater: (prev: Record<string, FolderTabLayout>) => Record<string, FolderTabLayout>) => void;
+  folderTabLayouts: Record<number, FolderTabLayout>;
+  setFolderTabLayouts: (updater: (prev: Record<number, FolderTabLayout>) => Record<number, FolderTabLayout>) => void;
   handleFolderTabPress: (folderName: string, index: number) => void;
-  accentLineStyle: AccentLineStyle;
-  pageScrollData: PageScrollData;
-  folderTabsScrollViewRef: React.RefObject<ScrollView>; // 修正: Animated.ScrollView -> ScrollView
+  pageScrollPosition: Reanimated.SharedValue<number>;
+  pageScrollOffset: Reanimated.SharedValue<number>;
+  folderTabsScrollViewRef: React.RefObject<ScrollView>;
+  currentContentPage: number;
 };
 
 export const FolderTabsBar: React.FC<FolderTabsBarProps> = ({
@@ -24,84 +26,111 @@ export const FolderTabsBar: React.FC<FolderTabsBarProps> = ({
   isDark,
   subColor,
   folderTabs,
+  folderTabLayouts,
   setFolderTabLayouts,
   handleFolderTabPress,
-  accentLineStyle,
-  pageScrollData,
+  pageScrollPosition,
+  pageScrollOffset,
   folderTabsScrollViewRef,
+  currentContentPage,
 }) => {
+  const animatedAccentLineStyle = useAnimatedStyle(() => {
+    const currentViewPosition = pageScrollPosition.value;
+    const scrollOffset = pageScrollOffset.value;
+
+    const currentTabIndex = Math.floor(currentViewPosition);
+    const nextTabIndex = currentTabIndex + 1;
+
+    const currentLayout = folderTabLayouts[currentTabIndex];
+    const nextLayout = folderTabLayouts[nextTabIndex];
+
+    if (!currentLayout) {
+      const firstTabLayout = folderTabLayouts[0];
+      if (firstTabLayout) {
+        return {
+          width: firstTabLayout.width,
+          transform: [{ translateX: firstTabLayout.x }],
+        };
+      }
+      return {
+        width: 0,
+        transform: [{ translateX: 0 }],
+      };
+    }
+
+    const targetLayoutForInterpolation = (nextLayout && scrollOffset !== 0) ? nextLayout : currentLayout;
+
+    const width = interpolate(
+      scrollOffset,
+      [0, 1],
+      [currentLayout.width, targetLayoutForInterpolation.width]
+    );
+    const translateX = interpolate(
+      scrollOffset,
+      [0, 1],
+      [currentLayout.x, targetLayoutForInterpolation.x]
+    );
+
+    return {
+      width: width,
+      transform: [{ translateX: translateX }],
+    };
+  });
+
+  const selectedColor = isDark ? styles.folderTabSelectedText.color : styles.folderTabSelectedText.color;
+  const unselectedColor = isDark ? styles.folderTabText.color : styles.folderTabText.color;
+
   return (
-    <View style={[styles.folderTabsContainer, { paddingBottom: ACCENT_LINE_HEIGHT }]}>
+    <View style={[styles.folderTabsContainer]}>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         ref={folderTabsScrollViewRef}
-        contentContainerStyle={{ alignItems: 'flex-end', paddingHorizontal: FOLDER_TABS_CONTAINER_PADDING_HORIZONTAL }}
-      >
-        {folderTabs.map((folder, index) => {
-          let textStyleToApply: TextStyle = { ...styles.folderTabText };
-          let tabStyleToApply: ViewStyle = { ...styles.folderTabButton, borderBottomWidth: 0 };
-
-          const scrollPos = pageScrollData.position;
-          const scrollOffset = pageScrollData.offset;
-
-          const selectedTextColor = isDark ? styles.folderTabSelectedText.color : styles.folderTabSelectedText.color;
-          const unselectedTextColor = isDark ? styles.folderTabText.color : styles.folderTabText.color;
-          
-          const selectedWeight = styles.folderTabSelectedText.fontWeight;
-          const unselectedWeight = styles.folderTabText.fontWeight;
-
-          if (scrollOffset === 0) {
-            if (index === scrollPos) {
-                textStyleToApply = {...styles.folderTabText, ...styles.folderTabSelectedText};
-            }
-          } else {
-            if (index === scrollPos) {
-                textStyleToApply.color = interpolateColor(selectedTextColor as string, unselectedTextColor as string, scrollOffset);
-                textStyleToApply.fontWeight = interpolateFontWeight(1 - scrollOffset, selectedWeight, unselectedWeight);
-            } else if (index === scrollPos + 1) {
-                textStyleToApply.color = interpolateColor(unselectedTextColor as string, selectedTextColor as string, scrollOffset);
-                textStyleToApply.fontWeight = interpolateFontWeight(scrollOffset, selectedWeight, unselectedWeight);
-            } else {
-                textStyleToApply.color = unselectedTextColor as ColorValue;
-                textStyleToApply.fontWeight = unselectedWeight;
-            }
-          }
-
-          return (
-            <TouchableOpacity
-              key={folder.name}
-              onLayout={(event) => {
-                const { x, width } = event.nativeEvent.layout;
-                setFolderTabLayouts(prev => {
-                    const newLayouts = {...prev};
-                    if (!newLayouts[folder.name] || newLayouts[folder.name].x !== x || newLayouts[folder.name].width !== width || newLayouts[folder.name].index !== index) {
-                       newLayouts[folder.name] = { x, width, index };
-                       return newLayouts;
-                    }
-                    return prev;
-                });
-              }}
-              style={tabStyleToApply}
-              onPress={() => handleFolderTabPress(folder.name, index)}
-              activeOpacity={0.7}
-            >
-              <Text style={textStyleToApply} numberOfLines={1}>{folder.label}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-      <View
-        style={{
-            height: ACCENT_LINE_HEIGHT,
-            backgroundColor: subColor,
-            width: accentLineStyle.width,
-            transform: accentLineStyle.transform,
-            position: 'absolute',
-            bottom: 0, 
-            left: FOLDER_TABS_CONTAINER_PADDING_HORIZONTAL, 
+        contentContainerStyle={{
+            paddingHorizontal: FOLDER_TABS_CONTAINER_PADDING_HORIZONTAL,
         }}
-      />
+      >
+        <View style={{ flexDirection: 'row', position: 'relative', paddingBottom: ACCENT_LINE_HEIGHT }}>
+          {folderTabs.map((folder, index) => {
+            return (
+              <AnimatedTabItem
+                key={`${folder.name}-${index}`}
+                styles={styles}
+                label={folder.label}
+                index={index}
+                isActive={index === currentContentPage}
+                onPress={() => handleFolderTabPress(folder.name, index)}
+                onLayout={(event) => {
+                  const { x, width } = event.nativeEvent.layout;
+                  setFolderTabLayouts(prev => {
+                      const newLayouts = {...prev};
+                      if (!newLayouts[index] || newLayouts[index].x !== x || newLayouts[index].width !== width ) {
+                         newLayouts[index] = { x, width, index: index };
+                         return newLayouts;
+                      }
+                      return prev;
+                  });
+                }}
+                pageScrollPosition={pageScrollPosition}
+                pageScrollOffset={pageScrollOffset}
+                selectedColorString={selectedColor as string}
+                unselectedColorString={unselectedColor as string}
+              />
+            );
+          })}
+          <Reanimated.View
+            style={[
+              {
+                height: ACCENT_LINE_HEIGHT,
+                backgroundColor: subColor,
+                position: 'absolute',
+                bottom: 0,
+              },
+              animatedAccentLineStyle,
+            ]}
+          />
+        </View>
+      </ScrollView>
     </View>
   );
 };

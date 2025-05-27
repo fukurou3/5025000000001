@@ -8,10 +8,12 @@ import {
   Modal,
   StyleSheet,
   Platform,
+  Animated, // Keep for selectionAnim if it's Animated.Value
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
+import { useAnimatedStyle } from 'react-native-reanimated'; // Import for selectionAnim if it's a SharedValue
 
 import { useAppTheme } from '@/hooks/ThemeContext';
 import { FontSizeContext } from '@/context/FontSizeContext';
@@ -22,6 +24,8 @@ import { useTasksScreenLogic, type SortMode } from './hooks/useTasksScreenLogic'
 import { FolderTabsBar } from './components/FolderTabsBar';
 import { TaskViewPager } from './components/TaskViewPager';
 import { SelectionBottomBar } from './components/SelectionBottomBar';
+import { SELECTION_BAR_HEIGHT } from './constants';
+
 
 export default function TasksScreen() {
   const { colorScheme, subColor } = useAppTheme();
@@ -33,7 +37,9 @@ export default function TasksScreen() {
   const {
     loading, activeTab, sortMode, sortModalVisible,
     isReordering,
-    selectionAnim, folderTabLayouts, currentContentPage, pageScrollData, accentLineStyle,
+    selectionAnim, // This is now a SharedValue if changed in useTasksScreenLogic
+    folderTabLayouts, currentContentPage,
+    pageScrollPosition, pageScrollOffset, // Replaced pageScrollData and accentLineStyle
     noFolderName, folderTabs,
     pagerRef, folderTabsScrollViewRef,
     isSelecting, selectedItems,
@@ -41,16 +47,22 @@ export default function TasksScreen() {
     setFolderTabLayouts,
     getTasksToDisplayForPage,
     handleFolderTabPress, handlePageScroll, handlePageSelected,
-    handleSelectAll, handleDeleteSelected, 
+    handleSelectAll, handleDeleteSelected,
     handleRenameFolderSubmit, handleReorderSelectedFolder, openRenameModalForSelectedFolder,
     cancelSelectionMode,
     router, t,
     collapsedFolders, toggleFolderCollapse, toggleTaskDone, loadTasksAndFolders,
-    draggingFolder, setDraggingFolder, moveFolderOrder, stopReordering, // stopReordering を追加
+    draggingFolder, setDraggingFolder, moveFolderOrder, stopReordering,
     onLongPressSelectItem, folderOrder,
     renameModalVisible, renameTarget, setRenameModalVisible, setRenameTarget,
     tasks
   } = logic;
+
+  const animatedSelectionBarStyle = useAnimatedStyle(() => {
+      return {
+          transform: [{ translateY: selectionAnim.value }],
+      };
+  });
 
 
   const handleSortOptionSelect = (newSortMode: SortMode) => {
@@ -61,7 +73,7 @@ export default function TasksScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.appBar}><Text style={styles.title}>{t('task_list.title')}</Text></View>
-      
+
       <FolderTabsBar
         styles={styles}
         isDark={isDark}
@@ -70,25 +82,26 @@ export default function TasksScreen() {
         folderTabLayouts={folderTabLayouts}
         setFolderTabLayouts={setFolderTabLayouts}
         handleFolderTabPress={handleFolderTabPress}
-        accentLineStyle={accentLineStyle}
-        pageScrollData={pageScrollData}
+        pageScrollPosition={pageScrollPosition}
+        pageScrollOffset={pageScrollOffset}
         folderTabsScrollViewRef={folderTabsScrollViewRef}
+        currentContentPage={currentContentPage}
       />
 
       <View style={styles.topRow}>
         <View style={styles.segmentedControlContainer}>
-          <TouchableOpacity 
-            style={[ styles.segmentedControlButton, activeTab === 'incomplete' && styles.segmentedControlButtonSelected ]} 
-            onPress={() => { setActiveTab('incomplete'); cancelSelectionMode(); }} 
+          <TouchableOpacity
+            style={[ styles.segmentedControlButton, activeTab === 'incomplete' && styles.segmentedControlButtonSelected ]}
+            onPress={() => { setActiveTab('incomplete'); cancelSelectionMode(); }}
             activeOpacity={0.7}
           >
             <Text style={[ styles.segmentedControlButtonText, activeTab === 'incomplete' && (isDark ? styles.segmentedControlButtonTextSelectedDark : styles.segmentedControlButtonTextSelectedLight) ]}>
               {t('tab.incomplete')}
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity 
-            style={[ styles.segmentedControlButton, activeTab === 'completed' && styles.segmentedControlButtonSelected ]} 
-            onPress={() => { setActiveTab('completed'); cancelSelectionMode(); }} 
+          <TouchableOpacity
+            style={[ styles.segmentedControlButton, activeTab === 'completed' && styles.segmentedControlButtonSelected ]}
+            onPress={() => { setActiveTab('completed'); cancelSelectionMode(); }}
             activeOpacity={0.7}
           >
             <Text style={[ styles.segmentedControlButtonText, activeTab === 'completed' && (isDark ? styles.segmentedControlButtonTextSelectedDark : styles.segmentedControlButtonTextSelectedLight) ]}>
@@ -127,7 +140,7 @@ export default function TasksScreen() {
           draggingFolder={draggingFolder}
           setDraggingFolder={setDraggingFolder}
           moveFolderOrder={moveFolderOrder}
-          stopReordering={stopReordering} // stopReordering を props として渡す
+          stopReordering={stopReordering}
           isSelecting={isSelecting}
           selectedItems={selectedItems}
           onLongPressSelectItem={onLongPressSelectItem}
@@ -139,8 +152,8 @@ export default function TasksScreen() {
       )}
 
       {!isSelecting && !isReordering && (
-        <TouchableOpacity 
-          style={[styles.fab, { bottom: Platform.OS === 'ios' ? 16 : 16 }]} 
+        <TouchableOpacity
+          style={[styles.fab, { bottom: Platform.OS === 'ios' ? 16 : 16 }]}
           onPress={() => router.push('/add/')}
         >
           <Ionicons name="add" size={32} color="#fff" />
@@ -150,7 +163,7 @@ export default function TasksScreen() {
       <SelectionBottomBar
         styles={styles}
         isSelecting={isSelecting}
-        selectionAnim={selectionAnim}
+        selectionAnimSharedValue={selectionAnim} // Pass the shared value
         selectedItems={selectedItems}
         subColor={subColor}
         noFolderName={noFolderName}
@@ -163,12 +176,12 @@ export default function TasksScreen() {
         onCancelSelection={cancelSelectionMode}
         t={t}
       />
-      
-      <RenameFolderModal 
-        visible={renameModalVisible} 
-        onClose={() => { setRenameModalVisible(false); setRenameTarget(null); cancelSelectionMode(); }} 
-        initialName={renameTarget || ''} 
-        onSubmit={handleRenameFolderSubmit} 
+
+      <RenameFolderModal
+        visible={renameModalVisible}
+        onClose={() => { setRenameModalVisible(false); setRenameTarget(null); cancelSelectionMode(); }}
+        initialName={renameTarget || ''}
+        onSubmit={handleRenameFolderSubmit}
       />
 
       <Modal transparent visible={sortModalVisible} animationType="fade" onRequestClose={() => setSortModalVisible(false)}>

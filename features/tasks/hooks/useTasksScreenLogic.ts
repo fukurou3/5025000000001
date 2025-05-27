@@ -1,11 +1,12 @@
 // app/features/tasks/hooks/useTasksScreenLogic.ts
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Alert, Dimensions, Animated, Platform, ScrollView } from 'react-native'; // ScrollView をインポート
+import { Alert, Dimensions, Platform, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import dayjs from 'dayjs';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import PagerView, { type PagerViewOnPageScrollEvent, type PagerViewOnPageSelectedEvent } from 'react-native-pager-view';
+import { useSharedValue } from 'react-native-reanimated';
 
 import type { Task, FolderOrder, SelectableItem, DisplayTaskOriginal, DisplayableTaskItem } from '@/features/tasks/types';
 import { calculateNextDisplayInstanceDate, calculateActualDueDate } from '@/features/tasks/utils';
@@ -18,9 +19,10 @@ const windowWidth = Dimensions.get('window').width;
 export type SortMode = 'deadline' | 'custom' | 'priority';
 export type ActiveTab = 'incomplete' | 'completed';
 export type FolderTab = { name: string; label: string };
+// FolderTabLayout のキーは FolderTabsBar でインデックスになるため、
+// useTasksScreenLogic で管理する Record のキーも number にする
 export type FolderTabLayout = { x: number; width: number; index: number };
-export type AccentLineStyle = { width: number; transform: [{ translateX: number }] };
-export type PageScrollData = { position: number; offset: number };
+
 
 export const useTasksScreenLogic = () => {
   const router = useRouter();
@@ -40,29 +42,31 @@ export const useTasksScreenLogic = () => {
   const [renameModalVisible, setRenameModalVisible] = useState(false);
   const [renameTarget, setRenameTarget] = useState<string | null>(null);
 
-  const [selectionAnim] = useState(new Animated.Value(SELECTION_BAR_HEIGHT));
+  const selectionAnim = useSharedValue(SELECTION_BAR_HEIGHT);
   const pagerRef = useRef<PagerView>(null);
-  const folderTabsScrollViewRef = useRef<ScrollView>(null); // 修正: Animated.ScrollView -> ScrollView
-  const [folderTabLayouts, setFolderTabLayouts] = useState<Record<string, FolderTabLayout>>({});
+  const folderTabsScrollViewRef = useRef<ScrollView>(null);
+  // キーを string から number に変更
+  const [folderTabLayouts, setFolderTabLayouts] = useState<Record<number, FolderTabLayout>>({});
   const [currentContentPage, setCurrentContentPage] = useState(0);
-  const [pageScrollData, setPageScrollData] = useState<PageScrollData>({ position: 0, offset: 0 });
-  const [accentLineStyle, setAccentLineStyle] = useState<AccentLineStyle>({ width: 0, transform: [{ translateX: 0 }] });
+
+  const pageScrollPosition = useSharedValue(0);
+  const pageScrollOffset = useSharedValue(0);
 
   const noFolderName = useMemo(() => t('common.no_folder_name', 'フォルダなし'), [t]);
 
   const folderTabs: FolderTab[] = useMemo(() => {
     const tabsArr: FolderTab[] = [{ name: 'all', label: t('folder_tabs.all', 'すべて') }];
     const uniqueFoldersFromTasks = Array.from(new Set(tasks.map(task => task.folder || noFolderName)));
-    
+
     if (uniqueFoldersFromTasks.includes(noFolderName)) {
       if (!tabsArr.some(tab => tab.name === noFolderName)) {
         tabsArr.push({ name: noFolderName, label: noFolderName });
       }
     }
-    
+
     const orderedActualFolders = folderOrder.filter(name => name !== noFolderName && uniqueFoldersFromTasks.includes(name));
     const unorderedActualFolders = uniqueFoldersFromTasks.filter(name => name !== noFolderName && !orderedActualFolders.includes(name) && name !== 'all').sort((a, b) => a.localeCompare(b));
-    
+
     [...orderedActualFolders, ...unorderedActualFolders].forEach(folderName => {
       if (!tabsArr.some(tab => tab.name === folderName)) {
         tabsArr.push({ name: folderName, label: folderName });
@@ -75,32 +79,27 @@ export const useTasksScreenLogic = () => {
     const initialIndex = folderTabs.findIndex(ft => ft.name === selectedFolderTabName);
     if (initialIndex !== -1 && currentContentPage !== initialIndex) {
       setCurrentContentPage(initialIndex);
+      pageScrollPosition.value = initialIndex;
     }
-  }, [folderTabs, selectedFolderTabName, currentContentPage]);
+  }, [folderTabs, selectedFolderTabName, currentContentPage, pageScrollPosition]);
 
   useEffect(() => {
-    if (pagerRef.current && pageScrollData.position === currentContentPage && pageScrollData.offset === 0) {
-        // Make sure PagerView is on the correct page without animation if it's not already.
-        // This can happen if currentContentPage was set directly.
-        // However, directly calling setPageWithoutAnimation here might conflict with user swipes.
-        // It's safer to let onPageSelected handle the final state.
-    }
-  
-    if (folderTabLayouts && folderTabs.length > 0 && currentContentPage < folderTabs.length) {
-      const currentTabInfo = folderTabLayouts[folderTabs[currentContentPage]?.name];
-      if (currentTabInfo) {
-        setAccentLineStyle({
-          width: currentTabInfo.width,
-          transform: [{ translateX: currentTabInfo.x }],
-        });
-         if (folderTabsScrollViewRef.current && windowWidth > 0) {
+    // folderTabLayouts のキーがインデックスになったため、参照方法を変更
+    const currentTabInfo = folderTabLayouts[currentContentPage];
+
+    if (currentTabInfo && folderTabs.length > 0 && currentContentPage < folderTabs.length) {
+        if (folderTabsScrollViewRef.current && windowWidth > 0) {
             const screenCenter = windowWidth / 2;
             let targetScrollXForTabs = currentTabInfo.x + currentTabInfo.width / 2 - screenCenter;
             targetScrollXForTabs = Math.max(0, targetScrollXForTabs);
-            
+
             let totalFolderTabsContentWidth = 0;
-            folderTabs.forEach((ft, idx) => {
-                const layout = folderTabLayouts[ft.name];
+            // folderTabs と folderTabLayouts を使って全体の幅を計算する部分は、
+            // folderTabLayouts がインデックスキーであることを考慮する必要がある。
+            // もし folderTabLayouts を直接イテレートする場合は Object.values() などを使う。
+            // ここでは folderTabs をイテレートし、対応するインデックスで folderTabLayouts を引く。
+            folderTabs.forEach((_ft, idx) => { // ft は未使用なので _ft
+                const layout = folderTabLayouts[idx]; // インデックスでレイアウトを取得
                 if (layout) {
                     totalFolderTabsContentWidth += layout.width;
                     if (idx < folderTabs.length - 1) {
@@ -112,26 +111,16 @@ export const useTasksScreenLogic = () => {
 
             const maxScrollX = Math.max(0, totalFolderTabsContentWidth - windowWidth);
             targetScrollXForTabs = Math.min(targetScrollXForTabs, maxScrollX);
-            
+
             folderTabsScrollViewRef.current.scrollTo({ x: targetScrollXForTabs, animated: true });
         }
-      } else if (folderTabs.length > 0 && folderTabLayouts[folderTabs[0]?.name]) { // Fallback to first tab
-        const firstTabInfo = folderTabLayouts[folderTabs[0].name];
-        setAccentLineStyle({
-          width: firstTabInfo.width,
-          transform: [{ translateX: firstTabInfo.x }],
-        });
-      }
     }
-  }, [currentContentPage, folderTabLayouts, folderTabs, pageScrollData.offset, pageScrollData.position]);
+  // pageScrollOffset.value と pageScrollPosition.value の変更も検知する
+  }, [currentContentPage, folderTabLayouts, folderTabs, pageScrollOffset.value, pageScrollPosition.value]);
 
 
   useEffect(() => {
-    Animated.timing(selectionAnim, {
-      toValue: selectionHook.isSelecting ? 0 : SELECTION_BAR_HEIGHT,
-      duration: 250,
-      useNativeDriver: true,
-    }).start();
+    selectionAnim.value = selectionHook.isSelecting ? 0 : SELECTION_BAR_HEIGHT;
   }, [selectionHook.isSelecting, selectionAnim]);
 
   const loadTasksAndFolders = useCallback(async () => {
@@ -163,7 +152,7 @@ export const useTasksScreenLogic = () => {
       console.error('Failed to save folder order:', e);
     }
   };
-  
+
   useFocusEffect(
     useCallback(() => {
       setLoading(true);
@@ -208,7 +197,7 @@ export const useTasksScreenLogic = () => {
       if (idx < 0) return prevOrder;
       const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
       if (swapIdx < 0 || swapIdx >= prevOrder.length) return prevOrder;
-      
+
       const newOrder = [...prevOrder];
       [newOrder[idx], newOrder[swapIdx]] = [newOrder[swapIdx], newOrder[idx]];
       saveFolderOrder(newOrder);
@@ -293,65 +282,9 @@ export const useTasksScreenLogic = () => {
 
   const handlePageScroll = useCallback((event: PagerViewOnPageScrollEvent) => {
     const { position, offset } = event.nativeEvent;
-    setPageScrollData({ position, offset });
-
-    if (folderTabLayouts && folderTabs.length > 0 && position < folderTabs.length) {
-        const currentTabInfo = folderTabLayouts[folderTabs[position]?.name];
-        const nextTabInfo = (position + 1 < folderTabs.length) ? folderTabLayouts[folderTabs[position + 1]?.name] : null;
-
-        if (currentTabInfo) {
-            let targetWidth = currentTabInfo.width;
-            let targetTranslateX = currentTabInfo.x;
-
-            if (nextTabInfo && offset > 0) {
-                targetWidth = currentTabInfo.width + (nextTabInfo.width - currentTabInfo.width) * offset;
-                targetTranslateX = currentTabInfo.x + (nextTabInfo.x - currentTabInfo.x) * offset;
-            }
-            setAccentLineStyle({
-                width: targetWidth,
-                transform: [{ translateX: targetTranslateX }],
-            });
-        }
-    }
-
-    if (folderTabsScrollViewRef.current && folderTabLayouts && folderTabs.length > 0 && position < folderTabs.length && windowWidth > 0) {
-        const currentTabLayout = folderTabLayouts[folderTabs[position]?.name];
-        const nextTabLayout = (position + 1 < folderTabs.length) ? folderTabLayouts[folderTabs[position + 1]?.name] : null;
-
-        if (currentTabLayout) {
-            const screenCenter = windowWidth / 2;
-            let targetScrollXForTabs = 0;
-            const currentTabCenter = currentTabLayout.x + currentTabLayout.width / 2;
-
-            if (nextTabLayout && offset > 0) {
-                const nextTabCenter = nextTabLayout.x + nextTabLayout.width / 2;
-                const interpolatedTabCenter = currentTabCenter + (nextTabCenter - currentTabCenter) * offset;
-                targetScrollXForTabs = interpolatedTabCenter - screenCenter;
-            } else {
-                targetScrollXForTabs = currentTabCenter - screenCenter;
-            }
-            
-            targetScrollXForTabs = Math.max(0, targetScrollXForTabs);
-            
-            let totalFolderTabsContentWidth = 0;
-            folderTabs.forEach((ft, idx) => {
-                const layout = folderTabLayouts[ft.name];
-                if (layout) {
-                    totalFolderTabsContentWidth += layout.width;
-                    if (idx < folderTabs.length - 1) {
-                         totalFolderTabsContentWidth += TAB_MARGIN_RIGHT;
-                    }
-                }
-            });
-            totalFolderTabsContentWidth += FOLDER_TABS_CONTAINER_PADDING_HORIZONTAL * 2;
-
-            const maxScrollX = Math.max(0, totalFolderTabsContentWidth - windowWidth);
-            targetScrollXForTabs = Math.min(targetScrollXForTabs, maxScrollX);
-            
-            folderTabsScrollViewRef.current.scrollTo({ x: targetScrollXForTabs, animated: false });
-        }
-    }
-  }, [folderTabs, folderTabLayouts]);
+    pageScrollPosition.value = position;
+    pageScrollOffset.value = offset;
+  }, [pageScrollPosition, pageScrollOffset]);
 
   const handlePageSelected = useCallback((event: PagerViewOnPageSelectedEvent) => {
     const newPageIndex = event.nativeEvent.position;
@@ -364,8 +297,9 @@ export const useTasksScreenLogic = () => {
         setCollapsedFolders({});
       }
     }
-     setPageScrollData({position: newPageIndex, offset: 0});
-  }, [folderTabs, currentContentPage, selectionHook]);
+    pageScrollPosition.value = newPageIndex;
+    pageScrollOffset.value = 0;
+  }, [folderTabs, currentContentPage, selectionHook, pageScrollPosition, pageScrollOffset]);
 
 
   const handleSelectAll = useCallback(() => {
@@ -451,7 +385,7 @@ export const useTasksScreenLogic = () => {
             return true;
          });
     }
-    
+
     updatedTasks = updatedTasks.map(task => {
         if (task.deadlineDetails?.repeatFrequency && selectedTaskInstances.has(task.id) && task.completedInstanceDates) {
             const instancesToDeleteForThisTask = selectedTaskInstances.get(task.id)!;
@@ -531,7 +465,7 @@ export const useTasksScreenLogic = () => {
       selectionHook.clearSelection();
     }
   }, [selectionHook, noFolderName]);
-  
+
   const openRenameModalForSelectedFolder = useCallback(() => {
     if (selectionHook.selectedItems.length === 1 && selectionHook.selectedItems[0].type === 'folder' && selectionHook.selectedItems[0].id !== noFolderName) {
       setRenameTarget(selectionHook.selectedItems[0].id);
@@ -543,19 +477,20 @@ export const useTasksScreenLogic = () => {
   return {
     tasks, folderOrder, loading, activeTab, selectedFolderTabName, sortMode, sortModalVisible,
     collapsedFolders, isReordering, draggingFolder, renameModalVisible, renameTarget,
-    selectionAnim, folderTabLayouts, currentContentPage, pageScrollData, accentLineStyle,
+    selectionAnim, folderTabLayouts, currentContentPage,
+    pageScrollPosition, pageScrollOffset,
     noFolderName, folderTabs,
     pagerRef, folderTabsScrollViewRef,
     isSelecting: selectionHook.isSelecting,
     selectedItems: selectionHook.selectedItems,
     setActiveTab, setSelectedFolderTabName, setSortMode, setSortModalVisible,
     setCollapsedFolders, setIsReordering, setDraggingFolder, setRenameModalVisible, setRenameTarget,
-    setFolderTabLayouts, 
+    setFolderTabLayouts,
     loadTasksAndFolders, saveTasks, saveFolderOrder, toggleTaskDone, toggleFolderCollapse, moveFolderOrder, stopReordering,
     onLongPressSelectItem, cancelSelectionMode,
     getTasksToDisplayForPage,
     handleFolderTabPress, handlePageScroll, handlePageSelected,
-    handleSelectAll, handleDeleteSelected, confirmDelete, 
+    handleSelectAll, handleDeleteSelected, confirmDelete,
     handleRenameFolderSubmit, handleReorderSelectedFolder, openRenameModalForSelectedFolder,
     router, t,
   };
