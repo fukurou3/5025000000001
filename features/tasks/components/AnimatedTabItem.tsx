@@ -1,97 +1,88 @@
 // app/features/tasks/components/AnimatedTabItem.tsx
 import React from 'react';
-import { TouchableOpacity, type TextStyle } from 'react-native';
-import Reanimated, { useAnimatedStyle, interpolateColor } from 'react-native-reanimated';
-import type { TaskScreenStyles } from '@/features/tasks/styles';
-import { TAB_MARGIN_RIGHT } from '../constants';
+import { TouchableOpacity, type LayoutChangeEvent } from 'react-native'; // TextStyle を削除 (直接使わないため)
+import Reanimated, { useAnimatedStyle, interpolateColor, interpolate, Extrapolate } from 'react-native-reanimated';
+// import type { TaskScreenStyles } from '@/features/tasks/styles'; // styles prop を使わないので削除可能
+import { TAB_MARGIN_RIGHT } from '../constants'; // これは元のままでOK
 
 type AnimatedTabItemProps = {
-  styles: TaskScreenStyles;
+  // styles: TaskScreenStyles; // styles prop を削除
   label: string;
   index: number;
-  onPress: () => void;
-  onLayout: (event: any) => void;
+  onPress: (index: number, label: string) => void;
+  onTabLayout: (index: number, event: LayoutChangeEvent) => void;
   pageScrollPosition: Reanimated.SharedValue<number>;
   pageScrollOffset: Reanimated.SharedValue<number>;
-  selectedColorString: string;
-  unselectedColorString: string;
+  selectedTextColor: string; // selectedColorString から変更
+  unselectedTextColor: string; // unselectedColorString から変更
+  selectedFontWeight: 'normal' | 'bold' | '100' | '200' | '300' | '400' | '500' | '600' | '700' | '800' | '900' | undefined; // fontWeight を直接受け取る
+  unselectedFontWeight: 'normal' | 'bold' | '100' | '200' | '300' | '400' | '500' | '600' | '700' | '800' | '900' | undefined; // fontWeight を直接受け取る
+  baseTabTextStyle: any; // styles.folderTabText 相当のスタイルを直接受け取る
+  baseTabButtonStyle: any; // styles.folderTabButton 相当のスタイルを直接受け取る
 };
 
-export const AnimatedTabItem: React.FC<AnimatedTabItemProps> = ({
-  styles,
+export const AnimatedTabItem: React.FC<AnimatedTabItemProps> = React.memo(({
+  // styles, //削除
   label,
   index,
   onPress,
-  onLayout,
+  onTabLayout,
   pageScrollPosition,
   pageScrollOffset,
-  selectedColorString,
-  unselectedColorString,
+  selectedTextColor, //変更
+  unselectedTextColor, //変更
+  selectedFontWeight,
+  unselectedFontWeight,
+  baseTabTextStyle,
+  baseTabButtonStyle,
 }) => {
-  const tabAnimatedTextStyle = useAnimatedStyle(() => {
-    const currentPosition = pageScrollPosition.value;
-    const currentOffset = pageScrollOffset.value;
-    let finalColor: string | number;
+  // const selectedFontWeight = styles.folderTabSelectedText.fontWeight; // props から受け取るように変更
+  // const unselectedFontWeight = styles.folderTabText.fontWeight; // props から受け取るように変更
 
-    if (index === Math.floor(currentPosition)) {
-      finalColor = interpolateColor(currentOffset, [0, 1], [selectedColorString, unselectedColorString]);
-    }
-    else if (index === Math.floor(currentPosition) + 1) {
-      finalColor = interpolateColor(currentOffset, [0, 1], [unselectedColorString, selectedColorString]);
-    }
-    else {
-      finalColor = unselectedColorString;
-    }
+  const handlePress = () => {
+    onPress(index, label);
+  };
 
-    if (currentOffset === 0) {
-      finalColor = (index === Math.round(currentPosition)) ? selectedColorString : unselectedColorString;
-    }
+  const handleLayout = (event: LayoutChangeEvent) => {
+    onTabLayout(index, event);
+  };
 
-    return {
-      color: finalColor as string,
-    };
-  });
+  const animatedTextStyle = useAnimatedStyle(() => {
+    'worklet';
+    const absolutePosition = pageScrollPosition.value + pageScrollOffset.value;
 
-  const animatedFontWeightStyle = useAnimatedStyle(() => {
-    const currentPosition = pageScrollPosition.value;
-    const currentOffset = pageScrollOffset.value;
-    let isActive = false;
-    const activeThreshold = 0.5;
+    const progress = interpolate(
+      absolutePosition,
+      [index - 1, index, index + 1],
+      [0, 1, 0],
+      Extrapolate.CLAMP
+    );
 
-    if (index === Math.floor(currentPosition)) {
-        isActive = currentOffset < activeThreshold;
-    } else if (index === Math.floor(currentPosition) + 1) {
-        isActive = currentOffset >= activeThreshold;
-    }
+    const color = interpolateColor(
+      progress,
+      [0, 1],
+      [unselectedTextColor, selectedTextColor] // props から受け取った色を使用
+    );
 
-    if (currentOffset === 0) {
-        isActive = (index === Math.round(currentPosition));
-    }
+    // fontWeight の扱いをテストコードに合わせて単純化 (progress > 0.5 で判定)
+    const fontWeight = progress > 0.5 ? selectedFontWeight : unselectedFontWeight;
 
     return {
-      fontWeight: isActive
-        ? styles.folderTabSelectedText.fontWeight
-        : styles.folderTabText.fontWeight,
+      color: color as string, // キャストは元のまま
+      fontWeight: fontWeight,
     };
   });
 
   return (
     <TouchableOpacity
-      style={[styles.folderTabButton, { borderBottomWidth: 0, marginRight: TAB_MARGIN_RIGHT }]}
-      onPress={onPress}
-      onLayout={onLayout}
+      style={[baseTabButtonStyle, { borderBottomWidth: 0, marginRight: TAB_MARGIN_RIGHT }]} // props から受け取った基本スタイルを使用
+      onPress={handlePress}
+      onLayout={handleLayout}
       activeOpacity={0.7}
     >
-      <Reanimated.Text
-        style={[
-          styles.folderTabText,
-          tabAnimatedTextStyle,
-          animatedFontWeightStyle,
-        ]}
-        numberOfLines={1}
-      >
+      <Reanimated.Text style={[baseTabTextStyle, animatedTextStyle]}> {/* props から受け取った基本スタイルを使用 */}
         {label}
       </Reanimated.Text>
     </TouchableOpacity>
   );
-};
+});

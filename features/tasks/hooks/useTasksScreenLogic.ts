@@ -36,7 +36,7 @@ export const useTasksScreenLogic = () => {
   const [selectedFolderTabName, setSelectedFolderTabName] = useState<string>('all');
   const [sortMode, setSortMode] = useState<SortMode>('deadline');
   const [sortModalVisible, setSortModalVisible] = useState(false);
-  const [collapsedFolders, setCollapsedFolders] = useState<Record<string, boolean>>({});
+  // const [collapsedFolders, setCollapsedFolders] = useState<Record<string, boolean>>({}); // ← フォルダ開閉機能廃止のため削除
   const [isReordering, setIsReordering] = useState(false);
   const [draggingFolder, setDraggingFolder] = useState<string | null>(null);
   const [renameModalVisible, setRenameModalVisible] = useState(false);
@@ -113,7 +113,7 @@ export const useTasksScreenLogic = () => {
       setCurrentContentPage(initialIndex);
       pageScrollPosition.value = initialIndex;
     }
-  }, [folderTabs, selectedFolderTabName]);
+  }, [folderTabs, selectedFolderTabName]); // currentContentPage, pageScrollPosition.value を依存配列から削除
 
 
   const scrollFolderTabsToCenter = useCallback((pageIndex: number) => {
@@ -139,7 +139,7 @@ export const useTasksScreenLogic = () => {
 
         folderTabsScrollViewRef.current.scrollTo({ x: targetScrollXForTabs, animated: true });
     }
-  }, [folderTabLayouts, folderTabs]);
+  }, [folderTabLayouts, folderTabs]); // windowWidth を依存配列から削除 (定数のため)
 
   useEffect(() => {
     selectionAnim.value = selectionHook.isSelecting ? 0 : SELECTION_BAR_HEIGHT;
@@ -191,9 +191,12 @@ export const useTasksScreenLogic = () => {
     await saveTasksToStorage(newTasks);
   }, [tasks]);
 
+  // toggleFolderCollapse 関数を削除
+  /*
   const toggleFolderCollapse = useCallback((name: string) => {
     setCollapsedFolders(prev => ({ ...prev, [name]: !prev[name] }));
   }, []);
+  */
 
   const moveFolderOrder = useCallback(async (folderName: string, direction: 'up' | 'down') => {
     const idx = folderOrder.indexOf(folderName);
@@ -222,6 +225,7 @@ export const useTasksScreenLogic = () => {
   }, []);
 
   const baseProcessedTasks: DisplayTaskOriginal[] = useMemo(() => {
+    // console.log('Recalculating baseProcessedTasks'); // パフォーマンス確認用ログ
     return tasks.map(task => {
       const displayDateUtc = task.deadlineDetails?.repeatFrequency && task.deadlineDetails.repeatStartDate
         ? calculateNextDisplayInstanceDate(task)
@@ -244,6 +248,7 @@ export const useTasksScreenLogic = () => {
   }, [tasks]);
 
   const getTasksToDisplayForPage = useCallback((pageFolderName: string): DisplayableTaskItem[] => {
+    // console.log('Filtering tasks for page:', pageFolderName, 'Active Tab:', activeTab); // パフォーマンス確認用ログ
     let filteredTasks = baseProcessedTasks;
     if (pageFolderName !== 'all') {
       filteredTasks = filteredTasks.filter(task => (task.folder || noFolderName) === pageFolderName);
@@ -280,7 +285,7 @@ export const useTasksScreenLogic = () => {
     if (pagerRef.current && currentContentPage !== index) {
         pagerRef.current.setPage(index);
     }
-  }, [currentContentPage]);
+  }, [currentContentPage]); // pagerRef.current を依存配列から削除 (refは通常安定)
 
   const handlePageScroll = useCallback((event: PagerViewOnPageScrollEvent) => {
     const { position, offset } = event.nativeEvent;
@@ -296,12 +301,12 @@ export const useTasksScreenLogic = () => {
         setCurrentContentPage(newPageIndex);
         setSelectedFolderTabName(newSelectedFolder);
         selectionHook.clearSelection();
-        setCollapsedFolders({});
+        // setCollapsedFolders({}); // ← フォルダ開閉機能廃止のため削除
       }
       scrollFolderTabsToCenter(newPageIndex);
     }
-    pageScrollPosition.value = newPageIndex;
-    pageScrollOffset.value = 0;
+    pageScrollPosition.value = newPageIndex; // スワイプ完了時は position が確定
+    pageScrollOffset.value = 0; // スワイプ完了時は offset が 0
   }, [folderTabs, currentContentPage, selectionHook, pageScrollPosition, pageScrollOffset, scrollFolderTabsToCenter]);
 
 
@@ -347,7 +352,7 @@ export const useTasksScreenLogic = () => {
                 if (!selectedTaskInstances.has(parts[0])) {
                     selectedTaskInstances.set(parts[0], new Set());
                 }
-                selectedTaskInstances.get(parts[0])!.add(item.id); // Store full keyId for instance
+                selectedTaskInstances.get(parts[0])!.add(item.id);
             }
         }
     });
@@ -355,57 +360,46 @@ export const useTasksScreenLogic = () => {
     if (mode === 'delete_all' && folderBeingDeleted) {
         finalTasks = tasks.filter(task => {
             const taskFolder = task.folder || noFolderName;
-            if (taskFolder === folderBeingDeleted) return false; // Delete all tasks in this folder
-            return !selectedTaskRootIds.has(task.id); // Delete selected tasks outside this folder
+            if (taskFolder === folderBeingDeleted) return false;
+            return !selectedTaskRootIds.has(task.id);
         });
         finalFolderOrder = folderOrder.filter(name => name !== folderBeingDeleted);
     } else if (mode === 'only_folder' && folderBeingDeleted) {
         finalTasks = tasks.map(task => {
             if ((task.folder || noFolderName) === folderBeingDeleted) {
-                return { ...task, folder: undefined }; // Unassign folder
+                return { ...task, folder: undefined };
             }
             return task;
         });
-        // Filter out tasks that were explicitly selected for deletion (even if they were in the folder being unassigned)
         finalTasks = finalTasks.filter(task => {
             if (selectedTaskRootIds.has(task.id)) {
-                 // If it's a repeating task and specific instances were selected, keep the task but update instances later
                 if (task.deadlineDetails?.repeatFrequency && selectedTaskInstances.has(task.id)) {
                     return true;
                 }
-                return false; // Delete non-repeating selected task or root of repeating task if no specific instances selected for deletion
+                return false;
             }
             return true;
         });
         finalFolderOrder = folderOrder.filter(name => name !== folderBeingDeleted);
-    } else { // 'delete_tasks_only' or folder not involved
+    } else {
          finalTasks = tasks.filter(task => {
             if (selectedTaskRootIds.has(task.id)) {
                 if (task.deadlineDetails?.repeatFrequency && selectedTaskInstances.has(task.id) && (selectedTaskInstances.get(task.id)?.size || 0) > 0) {
-                    return true; // Keep repeating task if specific instances are to be deleted, handle instance deletion below
+                    return true;
                 }
-                return false; // Delete non-repeating or entire repeating task
+                return false;
             }
             return true;
          });
     }
 
-    // Handle deletion of specific instances for repeating tasks
     finalTasks = finalTasks.map(task => {
         if (task.deadlineDetails?.repeatFrequency && selectedTaskInstances.has(task.id) && task.completedInstanceDates) {
-            const instancesToDeleteForThisTask = selectedTaskInstances.get(task.id)!; // Set of full keyIds like "taskid-YYYY-MM-DD"
-            // Extract the date part from the keyId for matching with completedInstanceDates
+            const instancesToDeleteForThisTask = selectedTaskInstances.get(task.id)!;
             const datesToDelete = new Set<string>();
             instancesToDeleteForThisTask.forEach(instanceKeyId => {
-                const parts = instanceKeyId.split('-');
-                if (parts.length > 1) { // Ensure it's an instance keyId
-                    // Assuming the date part is the rest of the string after the first hyphen,
-                    // or more robustly, if keyId format is known like "taskid-YYYY-MM-DD"
-                    // For "taskid-YYYY-MM-DD", the date is parts[1]+'-'+parts[2]+'-'+parts[3] if task.id itself contains no hyphens.
-                    // Or if keyId is "task.id-instanceDateString"
-                    const datePart = instanceKeyId.substring(task.id.length + 1);
-                    datesToDelete.add(datePart);
-                }
+                const datePart = instanceKeyId.substring(task.id.length + 1);
+                datesToDelete.add(datePart);
             });
 
             if (datesToDelete.size > 0) {
@@ -438,8 +432,6 @@ export const useTasksScreenLogic = () => {
     const selectedTasksCount = selectionHook.selectedItems.filter(i => i.type === 'task').length;
 
     if (folderToDelete && folderToDelete.id !== noFolderName) {
-        // If a folder is selected, always show folder deletion options
-        // The title can mention if tasks are also selected
         let title = t('task_list.delete_folder_title', { folderName: folderToDelete.id });
         if (selectedTasksCount > 0) {
             title = t('task_list.delete_folder_and_selected_tasks_title', {folderName: folderToDelete.id, count: selectedTasksCount});
@@ -447,7 +439,7 @@ export const useTasksScreenLogic = () => {
 
         Alert.alert(
             title,
-            t('task_list.delete_folder_confirmation'), // Confirmation message might need to be more generic or conditional
+            t('task_list.delete_folder_confirmation'),
             [
                 { text: t('common.cancel'), style: 'cancel' },
                 { text: t('task_list.delete_folder_and_tasks'), onPress: () => confirmDelete('delete_all'), style: 'destructive' },
@@ -455,7 +447,7 @@ export const useTasksScreenLogic = () => {
             ],
             { cancelable: true }
         );
-    } else if (selectedTasksCount > 0) { // Only tasks are selected
+    } else if (selectedTasksCount > 0) {
          Alert.alert(
             t('task_list.delete_tasks_title', {count: selectedTasksCount}),
             t('task_list.delete_tasks_confirmation', {count: selectedTasksCount}),
@@ -496,18 +488,15 @@ export const useTasksScreenLogic = () => {
     setRenameModalVisible(false);
     setRenameTarget(null);
     selectionHook.clearSelection();
-    // If the renamed folder was the currently selected tab, update selectedFolderTabName
-    // and navigate PagerView to the new tab name if it exists and its index changed.
     if (selectedFolderTabName === renameTarget) {
         setSelectedFolderTabName(trimmedNewName);
         const newIndex = folderTabs.findIndex(ft => ft.name === trimmedNewName);
         if (newIndex !== -1 && pagerRef.current) {
-            // setCurrentContentPage(newIndex); // This will be handled by PagerView's onPageSelected or key change
             pagerRef.current.setPage(newIndex);
         }
     }
 
-  }, [tasks, folderOrder, renameTarget, noFolderName, selectionHook, selectedFolderTabName, folderTabs]);
+  }, [tasks, folderOrder, renameTarget, noFolderName, selectionHook, selectedFolderTabName, folderTabs]); // pagerRef.current を依存配列から削除
 
   const handleReorderSelectedFolder = useCallback(() => {
     if (selectionHook.selectedItems.length === 1 && selectionHook.selectedItems[0].type === 'folder' && selectionHook.selectedItems[0].id !== noFolderName) {
@@ -542,7 +531,8 @@ export const useTasksScreenLogic = () => {
 
   return {
     tasks, folderOrder, loading, activeTab, selectedFolderTabName, sortMode, sortModalVisible,
-    collapsedFolders, isReordering, draggingFolder, renameModalVisible, renameTarget,
+    // collapsedFolders, // ← 削除
+    isReordering, draggingFolder, renameModalVisible, renameTarget,
     selectionAnim, folderTabLayouts, currentContentPage,
     pageScrollPosition, pageScrollOffset,
     noFolderName, folderTabs,
@@ -551,9 +541,12 @@ export const useTasksScreenLogic = () => {
     selectedItems: selectionHook.selectedItems,
     isRefreshing,
     setActiveTab, setSelectedFolderTabName, setSortMode, setSortModalVisible,
-    setCollapsedFolders, setIsReordering, setDraggingFolder, setRenameModalVisible, setRenameTarget,
+    // setCollapsedFolders, // ← 削除
+    setIsReordering, setDraggingFolder, setRenameModalVisible, setRenameTarget,
     setFolderTabLayouts,
-    toggleTaskDone, toggleFolderCollapse, moveFolderOrder, stopReordering,
+    toggleTaskDone, 
+    // toggleFolderCollapse, // ← 削除
+    moveFolderOrder, stopReordering,
     onLongPressSelectItem, cancelSelectionMode,
     getTasksToDisplayForPage,
     handleFolderTabPress, handlePageScroll, handlePageSelected,

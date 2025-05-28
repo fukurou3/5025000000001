@@ -9,8 +9,8 @@ module.exports = function (api) {
           '@': './',
         },
       }],
-      'react-native-reanimated/plugin',
       'expo-router/babel',
+      'react-native-reanimated/plugin',
     ],
   };
 };
