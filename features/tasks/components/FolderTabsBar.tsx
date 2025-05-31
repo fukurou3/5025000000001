@@ -41,9 +41,18 @@ export const FolderTabsBar: React.FC<FolderTabsBarProps> = React.memo(({
   useEffect(() => {
     const layoutsReady = folderTabs.length > 0 && Object.keys(folderTabLayouts).length >= folderTabs.length;
     if (layoutsReady) {
-      const newRanges = folderTabs.map((_, i) => i);
-      outputX.value = newRanges.map(i => folderTabLayouts[i]!.x);
-      outputWidth.value = newRanges.map(i => folderTabLayouts[i]!.width);
+      const sortedLayouts = folderTabs
+        .map((_, i) => folderTabLayouts[i])
+        .filter((l): l is FolderTabLayout => !!l)
+        .sort((a, b) => a.index - b.index);
+
+      if (sortedLayouts.length === folderTabs.length) {
+        outputX.value = sortedLayouts.map(l => l.x);
+        outputWidth.value = sortedLayouts.map(l => l.width);
+      }
+    } else if (folderTabs.length === 0) {
+        outputX.value = [];
+        outputWidth.value = [];
     }
   }, [folderTabs, folderTabLayouts, outputX, outputWidth]);
 
@@ -55,12 +64,13 @@ export const FolderTabsBar: React.FC<FolderTabsBarProps> = React.memo(({
   const memoizedOnTabLayout = useCallback((index: number, event: LayoutChangeEvent) => {
     const { x, width } = event.nativeEvent.layout;
     setFolderTabLayouts(prev => {
-      const newLayouts = { ...prev };
-      if (!newLayouts[index] || newLayouts[index].x !== x || newLayouts[index].width !== width) {
-        newLayouts[index] = { x, width, index: index };
-        return { ...newLayouts };
+      if (prev[index]?.x === x && prev[index]?.width === width) {
+        return prev;
       }
-      return prev;
+      return {
+        ...prev,
+        [index]: { x, width, index: index },
+      };
     });
   }, [setFolderTabLayouts]);
 
