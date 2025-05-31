@@ -50,7 +50,9 @@ export const useTasksScreenLogic = () => {
   const pagerRef = useRef<PagerView>(null);
   const folderTabsScrollViewRef = useRef<ScrollView>(null);
   const [folderTabLayouts, setFolderTabLayouts] = useState<Record<number, FolderTabLayout>>({});
-  const [currentContentPage, setCurrentContentPage] = useState(0);
+  
+  // ★ ちらつきの原因となっていた currentContentPage を廃止し、新しい確定状態を導入
+  const [selectedTabIndex, setSelectedTabIndex] = useState(0);
 
   const pageScrollPosition = useSharedValue(0);
 
@@ -127,17 +129,18 @@ export const useTasksScreenLogic = () => {
     }, [i18n.language, isDataInitialized])
   );
 
+  // ★ フォルダタブリストの変更（例：未完了/完了の切替）時に、ページャーの位置を同期させる
   useEffect(() => {
     const targetIndex = folderTabs.findIndex(ft => ft.name === selectedFolderTabName);
     const newIndex = targetIndex !== -1 ? targetIndex : 0;
     
-    if (currentContentPage !== newIndex) {
-        setCurrentContentPage(newIndex);
-        if (pagerRef.current) {
-            pagerRef.current.setPageWithoutAnimation(newIndex);
-        }
+    if (selectedTabIndex !== newIndex) {
+        setSelectedTabIndex(newIndex);
+        // アニメーションなしで即座にページを切り替え
+        pagerRef.current?.setPageWithoutAnimation(newIndex);
+        // アニメーション用の共有値も即座に更新
+        pageScrollPosition.value = newIndex;
     }
-    pageScrollPosition.value = newIndex;
   }, [folderTabs, selectedFolderTabName]);
 
 
@@ -170,10 +173,10 @@ export const useTasksScreenLogic = () => {
     selectionAnim.value = withTiming(selectionHook.isSelecting ? 0 : SELECTION_BAR_HEIGHT, { duration: 250 });
   }, [selectionHook.isSelecting, selectionAnim]);
 
-
+  // ★ 依存配列を新しい確定状態 selectedTabIndex に変更
   useEffect(() => {
-    scrollFolderTabsToCenter(currentContentPage);
-  }, [currentContentPage, folderTabLayouts, scrollFolderTabsToCenter]);
+    scrollFolderTabsToCenter(selectedTabIndex);
+  }, [selectedTabIndex, folderTabLayouts, scrollFolderTabsToCenter]);
 
 
   const saveTasksToStorage = async (tasksToSave: Task[]) => {
@@ -387,32 +390,46 @@ export const useTasksScreenLogic = () => {
     return pagesData;
   }, [baseProcessedTasks, activeTab, sortMode, folderOrder, noFolderName, folderTabs]);
 
+  // ★ タブタップ時の処理を修正
   const handleFolderTabPress = useCallback((_folderName: string, index: number) => {
-    if (pagerRef.current && currentContentPage !== index) {
-        pagerRef.current.setPage(index);
+    if (selectedTabIndex !== index) {
+      // 確定状態を更新
+      setSelectedTabIndex(index);
+      // PagerView をプログラムで操作
+      pagerRef.current?.setPage(index);
+      // アニメーション値を更新して、UIの追従を即座に開始させる（ちらつき防止）
+      pageScrollPosition.value = withTiming(index, { duration: 250 });
     }
-  }, [currentContentPage]);
+  }, [selectedTabIndex, pageScrollPosition]);
 
   const handlePageScroll = useCallback((event: PagerViewOnPageScrollEvent) => {
+    // PagerViewのスクロールに追従してアニメーション値を更新
     pageScrollPosition.value = event.nativeEvent.position + event.nativeEvent.offset;
-  }, []);
+  }, [pageScrollPosition]);
 
+  // ★ ページ切り替え完了時の処理を修正
   const handlePageSelected = useCallback((event: PagerViewOnPageSelectedEvent) => {
     const newPageIndex = event.nativeEvent.position;
+    
+    // 確定状態とUIを同期
+    if (selectedTabIndex !== newPageIndex) {
+      setSelectedTabIndex(newPageIndex);
+    }
+    
+    // 現在のタブを中央にスクロール
     scrollFolderTabsToCenter(newPageIndex);
 
-    if (newPageIndex >= 0 && newPageIndex < folderTabs.length ) {
-      if (currentContentPage !== newPageIndex) {
-        const newSelectedFolder = folderTabs[newPageIndex].name;
-        setCurrentContentPage(newPageIndex);
-        setSelectedFolderTabName(newSelectedFolder);
-        selectionHook.clearSelection();
-      }
+    // フォルダ名などの関連情報を更新
+    if (newPageIndex >= 0 && newPageIndex < folderTabs.length) {
+      const newSelectedFolder = folderTabs[newPageIndex].name;
+      setSelectedFolderTabName(newSelectedFolder);
+      selectionHook.clearSelection();
     }
-  }, [folderTabs, currentContentPage, selectionHook, scrollFolderTabsToCenter]);
+  }, [folderTabs, selectedTabIndex, selectionHook, scrollFolderTabsToCenter]);
 
   const handleSelectAll = useCallback(() => {
-    const activeFolderTabName = folderTabs[currentContentPage]?.name || 'all';
+    // ★ 依存を selectedTabIndex に変更
+    const activeFolderTabName = folderTabs[selectedTabIndex]?.name || 'all';
     const pageData = memoizedPagesData.get(activeFolderTabName);
     if (!pageData) return;
 
@@ -433,7 +450,7 @@ export const useTasksScreenLogic = () => {
     }
 
     selectionHook.setAllItems(itemsToSelect);
-  }, [selectionHook, folderTabs, currentContentPage, memoizedPagesData, noFolderName]);
+  }, [selectionHook, folderTabs, selectedTabIndex, memoizedPagesData, noFolderName]);
 
   const confirmDelete = useCallback(async (mode: 'delete_all' | 'only_folder' | 'delete_tasks_only') => {
     let finalTasks = [...tasks];
@@ -626,7 +643,7 @@ export const useTasksScreenLogic = () => {
   return {
     tasks, folderOrder, loading, activeTab, selectedFolderTabName, sortMode, sortModalVisible,
     isReordering, draggingFolder, renameModalVisible, renameTarget,
-    selectionAnim, folderTabLayouts, currentContentPage,
+    selectionAnim, folderTabLayouts, selectedTabIndex, // ★ currentContentPage の代わりに selectedTabIndex を返す
     pageScrollPosition,
     noFolderName, folderTabs,
     pagerRef, folderTabsScrollViewRef,

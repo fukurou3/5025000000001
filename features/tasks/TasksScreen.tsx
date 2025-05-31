@@ -34,7 +34,7 @@ export default function TasksScreen() {
     loading, activeTab, sortMode, sortModalVisible,
     isReordering,
     selectionAnim,
-    folderTabLayouts, currentContentPage,
+    folderTabLayouts, selectedTabIndex, // ★ currentContentPage の代わりに selectedTabIndex を使用
     pageScrollPosition,
     noFolderName, folderTabs,
     pagerRef, folderTabsScrollViewRef,
@@ -112,7 +112,7 @@ export default function TasksScreen() {
           styles={styles}
           pagerRef={pagerRef}
           folderTabs={folderTabs}
-          currentContentPage={currentContentPage}
+          selectedTabIndex={selectedTabIndex} // ★ プロパティ名を変更
           handlePageSelected={handlePageSelected}
           handlePageScroll={handlePageScroll}
           activeTab={activeTab}

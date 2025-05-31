@@ -12,7 +12,7 @@ type TaskViewPagerProps = {
   styles: TaskScreenStyles;
   pagerRef: React.RefObject<PagerView>;
   folderTabs: FolderTab[];
-  currentContentPage: number;
+  selectedTabIndex: number; // ★ プロパティ名を変更
   handlePageSelected: (event: PagerViewOnPageSelectedEvent) => void;
   handlePageScroll: (event: PagerViewOnPageScrollEvent) => void;
   activeTab: ActiveTab;
@@ -36,7 +36,7 @@ export const TaskViewPager: React.FC<TaskViewPagerProps> = ({
   styles,
   pagerRef,
   folderTabs,
-  currentContentPage,
+  selectedTabIndex, // ★ プロパティ名を変更
   handlePageSelected,
   handlePageScroll,
   activeTab,
@@ -98,7 +98,7 @@ export const TaskViewPager: React.FC<TaskViewPagerProps> = ({
     <PagerView
       ref={pagerRef}
       style={{ flex: 1 }}
-      initialPage={currentContentPage}
+      initialPage={selectedTabIndex} // ★ プロパティ名を変更
       onPageSelected={handlePageSelected}
       onPageScroll={handlePageScroll}
       key={folderTabs.map(f => f.name).join('-')}
