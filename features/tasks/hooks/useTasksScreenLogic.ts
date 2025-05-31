@@ -36,7 +36,6 @@ export const useTasksScreenLogic = () => {
   const [selectedFolderTabName, setSelectedFolderTabName] = useState<string>('all');
   const [sortMode, setSortMode] = useState<SortMode>('deadline');
   const [sortModalVisible, setSortModalVisible] = useState(false);
-  // const [collapsedFolders, setCollapsedFolders] = useState<Record<string, boolean>>({}); // ← フォルダ開閉機能廃止のため削除
   const [isReordering, setIsReordering] = useState(false);
   const [draggingFolder, setDraggingFolder] = useState<string | null>(null);
   const [renameModalVisible, setRenameModalVisible] = useState(false);
@@ -74,37 +73,36 @@ export const useTasksScreenLogic = () => {
     return tabsArr;
   }, [tasks, folderOrder, noFolderName, t]);
 
-  useEffect(() => {
-    const initializeData = async () => {
-      try {
-        const rawTasksData = await AsyncStorage.getItem(STORAGE_KEY);
-        setTasks(rawTasksData ? JSON.parse(rawTasksData) : []);
-
-        const rawOrderData = await AsyncStorage.getItem(FOLDER_ORDER_KEY);
-        setFolderOrder(rawOrderData ? JSON.parse(rawOrderData) : []);
-
-        setIsDataInitialized(true);
-      } catch (e) {
-        console.error('Failed to initialize data from AsyncStorage:', e);
-        setTasks([]);
-        setFolderOrder([]);
-        setIsDataInitialized(true);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (!isDataInitialized) {
-      initializeData();
-    }
-  }, [isDataInitialized]);
-
   useFocusEffect(
     useCallback(() => {
       const langForDayjs = i18n.language.split('-')[0];
       if (dayjs.Ls[langForDayjs]) { dayjs.locale(langForDayjs); } else { dayjs.locale('en'); }
-      return () => { /* cleanup if needed */ };
-    }, [i18n.language])
+
+      const loadData = async () => {
+        if (!isDataInitialized) {
+          setLoading(true);
+        }
+        try {
+          const [rawTasksData, rawOrderData] = await Promise.all([
+            AsyncStorage.getItem(STORAGE_KEY),
+            AsyncStorage.getItem(FOLDER_ORDER_KEY),
+          ]);
+          setTasks(rawTasksData ? JSON.parse(rawTasksData) : []);
+          setFolderOrder(rawOrderData ? JSON.parse(rawOrderData) : []);
+        } catch (e) {
+          console.error('Failed to load data from storage on focus:', e);
+          setTasks([]);
+          setFolderOrder([]);
+        } finally {
+          if (!isDataInitialized) {
+            setLoading(false);
+            setIsDataInitialized(true);
+          }
+        }
+      };
+
+      loadData();
+    }, [i18n.language, isDataInitialized])
   );
 
   useEffect(() => {
@@ -113,7 +111,7 @@ export const useTasksScreenLogic = () => {
       setCurrentContentPage(initialIndex);
       pageScrollPosition.value = initialIndex;
     }
-  }, [folderTabs, selectedFolderTabName]); // currentContentPage, pageScrollPosition.value を依存配列から削除
+  }, [folderTabs, selectedFolderTabName]);
 
 
   const scrollFolderTabsToCenter = useCallback((pageIndex: number) => {
@@ -139,7 +137,7 @@ export const useTasksScreenLogic = () => {
 
         folderTabsScrollViewRef.current.scrollTo({ x: targetScrollXForTabs, animated: true });
     }
-  }, [folderTabLayouts, folderTabs]); // windowWidth を依存配列から削除 (定数のため)
+  }, [folderTabLayouts, folderTabs]);
 
   useEffect(() => {
     selectionAnim.value = selectionHook.isSelecting ? 0 : SELECTION_BAR_HEIGHT;
@@ -191,13 +189,6 @@ export const useTasksScreenLogic = () => {
     await saveTasksToStorage(newTasks);
   }, [tasks]);
 
-  // toggleFolderCollapse 関数を削除
-  /*
-  const toggleFolderCollapse = useCallback((name: string) => {
-    setCollapsedFolders(prev => ({ ...prev, [name]: !prev[name] }));
-  }, []);
-  */
-
   const moveFolderOrder = useCallback(async (folderName: string, direction: 'up' | 'down') => {
     const idx = folderOrder.indexOf(folderName);
     if (idx < 0) return;
@@ -225,7 +216,6 @@ export const useTasksScreenLogic = () => {
   }, []);
 
   const baseProcessedTasks: DisplayTaskOriginal[] = useMemo(() => {
-    // console.log('Recalculating baseProcessedTasks'); // パフォーマンス確認用ログ
     return tasks.map(task => {
       const displayDateUtc = task.deadlineDetails?.repeatFrequency && task.deadlineDetails.repeatStartDate
         ? calculateNextDisplayInstanceDate(task)
@@ -248,7 +238,6 @@ export const useTasksScreenLogic = () => {
   }, [tasks]);
 
   const getTasksToDisplayForPage = useCallback((pageFolderName: string): DisplayableTaskItem[] => {
-    // console.log('Filtering tasks for page:', pageFolderName, 'Active Tab:', activeTab); // パフォーマンス確認用ログ
     let filteredTasks = baseProcessedTasks;
     if (pageFolderName !== 'all') {
       filteredTasks = filteredTasks.filter(task => (task.folder || noFolderName) === pageFolderName);
@@ -285,7 +274,7 @@ export const useTasksScreenLogic = () => {
     if (pagerRef.current && currentContentPage !== index) {
         pagerRef.current.setPage(index);
     }
-  }, [currentContentPage]); // pagerRef.current を依存配列から削除 (refは通常安定)
+  }, [currentContentPage]);
 
   const handlePageScroll = useCallback((event: PagerViewOnPageScrollEvent) => {
     const { position, offset } = event.nativeEvent;
@@ -301,12 +290,11 @@ export const useTasksScreenLogic = () => {
         setCurrentContentPage(newPageIndex);
         setSelectedFolderTabName(newSelectedFolder);
         selectionHook.clearSelection();
-        // setCollapsedFolders({}); // ← フォルダ開閉機能廃止のため削除
       }
       scrollFolderTabsToCenter(newPageIndex);
     }
-    pageScrollPosition.value = newPageIndex; // スワイプ完了時は position が確定
-    pageScrollOffset.value = 0; // スワイプ完了時は offset が 0
+    pageScrollPosition.value = newPageIndex;
+    pageScrollOffset.value = 0;
   }, [folderTabs, currentContentPage, selectionHook, pageScrollPosition, pageScrollOffset, scrollFolderTabsToCenter]);
 
 
@@ -496,7 +484,7 @@ export const useTasksScreenLogic = () => {
         }
     }
 
-  }, [tasks, folderOrder, renameTarget, noFolderName, selectionHook, selectedFolderTabName, folderTabs]); // pagerRef.current を依存配列から削除
+  }, [tasks, folderOrder, renameTarget, noFolderName, selectionHook, selectedFolderTabName, folderTabs]);
 
   const handleReorderSelectedFolder = useCallback(() => {
     if (selectionHook.selectedItems.length === 1 && selectionHook.selectedItems[0].type === 'folder' && selectionHook.selectedItems[0].id !== noFolderName) {
@@ -531,7 +519,6 @@ export const useTasksScreenLogic = () => {
 
   return {
     tasks, folderOrder, loading, activeTab, selectedFolderTabName, sortMode, sortModalVisible,
-    // collapsedFolders, // ← 削除
     isReordering, draggingFolder, renameModalVisible, renameTarget,
     selectionAnim, folderTabLayouts, currentContentPage,
     pageScrollPosition, pageScrollOffset,
@@ -541,11 +528,9 @@ export const useTasksScreenLogic = () => {
     selectedItems: selectionHook.selectedItems,
     isRefreshing,
     setActiveTab, setSelectedFolderTabName, setSortMode, setSortModalVisible,
-    // setCollapsedFolders, // ← 削除
     setIsReordering, setDraggingFolder, setRenameModalVisible, setRenameTarget,
     setFolderTabLayouts,
-    toggleTaskDone, 
-    // toggleFolderCollapse, // ← 削除
+    toggleTaskDone,
     moveFolderOrder, stopReordering,
     onLongPressSelectItem, cancelSelectionMode,
     getTasksToDisplayForPage,

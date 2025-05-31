@@ -1,10 +1,10 @@
 // app/features/tasks/components/TaskViewPager.tsx
 import React from 'react';
-import { View, Text, ScrollView, Dimensions, RefreshControl } from 'react-native'; // ScrollView は内部では使用しないが、型定義のために残す場合がある
+import { View, Text, ScrollView, Dimensions, RefreshControl } from 'react-native';
 import PagerView, { type PagerViewOnPageScrollEvent, type PagerViewOnPageSelectedEvent } from 'react-native-pager-view';
 import type { TaskScreenStyles } from '@/features/tasks/styles';
 import type { DisplayableTaskItem, SelectableItem } from '@/features/tasks/types';
-import { TaskFolder, type Props as TaskFolderProps } from '@/features/tasks/components/TaskFolder'; // TaskFolder の Props 型もインポート
+import { TaskFolder, type Props as TaskFolderProps } from '@/features/tasks/components/TaskFolder';
 import type { SortMode, ActiveTab, FolderTab } from '@/features/tasks/hooks/useTasksScreenLogic';
 import { SELECTION_BAR_HEIGHT } from '@/features/tasks/constants';
 import dayjs from 'dayjs';
@@ -19,10 +19,8 @@ type TaskViewPagerProps = {
   getTasksToDisplayForPage: (pageFolderName: string) => DisplayableTaskItem[];
   activeTab: ActiveTab;
   sortMode: SortMode;
-  // collapsedFolders: Record<string, boolean>; // ← フォルダ開閉機能廃止のため削除
-  // toggleFolderCollapse: (name: string) => void; // ← フォルダ開閉機能廃止のため削除
   toggleTaskDone: (id: string, instanceDate?: string) => void;
-  onRefreshTasks: () => void; 
+  onRefreshTasks: () => void;
   isReordering: boolean;
   draggingFolder: string | null;
   setDraggingFolder: (name: string | null) => void;
@@ -50,10 +48,8 @@ export const TaskViewPager: React.FC<TaskViewPagerProps> = ({
   getTasksToDisplayForPage,
   activeTab,
   sortMode,
-  // collapsedFolders, // ← 削除
-  // toggleFolderCollapse, // ← 削除
   toggleTaskDone,
-  onRefreshTasks, 
+  onRefreshTasks,
   isReordering,
   draggingFolder,
   setDraggingFolder,
@@ -90,8 +86,6 @@ export const TaskViewPager: React.FC<TaskViewPagerProps> = ({
         foldersToRenderOnThisPage = [pageFolderName];
     }
 
-    // ScrollView を削除し、直接 View でラップ。paddingTop は View に移動。
-    // RefreshControl は各 TaskFolder 内の FlatList に移すか、ページ全体を単一の FlatList/SectionList にする必要があるため、ここでは一旦削除。
     return (
       <View key={`page-${pageFolderName}-${pageIndex}`} style={{ width: windowWidth, flex: 1, paddingTop: 8, paddingBottom: isSelecting ? SELECTION_BAR_HEIGHT + 20 : 100 }}>
           {foldersToRenderOnThisPage.map(folderName => {
@@ -106,35 +100,33 @@ export const TaskViewPager: React.FC<TaskViewPagerProps> = ({
                   const today = dayjs.utc().startOf('day');
                   const getCategory = (task: DisplayableTaskItem): number => {
                     const date = task.displaySortDate;
-                    if (!date) return 3; // 期限なしは最後
-                    if (date.isBefore(today, 'day')) return 0; // 期限切れは最優先
-                    if (date.isSame(today, 'day')) return 1; // 今日が期限
-                    return 2; // 未来の期限
+                    if (!date) return 3;
+                    if (date.isBefore(today, 'day')) return 0;
+                    if (date.isSame(today, 'day')) return 1;
+                    return 2;
                   };
                   const categoryA = getCategory(a);
                   const categoryB = getCategory(b);
                   if (categoryA !== categoryB) return categoryA - categoryB;
                   
-                  // 同じカテゴリ内でのソート
-                  if (categoryA === 3) return a.title.localeCompare(b.title); // 期限なしはタイトル順
+                  if (categoryA === 3) return a.title.localeCompare(b.title);
                   
                   const dateAVal = a.displaySortDate!;
                   const dateBVal = b.displaySortDate!;
 
-                  if (dateAVal.isSame(dateBVal, 'day')) { // 同じ日の場合
+                  if (dateAVal.isSame(dateBVal, 'day')) {
                       const timeEnabledA = a.deadlineDetails?.isTaskDeadlineTimeEnabled === true && !a.deadlineDetails?.repeatFrequency;
                       const timeEnabledB = b.deadlineDetails?.isTaskDeadlineTimeEnabled === true && !b.deadlineDetails?.repeatFrequency;
-                      if (timeEnabledA && !timeEnabledB) return -1; // 時間指定ありが先
-                      if (!timeEnabledA && timeEnabledB) return 1; // 時間指定なしが後
+                      if (timeEnabledA && !timeEnabledB) return -1;
+                      if (!timeEnabledA && timeEnabledB) return 1;
                   }
-                  return dateAVal.unix() - dateBVal.unix(); // 日付順
-                } else if (activeTab === 'completed') { // 完了タブ
-                    const dateA = a.displaySortDate || dayjs.utc(0); // displaySortDate (完了日) で降順
+                  return dateAVal.unix() - dateBVal.unix();
+                } else if (activeTab === 'completed') {
+                    const dateA = a.displaySortDate || dayjs.utc(0);
                     const dateB = b.displaySortDate || dayjs.utc(0);
                     return dateB.unix() - dateA.unix();
                 }
 
-                // カスタムソートと優先度ソートのロジック
                 if (sortMode === 'custom' && activeTab === 'incomplete') {
                     const orderA = a.customOrder ?? Infinity;
                     const orderB = b.customOrder ?? Infinity;
@@ -145,19 +137,16 @@ export const TaskViewPager: React.FC<TaskViewPagerProps> = ({
                     }
                 }
                 if (sortMode === 'priority' && activeTab === 'incomplete') {
-                    const priorityA = a.priority ?? -1; // 優先度が高い (数値が大きい) 方が先
+                    const priorityA = a.priority ?? -1;
                     const priorityB = b.priority ?? -1;
                     if (priorityA !== priorityB) return priorityB - priorityA;
                 }
-                return a.title.localeCompare(b.title); // デフォルトはタイトル順
+                return a.title.localeCompare(b.title);
             });
 
-            // TaskFolder に渡す Props から isCollapsed と toggleFolder を削除
-            const taskFolderProps: Omit<TaskFolderProps, 'isCollapsed' | 'toggleFolder' | 'onRefreshTasks'> = { // onRefreshTasks も TaskFolder の Props から削除されていれば
+            const taskFolderProps: Omit<TaskFolderProps, 'isCollapsed' | 'toggleFolder' | 'onRefreshTasks'> = {
               folderName,
               tasks: sortedFolderTasks,
-              // isCollapsed は渡さない
-              // toggleFolder は渡さない
               onToggleTaskDone: toggleTaskDone,
               isReordering: isReordering && draggingFolder === folderName && folderName !== noFolderName && pageFolderName === 'all',
               setDraggingFolder,
@@ -169,7 +158,6 @@ export const TaskViewPager: React.FC<TaskViewPagerProps> = ({
               onLongPressSelect: onLongPressSelectItem,
               currentTab: activeTab,
             };
-            // @ts-ignore TypeScript が isCollapsed, toggleFolder の不足を検知するかもしれないが、TaskFolder側で削除済みなら問題ない
             return <TaskFolder key={`${pageFolderName}-${folderName}-${pageIndex}`} {...taskFolderProps} />;
           })}
           {tasksForPage.length === 0 && (
@@ -190,7 +178,7 @@ export const TaskViewPager: React.FC<TaskViewPagerProps> = ({
       initialPage={currentContentPage}
       onPageScroll={handlePageScroll}
       onPageSelected={handlePageSelected}
-      key={folderTabs.map(f => f.name).join('-')} // キーはタブ構成が変わったときに再マウントするため
+      key={folderTabs.map(f => f.name).join('-')}
     >
       {folderTabs.map((folder, index) => renderPageContent(folder.name, index))}
     </PagerView>

@@ -48,13 +48,13 @@ export default function TasksScreen() {
     handleRenameFolderSubmit, handleReorderSelectedFolder, openRenameModalForSelectedFolder,
     cancelSelectionMode,
     router, t,
-    collapsedFolders, toggleFolderCollapse, toggleTaskDone,
+    toggleTaskDone,
     draggingFolder, setDraggingFolder, moveFolderOrder, stopReordering,
     onLongPressSelectItem, folderOrder,
     renameModalVisible, renameTarget, setRenameModalVisible, setRenameTarget,
     tasks,
-    isRefreshing, // New
-    handleRefresh, // New
+    isRefreshing,
+    handleRefresh,
   } = logic;
 
   const animatedSelectionBarStyle = useAnimatedStyle(() => {
@@ -75,7 +75,6 @@ export default function TasksScreen() {
 
       <FolderTabsBar
         styles={styles}
-        isDark={isDark}
         subColor={subColor}
         folderTabs={folderTabs}
         folderTabLayouts={folderTabLayouts}
@@ -84,7 +83,6 @@ export default function TasksScreen() {
         pageScrollPosition={pageScrollPosition}
         pageScrollOffset={pageScrollOffset}
         folderTabsScrollViewRef={folderTabsScrollViewRef}
-        currentContentPage={currentContentPage}
       />
 
       <View style={styles.topRow}>
@@ -131,10 +129,8 @@ export default function TasksScreen() {
           getTasksToDisplayForPage={getTasksToDisplayForPage}
           activeTab={activeTab}
           sortMode={sortMode}
-          collapsedFolders={collapsedFolders}
-          toggleFolderCollapse={toggleFolderCollapse}
           toggleTaskDone={toggleTaskDone}
-          onRefreshTasks={handleRefresh} // Pass handleRefresh as onRefreshTasks
+          onRefreshTasks={handleRefresh}
           isReordering={isReordering}
           draggingFolder={draggingFolder}
           setDraggingFolder={setDraggingFolder}
@@ -147,7 +143,7 @@ export default function TasksScreen() {
           folderOrder={folderOrder}
           t={t}
           baseTasksCount={tasks.length}
-          isRefreshing={isRefreshing} // Pass isRefreshing
+          isRefreshing={isRefreshing}
         />
       )}
 
