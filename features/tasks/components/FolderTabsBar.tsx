@@ -1,7 +1,7 @@
 // app/features/tasks/components/FolderTabsBar.tsx
 import React, { useCallback, useEffect } from 'react';
 import { ScrollView, View, Platform, type LayoutChangeEvent } from 'react-native';
-import Reanimated, { useAnimatedStyle, useSharedValue, interpolate, Extrapolate } from 'react-native-reanimated';
+import Reanimated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import type { TaskScreenStyles } from '@/features/tasks/styles';
 import type { FolderTab, FolderTabLayout } from '@/features/tasks/hooks/useTasksScreenLogic';
 import { ACCENT_LINE_HEIGHT, FOLDER_TABS_CONTAINER_PADDING_HORIZONTAL } from '@/features/tasks/constants';
@@ -35,7 +35,6 @@ export const FolderTabsBar: React.FC<FolderTabsBarProps> = React.memo(({
   const baseTabTextStyle = styles.folderTabText;
   const baseTabButtonStyle = styles.folderTabButton;
 
-  const inputRange = useSharedValue<number[]>([]);
   const outputX = useSharedValue<number[]>([]);
   const outputWidth = useSharedValue<number[]>([]);
 
@@ -43,11 +42,10 @@ export const FolderTabsBar: React.FC<FolderTabsBarProps> = React.memo(({
     const layoutsReady = folderTabs.length > 0 && Object.keys(folderTabLayouts).length >= folderTabs.length;
     if (layoutsReady) {
       const newRanges = folderTabs.map((_, i) => i);
-      inputRange.value = newRanges;
       outputX.value = newRanges.map(i => folderTabLayouts[i]!.x);
       outputWidth.value = newRanges.map(i => folderTabLayouts[i]!.width);
     }
-  }, [folderTabs, folderTabLayouts, inputRange, outputX, outputWidth]);
+  }, [folderTabs, folderTabLayouts, outputX, outputWidth]);
 
   const memoizedOnItemPress = useCallback((index: number, label: string) => {
     const folderName = folderTabs[index]?.name || label;
@@ -68,36 +66,35 @@ export const FolderTabsBar: React.FC<FolderTabsBarProps> = React.memo(({
 
   const animatedAccentLineStyle = useAnimatedStyle(() => {
     'worklet';
-    if (inputRange.value.length === 0 || outputX.value.length === 0 || outputWidth.value.length === 0) {
+    if (outputX.value.length === 0 || outputWidth.value.length === 0) {
       return {
         width: 0,
         transform: [{ translateX: FOLDER_TABS_CONTAINER_PADDING_HORIZONTAL }],
       };
     }
-    
-    if (inputRange.value.length === 1) {
-        return {
-          width: outputWidth.value[0],
-          transform: [{ translateX: outputX.value[0] }],
-        };
+
+    const position = pageScrollPosition.value;
+    const threshold = 0.01;
+    const roundedPosition = Math.round(position);
+    const diff = position - roundedPosition;
+
+    let activeIndex;
+    if (diff > threshold) {
+      activeIndex = Math.ceil(position);
+    } else if (diff < -threshold) {
+      activeIndex = Math.floor(position);
+    } else {
+      activeIndex = roundedPosition;
     }
 
-    const width = interpolate(
-      pageScrollPosition.value,
-      inputRange.value,
-      outputWidth.value,
-      Extrapolate.CLAMP
-    );
-    const translateX = interpolate(
-      pageScrollPosition.value,
-      inputRange.value,
-      outputX.value,
-      Extrapolate.CLAMP
-    );
+    const clampedIndex = Math.max(0, Math.min(activeIndex, outputX.value.length - 1));
+
+    const newWidth = outputWidth.value[clampedIndex] ?? 0;
+    const newTranslateX = outputX.value[clampedIndex] ?? 0;
 
     return {
-      width: width,
-      transform: [{ translateX: translateX }],
+      width: withTiming(newWidth, { duration: 250 }),
+      transform: [{ translateX: withTiming(newTranslateX, { duration: 250 }) }],
     };
   });
 

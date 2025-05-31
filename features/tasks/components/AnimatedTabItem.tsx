@@ -1,7 +1,7 @@
 // app/features/tasks/components/AnimatedTabItem.tsx
 import React from 'react';
 import { TouchableOpacity, type LayoutChangeEvent } from 'react-native';
-import Reanimated, { useAnimatedStyle, interpolateColor, interpolate, Extrapolate } from 'react-native-reanimated';
+import Reanimated, { useAnimatedStyle, useDerivedValue, withTiming, interpolateColor } from 'react-native-reanimated';
 import { TAB_MARGIN_RIGHT } from '../constants';
 
 type AnimatedTabItemProps = {
@@ -40,22 +40,35 @@ export const AnimatedTabItem: React.FC<AnimatedTabItemProps> = React.memo(({
     onTabLayout(index, event);
   };
 
+  const activeIndex = useDerivedValue(() => {
+    'worklet';
+    const position = pageScrollPosition.value;
+    const threshold = 0.01;
+    const roundedPosition = Math.round(position);
+    const diff = position - roundedPosition;
+
+    if (diff > threshold) {
+      return Math.ceil(position);
+    } else if (diff < -threshold) {
+      return Math.floor(position);
+    }
+    return roundedPosition;
+  });
+
+  const progress = useDerivedValue(() => {
+    'worklet';
+    return withTiming(activeIndex.value === index ? 1 : 0, { duration: 200 });
+  });
+
   const animatedTextStyle = useAnimatedStyle(() => {
     'worklet';
-    const progress = interpolate(
-      pageScrollPosition.value,
-      [index - 1, index, index + 1],
-      [0, 1, 0],
-      Extrapolate.CLAMP
-    );
-
     const color = interpolateColor(
-      progress,
+      progress.value,
       [0, 1],
       [unselectedTextColor, selectedTextColor]
     );
 
-    const fontWeight = progress > 0.5 ? selectedFontWeight : unselectedFontWeight;
+    const fontWeight = activeIndex.value === index ? selectedFontWeight : unselectedFontWeight;
 
     return {
       color: color as string,

@@ -42,7 +42,7 @@ export default function TasksScreen() {
     setActiveTab, setSortMode, setSortModalVisible,
     setFolderTabLayouts,
     memoizedPagesData,
-    handleFolderTabPress, handlePageSelected,
+    handleFolderTabPress, handlePageSelected, handlePageScroll,
     handleSelectAll, handleDeleteSelected,
     handleRenameFolderSubmit, handleReorderSelectedFolder, openRenameModalForSelectedFolder,
     cancelSelectionMode,
@@ -114,6 +114,7 @@ export default function TasksScreen() {
           folderTabs={folderTabs}
           currentContentPage={currentContentPage}
           handlePageSelected={handlePageSelected}
+          handlePageScroll={handlePageScroll}
           activeTab={activeTab}
           toggleTaskDone={toggleTaskDone}
           isReordering={isReordering}

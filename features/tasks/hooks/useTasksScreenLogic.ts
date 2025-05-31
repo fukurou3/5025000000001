@@ -5,7 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import dayjs from 'dayjs';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import PagerView, { type PagerViewOnPageSelectedEvent } from 'react-native-pager-view';
+import PagerView, { type PagerViewOnPageSelectedEvent, type PagerViewOnPageScrollEvent } from 'react-native-pager-view';
 import { useSharedValue, withTiming } from 'react-native-reanimated';
 
 import type { Task, FolderOrder, SelectableItem, DisplayTaskOriginal, DisplayableTaskItem } from '@/features/tasks/types';
@@ -134,7 +134,7 @@ export const useTasksScreenLogic = () => {
     if (currentContentPage !== newIndex) {
         setCurrentContentPage(newIndex);
         if (pagerRef.current) {
-            pagerRef.current.setPage(newIndex);
+            pagerRef.current.setPageWithoutAnimation(newIndex);
         }
     }
     pageScrollPosition.value = newIndex;
@@ -393,8 +393,14 @@ export const useTasksScreenLogic = () => {
     }
   }, [currentContentPage]);
 
+  const handlePageScroll = useCallback((event: PagerViewOnPageScrollEvent) => {
+    pageScrollPosition.value = event.nativeEvent.position + event.nativeEvent.offset;
+  }, []);
+
   const handlePageSelected = useCallback((event: PagerViewOnPageSelectedEvent) => {
     const newPageIndex = event.nativeEvent.position;
+    scrollFolderTabsToCenter(newPageIndex);
+
     if (newPageIndex >= 0 && newPageIndex < folderTabs.length ) {
       if (currentContentPage !== newPageIndex) {
         const newSelectedFolder = folderTabs[newPageIndex].name;
@@ -402,10 +408,8 @@ export const useTasksScreenLogic = () => {
         setSelectedFolderTabName(newSelectedFolder);
         selectionHook.clearSelection();
       }
-      scrollFolderTabsToCenter(newPageIndex);
-      pageScrollPosition.value = withTiming(newPageIndex, { duration: 250 });
     }
-  }, [folderTabs, currentContentPage, selectionHook, pageScrollPosition, scrollFolderTabsToCenter]);
+  }, [folderTabs, currentContentPage, selectionHook, scrollFolderTabsToCenter]);
 
   const handleSelectAll = useCallback(() => {
     const activeFolderTabName = folderTabs[currentContentPage]?.name || 'all';
@@ -636,7 +640,7 @@ export const useTasksScreenLogic = () => {
     toggleTaskDone,
     moveFolderOrder, stopReordering,
     onLongPressSelectItem, cancelSelectionMode,
-    handleFolderTabPress, handlePageSelected,
+    handleFolderTabPress, handlePageSelected, handlePageScroll,
     handleSelectAll, handleDeleteSelected, confirmDelete,
 
     handleRenameFolderSubmit, handleReorderSelectedFolder, openRenameModalForSelectedFolder,

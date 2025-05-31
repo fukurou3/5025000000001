@@ -1,7 +1,7 @@
 // app/features/tasks/components/TaskViewPager.tsx
 import React from 'react';
 import { View, Text, Dimensions } from 'react-native';
-import PagerView, { type PagerViewOnPageSelectedEvent } from 'react-native-pager-view';
+import PagerView, { type PagerViewOnPageSelectedEvent, type PagerViewOnPageScrollEvent } from 'react-native-pager-view';
 import type { TaskScreenStyles } from '@/features/tasks/styles';
 import type { DisplayableTaskItem, SelectableItem } from '@/features/tasks/types';
 import { TaskFolder, type Props as TaskFolderProps } from '@/features/tasks/components/TaskFolder';
@@ -14,6 +14,7 @@ type TaskViewPagerProps = {
   folderTabs: FolderTab[];
   currentContentPage: number;
   handlePageSelected: (event: PagerViewOnPageSelectedEvent) => void;
+  handlePageScroll: (event: PagerViewOnPageScrollEvent) => void;
   activeTab: ActiveTab;
   toggleTaskDone: (id: string, instanceDate?: string) => void;
   isReordering: boolean;
@@ -37,6 +38,7 @@ export const TaskViewPager: React.FC<TaskViewPagerProps> = ({
   folderTabs,
   currentContentPage,
   handlePageSelected,
+  handlePageScroll,
   activeTab,
   toggleTaskDone,
   isReordering,
@@ -98,6 +100,7 @@ export const TaskViewPager: React.FC<TaskViewPagerProps> = ({
       style={{ flex: 1 }}
       initialPage={currentContentPage}
       onPageSelected={handlePageSelected}
+      onPageScroll={handlePageScroll}
       key={folderTabs.map(f => f.name).join('-')}
       offscreenPageLimit={1}
     >
