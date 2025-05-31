@@ -15,7 +15,6 @@ type FolderTabsBarProps = {
   setFolderTabLayouts: (updater: (prev: Record<number, FolderTabLayout>) => Record<number, FolderTabLayout>) => void;
   handleFolderTabPress: (folderName: string, index: number) => void;
   pageScrollPosition: Reanimated.SharedValue<number>;
-  pageScrollOffset: Reanimated.SharedValue<number>;
   folderTabsScrollViewRef: React.RefObject<ScrollView>;
 };
 
@@ -27,7 +26,6 @@ export const FolderTabsBar: React.FC<FolderTabsBarProps> = React.memo(({
   setFolderTabLayouts,
   handleFolderTabPress,
   pageScrollPosition,
-  pageScrollOffset,
   folderTabsScrollViewRef,
 }) => {
   const selectedTextColor = styles.folderTabSelectedText.color as string;
@@ -68,16 +66,12 @@ export const FolderTabsBar: React.FC<FolderTabsBarProps> = React.memo(({
     });
   }, [setFolderTabLayouts]);
 
-
   const animatedAccentLineStyle = useAnimatedStyle(() => {
     'worklet';
-    const absoluteScrollPosition = pageScrollPosition.value + pageScrollOffset.value;
-
     if (inputRange.value.length === 0 || outputX.value.length === 0 || outputWidth.value.length === 0) {
-      const firstTabLayout = folderTabLayouts[0];
       return {
-        width: firstTabLayout?.width ?? 0,
-        transform: [{ translateX: firstTabLayout?.x ?? FOLDER_TABS_CONTAINER_PADDING_HORIZONTAL }],
+        width: 0,
+        transform: [{ translateX: FOLDER_TABS_CONTAINER_PADDING_HORIZONTAL }],
       };
     }
     
@@ -89,13 +83,13 @@ export const FolderTabsBar: React.FC<FolderTabsBarProps> = React.memo(({
     }
 
     const width = interpolate(
-      absoluteScrollPosition,
+      pageScrollPosition.value,
       inputRange.value,
       outputWidth.value,
       Extrapolate.CLAMP
     );
     const translateX = interpolate(
-      absoluteScrollPosition,
+      pageScrollPosition.value,
       inputRange.value,
       outputX.value,
       Extrapolate.CLAMP
@@ -105,7 +99,7 @@ export const FolderTabsBar: React.FC<FolderTabsBarProps> = React.memo(({
       width: width,
       transform: [{ translateX: translateX }],
     };
-  }, []);
+  });
 
   return (
     <View style={[styles.folderTabsContainer]}>
@@ -126,7 +120,6 @@ export const FolderTabsBar: React.FC<FolderTabsBarProps> = React.memo(({
               onPress={memoizedOnItemPress}
               onTabLayout={memoizedOnTabLayout}
               pageScrollPosition={pageScrollPosition}
-              pageScrollOffset={pageScrollOffset}
               selectedTextColor={selectedTextColor}
               unselectedTextColor={unselectedTextColor}
               selectedFontWeight={selectedFontWeight}
@@ -134,6 +127,7 @@ export const FolderTabsBar: React.FC<FolderTabsBarProps> = React.memo(({
               baseTabTextStyle={baseTabTextStyle}
               baseTabButtonStyle={baseTabButtonStyle}
             />
+
           ))}
           {folderTabs.length > 0 && (
             <Reanimated.View

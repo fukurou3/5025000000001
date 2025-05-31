@@ -12,7 +12,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
-import { useAnimatedStyle } from 'react-native-reanimated';
 
 import { useAppTheme } from '@/hooks/ThemeContext';
 import { FontSizeContext } from '@/context/FontSizeContext';
@@ -36,14 +35,14 @@ export default function TasksScreen() {
     isReordering,
     selectionAnim,
     folderTabLayouts, currentContentPage,
-    pageScrollPosition, pageScrollOffset,
+    pageScrollPosition,
     noFolderName, folderTabs,
     pagerRef, folderTabsScrollViewRef,
     isSelecting, selectedItems,
     setActiveTab, setSortMode, setSortModalVisible,
     setFolderTabLayouts,
-    getTasksToDisplayForPage,
-    handleFolderTabPress, handlePageScroll, handlePageSelected,
+    memoizedPagesData,
+    handleFolderTabPress, handlePageSelected,
     handleSelectAll, handleDeleteSelected,
     handleRenameFolderSubmit, handleReorderSelectedFolder, openRenameModalForSelectedFolder,
     cancelSelectionMode,
@@ -53,16 +52,7 @@ export default function TasksScreen() {
     onLongPressSelectItem, folderOrder,
     renameModalVisible, renameTarget, setRenameModalVisible, setRenameTarget,
     tasks,
-    isRefreshing,
-    handleRefresh,
   } = logic;
-
-  const animatedSelectionBarStyle = useAnimatedStyle(() => {
-      return {
-          transform: [{ translateY: selectionAnim.value }],
-      };
-  });
-
 
   const handleSortOptionSelect = (newSortMode: SortMode) => {
     setSortMode(newSortMode);
@@ -81,7 +71,6 @@ export default function TasksScreen() {
         setFolderTabLayouts={setFolderTabLayouts}
         handleFolderTabPress={handleFolderTabPress}
         pageScrollPosition={pageScrollPosition}
-        pageScrollOffset={pageScrollOffset}
         folderTabsScrollViewRef={folderTabsScrollViewRef}
       />
 
@@ -124,13 +113,9 @@ export default function TasksScreen() {
           pagerRef={pagerRef}
           folderTabs={folderTabs}
           currentContentPage={currentContentPage}
-          handlePageScroll={handlePageScroll}
           handlePageSelected={handlePageSelected}
-          getTasksToDisplayForPage={getTasksToDisplayForPage}
           activeTab={activeTab}
-          sortMode={sortMode}
           toggleTaskDone={toggleTaskDone}
-          onRefreshTasks={handleRefresh}
           isReordering={isReordering}
           draggingFolder={draggingFolder}
           setDraggingFolder={setDraggingFolder}
@@ -140,10 +125,8 @@ export default function TasksScreen() {
           selectedItems={selectedItems}
           onLongPressSelectItem={onLongPressSelectItem}
           noFolderName={noFolderName}
-          folderOrder={folderOrder}
           t={t}
-          baseTasksCount={tasks.length}
-          isRefreshing={isRefreshing}
+          memoizedPagesData={memoizedPagesData}
         />
       )}
 

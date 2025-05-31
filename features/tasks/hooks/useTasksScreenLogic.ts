@@ -5,8 +5,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import dayjs from 'dayjs';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import PagerView, { type PagerViewOnPageScrollEvent, type PagerViewOnPageSelectedEvent } from 'react-native-pager-view';
-import { useSharedValue } from 'react-native-reanimated';
+import PagerView, { type PagerViewOnPageSelectedEvent } from 'react-native-pager-view';
+import { useSharedValue, withTiming } from 'react-native-reanimated';
 
 import type { Task, FolderOrder, SelectableItem, DisplayTaskOriginal, DisplayableTaskItem } from '@/features/tasks/types';
 import { calculateNextDisplayInstanceDate, calculateActualDueDate } from '@/features/tasks/utils';
@@ -21,6 +21,11 @@ export type ActiveTab = 'incomplete' | 'completed';
 export type FolderTab = { name: string; label: string };
 export type FolderTabLayout = { x: number; width: number; index: number };
 
+export type MemoizedPageData = {
+  foldersToRender: string[];
+  tasksByFolder: Map<string, DisplayableTaskItem[]>;
+  allTasksForPage: DisplayableTaskItem[];
+};
 
 export const useTasksScreenLogic = () => {
   const router = useRouter();
@@ -48,7 +53,6 @@ export const useTasksScreenLogic = () => {
   const [currentContentPage, setCurrentContentPage] = useState(0);
 
   const pageScrollPosition = useSharedValue(0);
-  const pageScrollOffset = useSharedValue(0);
 
   const noFolderName = useMemo(() => t('common.no_folder_name', 'フォルダなし'), [t]);
 
@@ -56,22 +60,40 @@ export const useTasksScreenLogic = () => {
     const tabsArr: FolderTab[] = [{ name: 'all', label: t('folder_tabs.all', 'すべて') }];
     const uniqueFoldersFromTasks = Array.from(new Set(tasks.map(task => task.folder || noFolderName)));
 
-    if (uniqueFoldersFromTasks.includes(noFolderName)) {
-      if (!tabsArr.some(tab => tab.name === noFolderName)) {
-        tabsArr.push({ name: noFolderName, label: noFolderName });
-      }
+    if (activeTab === 'completed') {
+        const foldersWithCompletedTasks = new Set(
+            tasks.filter(t => t.completedAt || (t.completedInstanceDates && t.completedInstanceDates.length > 0))
+                 .map(t => t.folder || noFolderName)
+        );
+        folderOrder.forEach(folderName => {
+            if (foldersWithCompletedTasks.has(folderName) && folderName !== noFolderName) {
+                tabsArr.push({ name: folderName, label: folderName });
+            }
+        });
+        const remainingFolders = [...foldersWithCompletedTasks].filter(name => !folderOrder.includes(name) && name !== noFolderName).sort();
+        remainingFolders.forEach(folderName => {
+             tabsArr.push({ name: folderName, label: folderName });
+        });
+        if (foldersWithCompletedTasks.has(noFolderName)) {
+            tabsArr.push({ name: noFolderName, label: noFolderName });
+        }
+    } else {
+        const allFolders = new Set([...folderOrder, ...uniqueFoldersFromTasks]);
+        const orderedFolders = folderOrder.filter(name => allFolders.has(name) && name !== noFolderName);
+        const unorderedFolders = [...allFolders].filter(name => !folderOrder.includes(name) && name !== noFolderName).sort();
+
+        [...orderedFolders, ...unorderedFolders].forEach(folderName => {
+            if (!tabsArr.some(tab => tab.name === folderName)) {
+                tabsArr.push({ name: folderName, label: folderName });
+            }
+        });
+
+        if (allFolders.has(noFolderName)) {
+            tabsArr.push({ name: noFolderName, label: noFolderName });
+        }
     }
-
-    const orderedActualFolders = folderOrder.filter(name => name !== noFolderName && uniqueFoldersFromTasks.includes(name));
-    const unorderedActualFolders = uniqueFoldersFromTasks.filter(name => name !== noFolderName && !orderedActualFolders.includes(name) && name !== 'all').sort((a, b) => a.localeCompare(b));
-
-    [...orderedActualFolders, ...unorderedActualFolders].forEach(folderName => {
-      if (!tabsArr.some(tab => tab.name === folderName)) {
-        tabsArr.push({ name: folderName, label: folderName });
-      }
-    });
     return tabsArr;
-  }, [tasks, folderOrder, noFolderName, t]);
+  }, [tasks, folderOrder, noFolderName, t, activeTab]);
 
   useFocusEffect(
     useCallback(() => {
@@ -106,11 +128,16 @@ export const useTasksScreenLogic = () => {
   );
 
   useEffect(() => {
-    const initialIndex = folderTabs.findIndex(ft => ft.name === selectedFolderTabName);
-    if (initialIndex !== -1 && currentContentPage !== initialIndex) {
-      setCurrentContentPage(initialIndex);
-      pageScrollPosition.value = initialIndex;
+    const targetIndex = folderTabs.findIndex(ft => ft.name === selectedFolderTabName);
+    const newIndex = targetIndex !== -1 ? targetIndex : 0;
+    
+    if (currentContentPage !== newIndex) {
+        setCurrentContentPage(newIndex);
+        if (pagerRef.current) {
+            pagerRef.current.setPage(newIndex);
+        }
     }
+    pageScrollPosition.value = newIndex;
   }, [folderTabs, selectedFolderTabName]);
 
 
@@ -140,7 +167,7 @@ export const useTasksScreenLogic = () => {
   }, [folderTabLayouts, folderTabs]);
 
   useEffect(() => {
-    selectionAnim.value = selectionHook.isSelecting ? 0 : SELECTION_BAR_HEIGHT;
+    selectionAnim.value = withTiming(selectionHook.isSelecting ? 0 : SELECTION_BAR_HEIGHT, { duration: 250 });
   }, [selectionHook.isSelecting, selectionAnim]);
 
 
@@ -237,50 +264,134 @@ export const useTasksScreenLogic = () => {
     });
   }, [tasks]);
 
-  const getTasksToDisplayForPage = useCallback((pageFolderName: string): DisplayableTaskItem[] => {
-    let filteredTasks = baseProcessedTasks;
-    if (pageFolderName !== 'all') {
-      filteredTasks = filteredTasks.filter(task => (task.folder || noFolderName) === pageFolderName);
-    }
+  const memoizedPagesData = useMemo<Map<string, MemoizedPageData>>(() => {
+    const pagesData = new Map<string, MemoizedPageData>();
 
-    if (activeTab === 'completed') {
-      const completedDisplayItems: DisplayableTaskItem[] = [];
-      filteredTasks.forEach(task => {
-        if (task.isTaskFullyCompleted && !task.deadlineDetails?.repeatFrequency) {
-          completedDisplayItems.push({ ...task, keyId: task.id, displaySortDate: task.completedAt ? dayjs.utc(task.completedAt) : null });
-        } else if (task.deadlineDetails?.repeatFrequency && task.completedInstanceDates && task.completedInstanceDates.length > 0) {
-          task.completedInstanceDates.forEach(instanceDate => {
-            completedDisplayItems.push({ ...task, keyId: `${task.id}-${instanceDate}`, displaySortDate: dayjs.utc(instanceDate), isCompletedInstance: true, instanceDate: instanceDate });
-          });
+    const getTasksToDisplayForPage = (pageFolderName: string): DisplayableTaskItem[] => {
+        let filteredTasks = baseProcessedTasks;
+        if (pageFolderName !== 'all') {
+            filteredTasks = filteredTasks.filter(task => (task.folder || noFolderName) === pageFolderName);
         }
-      });
-      return completedDisplayItems.sort((a, b) => (b.displaySortDate?.unix() || 0) - (a.displaySortDate?.unix() || 0));
-    } else {
-      const todayStartOfDayUtc = dayjs.utc().startOf('day');
-      return filteredTasks
-        .filter(task => {
-          if (task.isTaskFullyCompleted) return false;
-          if (task.deadlineDetails?.repeatFrequency && (task.deadlineDetails as any)?.isPeriodSettingEnabled && (task.deadlineDetails as any)?.periodStartDate) {
-            const periodStartDateUtc = dayjs.utc((task.deadlineDetails as any).periodStartDate).startOf('day');
-            if (periodStartDateUtc.isAfter(todayStartOfDayUtc)) return false;
-          }
-          return true;
-        })
-        .map(task => ({ ...task, keyId: task.id }));
-    }
-  }, [baseProcessedTasks, activeTab, noFolderName]);
+
+        if (activeTab === 'completed') {
+            const completedDisplayItems: DisplayableTaskItem[] = [];
+            filteredTasks.forEach(task => {
+                if (task.isTaskFullyCompleted && !task.deadlineDetails?.repeatFrequency) {
+                    completedDisplayItems.push({ ...task, keyId: task.id, displaySortDate: task.completedAt ? dayjs.utc(task.completedAt) : null });
+                } else if (task.deadlineDetails?.repeatFrequency && task.completedInstanceDates && task.completedInstanceDates.length > 0) {
+                    task.completedInstanceDates.forEach(instanceDate => {
+                        completedDisplayItems.push({ ...task, keyId: `${task.id}-${instanceDate}`, displaySortDate: dayjs.utc(instanceDate), isCompletedInstance: true, instanceDate: instanceDate });
+                    });
+                }
+            });
+            return completedDisplayItems.sort((a, b) => (b.displaySortDate?.unix() || 0) - (a.displaySortDate?.unix() || 0));
+        } else {
+            const todayStartOfDayUtc = dayjs.utc().startOf('day');
+            return filteredTasks
+                .filter(task => {
+                    if (task.isTaskFullyCompleted) return false;
+                    if ((task.deadlineDetails as any)?.isPeriodSettingEnabled && (task.deadlineDetails as any)?.periodStartDate) {
+                        const periodStartDateUtc = dayjs.utc((task.deadlineDetails as any).periodStartDate).startOf('day');
+                        if (periodStartDateUtc.isAfter(todayStartOfDayUtc)) return false;
+                    }
+                    return true;
+                })
+                .map(task => ({ ...task, keyId: task.id }));
+        }
+    };
+    
+    folderTabs.forEach(tab => {
+        const pageFolderName = tab.name;
+        const tasksForPage = getTasksToDisplayForPage(pageFolderName);
+        let foldersToRenderOnThisPage: string[];
+        if (pageFolderName === 'all') {
+            const allFolderNamesInTasksOnPage = Array.from(new Set(tasksForPage.map(t => t.folder || noFolderName)));
+            const combinedFolders = new Set([...folderOrder, ...allFolderNamesInTasksOnPage]);
+            const ordered = folderOrder.filter(name => combinedFolders.has(name) && name !== noFolderName);
+            const unordered = [...combinedFolders].filter(name => !ordered.includes(name) && name !== noFolderName && name !== 'all').sort((a, b) => a.localeCompare(b));
+            
+            foldersToRenderOnThisPage = [...ordered, ...unordered];
+            
+            if (combinedFolders.has(noFolderName) && tasksForPage.some(t => (t.folder || noFolderName) === noFolderName)) {
+                foldersToRenderOnThisPage.push(noFolderName);
+            }
+        } else {
+            foldersToRenderOnThisPage = [pageFolderName];
+        }
+
+        const tasksByFolder = new Map<string, DisplayableTaskItem[]>();
+
+        foldersToRenderOnThisPage.forEach(folderName => {
+            const tasksInThisFolder = tasksForPage.filter(t => (t.folder || noFolderName) === folderName);
+            if (activeTab === 'completed' && tasksInThisFolder.length === 0) {
+                return;
+            }
+
+            const sortedFolderTasks = [...tasksInThisFolder].sort((a, b) => {
+                if (activeTab === 'incomplete' && sortMode === 'deadline') {
+                  const today = dayjs.utc().startOf('day');
+                  const getCategory = (task: DisplayableTaskItem): number => {
+                    const date = task.displaySortDate;
+                    if (!date) return 3;
+                    if (date.isBefore(today, 'day')) return 0;
+                    if (date.isSame(today, 'day')) return 1;
+                    return 2;
+                  };
+                  const categoryA = getCategory(a);
+                  const categoryB = getCategory(b);
+                  if (categoryA !== categoryB) return categoryA - categoryB;
+                  if (categoryA === 3) return a.title.localeCompare(b.title);
+                  const dateAVal = a.displaySortDate!;
+                  const dateBVal = b.displaySortDate!;
+                  if (dateAVal.isSame(dateBVal, 'day')) {
+                      const timeEnabledA = a.deadlineDetails?.isTaskDeadlineTimeEnabled === true && !a.deadlineDetails?.repeatFrequency;
+                      const timeEnabledB = b.deadlineDetails?.isTaskDeadlineTimeEnabled === true && !b.deadlineDetails?.repeatFrequency;
+                      if (timeEnabledA && !timeEnabledB) return -1;
+                      if (!timeEnabledA && timeEnabledB) return 1;
+                  }
+                  return dateAVal.unix() - dateBVal.unix();
+                }
+
+                if (sortMode === 'custom' && activeTab === 'incomplete') {
+                    const orderA = a.customOrder ?? Infinity;
+                    const orderB = b.customOrder ?? Infinity;
+                    if (orderA !== Infinity || orderB !== Infinity) {
+                        if (orderA === Infinity) return 1;
+                        if (orderB === Infinity) return -1;
+                        return orderA - orderB;
+                    }
+                }
+                if (sortMode === 'priority' && activeTab === 'incomplete') {
+                    const priorityA = a.priority ?? -1;
+                    const priorityB = b.priority ?? -1;
+                    if (priorityA !== priorityB) return priorityB - priorityA;
+                }
+                return a.title.localeCompare(b.title);
+            });
+            if (sortedFolderTasks.length > 0) {
+                tasksByFolder.set(folderName, sortedFolderTasks);
+            }
+        });
+
+        if (activeTab === 'completed') {
+            foldersToRenderOnThisPage = foldersToRenderOnThisPage.filter(name => tasksByFolder.has(name));
+        }
+
+        pagesData.set(pageFolderName, {
+            foldersToRender: foldersToRenderOnThisPage,
+            tasksByFolder,
+            allTasksForPage: tasksForPage,
+        });
+    });
+
+    return pagesData;
+  }, [baseProcessedTasks, activeTab, sortMode, folderOrder, noFolderName, folderTabs]);
 
   const handleFolderTabPress = useCallback((_folderName: string, index: number) => {
     if (pagerRef.current && currentContentPage !== index) {
         pagerRef.current.setPage(index);
     }
   }, [currentContentPage]);
-
-  const handlePageScroll = useCallback((event: PagerViewOnPageScrollEvent) => {
-    const { position, offset } = event.nativeEvent;
-    pageScrollPosition.value = position;
-    pageScrollOffset.value = offset;
-  }, [pageScrollPosition, pageScrollOffset]);
 
   const handlePageSelected = useCallback((event: PagerViewOnPageSelectedEvent) => {
     const newPageIndex = event.nativeEvent.position;
@@ -292,38 +403,33 @@ export const useTasksScreenLogic = () => {
         selectionHook.clearSelection();
       }
       scrollFolderTabsToCenter(newPageIndex);
+      pageScrollPosition.value = withTiming(newPageIndex, { duration: 250 });
     }
-    pageScrollPosition.value = newPageIndex;
-    pageScrollOffset.value = 0;
-  }, [folderTabs, currentContentPage, selectionHook, pageScrollPosition, pageScrollOffset, scrollFolderTabsToCenter]);
-
+  }, [folderTabs, currentContentPage, selectionHook, pageScrollPosition, scrollFolderTabsToCenter]);
 
   const handleSelectAll = useCallback(() => {
-    const itemsToSelect: SelectableItem[] = [];
     const activeFolderTabName = folderTabs[currentContentPage]?.name || 'all';
-    const currentTasksForPage = getTasksToDisplayForPage(activeFolderTabName);
+    const pageData = memoizedPagesData.get(activeFolderTabName);
+    if (!pageData) return;
 
+    const itemsToSelect: SelectableItem[] = [];
+
+    pageData.allTasksForPage.forEach(task => {
+        itemsToSelect.push({ type: 'task', id: task.keyId });
+    });
+    
     if (activeFolderTabName === 'all') {
-        currentTasksForPage.forEach(task => {
-            itemsToSelect.push({ type: 'task', id: task.keyId });
-        });
-        folderTabs.forEach(ft => {
-            if (ft.name !== 'all' && ft.name !== noFolderName) {
-                 const hasTasksInThisFolder = baseProcessedTasks.some(bt => (bt.folder || noFolderName) === ft.name);
-                 const isInOrder = folderOrder.includes(ft.name);
-                 if (hasTasksInThisFolder || isInOrder) {
-                    itemsToSelect.push({ type: 'folder', id: ft.name });
-                }
+        pageData.foldersToRender.forEach(folderName => {
+            if (folderName !== noFolderName) {
+                itemsToSelect.push({ type: 'folder', id: folderName });
             }
         });
-    } else {
-        currentTasksForPage.forEach(task => itemsToSelect.push({ type: 'task', id: task.keyId }));
-        if (activeFolderTabName !== noFolderName) {
-            itemsToSelect.push({ type: 'folder', id: activeFolderTabName });
-        }
+    } else if (activeFolderTabName !== noFolderName) {
+        itemsToSelect.push({ type: 'folder', id: activeFolderTabName });
     }
+
     selectionHook.setAllItems(itemsToSelect);
-  }, [selectionHook, folderTabs, currentContentPage, getTasksToDisplayForPage, noFolderName, baseProcessedTasks, folderOrder]);
+  }, [selectionHook, folderTabs, currentContentPage, memoizedPagesData, noFolderName]);
 
   const confirmDelete = useCallback(async (mode: 'delete_all' | 'only_folder' | 'delete_tasks_only') => {
     let finalTasks = [...tasks];
@@ -414,7 +520,6 @@ export const useTasksScreenLogic = () => {
     selectionHook.clearSelection();
   }, [tasks, folderOrder, selectionHook, noFolderName]);
 
-
   const handleDeleteSelected = useCallback(() => {
     const folderToDelete = selectionHook.selectedItems.find(item => item.type === 'folder');
     const selectedTasksCount = selectionHook.selectedItems.filter(i => i.type === 'task').length;
@@ -472,19 +577,17 @@ export const useTasksScreenLogic = () => {
         saveTasksToStorage(newTasks),
         saveFolderOrderToStorage(newFolderOrder)
     ]);
+    
+    const oldSelectedFolderTabName = selectedFolderTabName;
 
     setRenameModalVisible(false);
     setRenameTarget(null);
     selectionHook.clearSelection();
-    if (selectedFolderTabName === renameTarget) {
-        setSelectedFolderTabName(trimmedNewName);
-        const newIndex = folderTabs.findIndex(ft => ft.name === trimmedNewName);
-        if (newIndex !== -1 && pagerRef.current) {
-            pagerRef.current.setPage(newIndex);
-        }
-    }
 
-  }, [tasks, folderOrder, renameTarget, noFolderName, selectionHook, selectedFolderTabName, folderTabs]);
+    if (oldSelectedFolderTabName === renameTarget) {
+        setSelectedFolderTabName(trimmedNewName);
+    }
+  }, [tasks, folderOrder, renameTarget, noFolderName, selectionHook, selectedFolderTabName]);
 
   const handleReorderSelectedFolder = useCallback(() => {
     if (selectionHook.selectedItems.length === 1 && selectionHook.selectedItems[0].type === 'folder' && selectionHook.selectedItems[0].id !== noFolderName) {
@@ -516,26 +619,26 @@ export const useTasksScreenLogic = () => {
     }
   }, []);
 
-
   return {
     tasks, folderOrder, loading, activeTab, selectedFolderTabName, sortMode, sortModalVisible,
     isReordering, draggingFolder, renameModalVisible, renameTarget,
     selectionAnim, folderTabLayouts, currentContentPage,
-    pageScrollPosition, pageScrollOffset,
+    pageScrollPosition,
     noFolderName, folderTabs,
     pagerRef, folderTabsScrollViewRef,
     isSelecting: selectionHook.isSelecting,
     selectedItems: selectionHook.selectedItems,
     isRefreshing,
+    memoizedPagesData,
     setActiveTab, setSelectedFolderTabName, setSortMode, setSortModalVisible,
     setIsReordering, setDraggingFolder, setRenameModalVisible, setRenameTarget,
     setFolderTabLayouts,
     toggleTaskDone,
     moveFolderOrder, stopReordering,
     onLongPressSelectItem, cancelSelectionMode,
-    getTasksToDisplayForPage,
-    handleFolderTabPress, handlePageScroll, handlePageSelected,
+    handleFolderTabPress, handlePageSelected,
     handleSelectAll, handleDeleteSelected, confirmDelete,
+
     handleRenameFolderSubmit, handleReorderSelectedFolder, openRenameModalForSelectedFolder,
     handleRefresh,
     router, t,
