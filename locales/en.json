@@ -25,7 +25,9 @@
     "font_size_normal": "Medium",
     "font_size_medium": "Normal",
     "font_size_large": "Large",
-    "google_calendar_integration": "Google Calendar Integration"
+    "google_calendar_integration": "Google Calendar Integration",
+        "calendar_background": "Calendar Background"
+
   },
   "common": {
     "loading": "Loading...",
@@ -298,5 +300,16 @@
     "date_missing_for_time_alert_message": "Please select a date if you want to set a time.",
     "weekly_day_missing_alert_message": "Please select at least one day of the week for weekly repeat.",
     "period_start_must_be_before_end_alert_message": "The period start date must be before the end date."
+  },
+    "calendar": {
+    "weekdays": {
+      "0": "Sun",
+      "1": "Mon",
+      "2": "Tue",
+      "3": "Wed",
+      "4": "Thu",
+      "5": "Fri",
+      "6": "Sat"
+    }
   }
 }

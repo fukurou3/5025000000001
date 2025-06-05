@@ -1,5 +1,5 @@
-// SettingsScreen.tsx
-import React, { useContext } from 'react';
+// features/settings/SettingsScreen.tsx
+import React, { useContext, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,19 +7,24 @@ import {
   StyleSheet,
   ScrollView,
   useWindowDimensions,
-  Platform, // Platform をインポート
+  Platform,
   Switch,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppTheme, ThemeChoice } from '@/hooks/ThemeContext';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import i18n from '@/lib/i18n'; // i18n インスタンスを直接インポート
+import i18n from '@/lib/i18n';
 import Slider from '@react-native-community/slider';
 import { FontSizeContext, FontSizeKey } from '@/context/FontSizeContext';
 import { fontSizes } from '@/constants/fontSizes';
-import { Ionicons } from '@expo/vector-icons'; // Ionicons をインポート
+import { Ionicons } from '@expo/vector-icons';
 import { useGoogleCalendarSync } from '@/context/GoogleCalendarContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { BACKGROUND_IMAGES } from '@/constants/CalendarBackgrounds';
+
+const CALENDAR_BG_KEY = '@calendar_background_id';
 
 export default function SettingsScreen() {
   const {
@@ -35,7 +40,20 @@ export default function SettingsScreen() {
   const router = useRouter();
   const isDark = colorScheme === 'dark';
   const { width } = useWindowDimensions();
-  const isTablet = width >= 768; // isTablet の定義が styles の外にも必要ならここで定義
+  const isTablet = width >= 768;
+
+  const [selectedBgId, setSelectedBgId] = useState<string | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      const loadSetting = async () => {
+        const savedId = await AsyncStorage.getItem(CALENDAR_BG_KEY);
+        setSelectedBgId(savedId || BACKGROUND_IMAGES[0].id);
+      };
+      loadSetting();
+    }, [])
+  );
+
   const styles = createStyles(isDark, subColor, fontSizeKey, isTablet);
 
   const THEME_OPTIONS: { label: string; value: ThemeChoice }[] = [
@@ -45,16 +63,14 @@ export default function SettingsScreen() {
   ];
 
   const COLOR_OPTIONS = [
-    '#2196F3', // Blue
-    '#0b9c2f', // Dark Green (オリジナルに近い緑)
-    '#4CAF50', // Green
-    '#FF9800', // Orange
-    '#9C27B0', // Purple
-    '#E91E63', // Pink
-    // '#121212', // Black - 背景色と被る可能性があるので一旦コメントアウト (または明るいテーマでのみ表示)
-    isDark ? '#A0A0A0' : '#757575', // Grey (テーマによって調整)
+    '#2196F3',
+    '#0b9c2f',
+    '#4CAF50',
+    '#FF9800',
+    '#9C27B0',
+    '#E91E63',
+    isDark ? '#A0A0A0' : '#757575',
   ];
-  // 黒色のオプションはダークモードでは見えにくいため、代わりにグレーなどを追加
 
   const FONT_KEYS: FontSizeKey[] = ['small', 'normal', 'medium', 'large'];
 
@@ -65,19 +81,18 @@ export default function SettingsScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* 言語設定 */}
         <View style={styles.card}>
           <Text style={styles.label}>{t('settings.language')}</Text>
           <TouchableOpacity
-            style={styles.optionRowButton} // スタイル名を変更して汎用的に
-            onPress={() => router.push('/settings/language')} // 実際の言語設定画面パスに置き換え
+            style={styles.optionRowButton}
+            onPress={() => router.push('/settings/language')}
           >
             <Text style={styles.optionLabel}>
               {i18n.language.startsWith('ja')
                 ? `${t('settings.language_ja')}`
                 : i18n.language.startsWith('en')
                 ? `${t('settings.language_en')}`
-                : `${t('settings.language_ko')}` // 仮に韓国語も追加
+                : `${t('settings.language_ko')}`
               }
               <Text style={styles.currentLanguageHint}> ({t('settings.current')})</Text>
             </Text>
@@ -85,13 +100,12 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* 表示モード */}
         <View style={styles.card}>
           <Text style={styles.label}>{t('settings.display_mode')}</Text>
           {THEME_OPTIONS.map((opt) => (
             <TouchableOpacity
               key={opt.value}
-              style={styles.optionRowButton} // radioの行全体をボタンに
+              style={styles.optionRowButton}
               onPress={() => setThemeChoice(opt.value)}
             >
               <View style={{flexDirection: 'row', alignItems: 'center', flex:1}}>
@@ -110,7 +124,6 @@ export default function SettingsScreen() {
           ))}
         </View>
 
-        {/* サブカラー */}
         <View style={styles.card}>
           <Text style={styles.label}>{t('settings.sub_color')}</Text>
           <View style={styles.colorRow}>
@@ -119,29 +132,28 @@ export default function SettingsScreen() {
                 key={color}
                 onPress={() => setSubColor(color)}
                 style={[
-                  styles.colorCircleBase, // ベーススタイル
+                  styles.colorCircleBase,
                   { backgroundColor: color },
-                  subColor === color && styles.colorCircleSelected, // 選択時のスタイル
+                  subColor === color && styles.colorCircleSelected,
                 ]}
               />
             ))}
           </View>
         </View>
 
-        {/* 文字サイズ */}
         <View style={styles.card}>
           <Text style={styles.label}>{t('settings.font_size')}</Text>
           <Slider
             minimumValue={0}
-            maximumValue={FONT_KEYS.length - 1} // FONT_KEYSの長さに合わせる
+            maximumValue={FONT_KEYS.length - 1}
             step={1}
             value={FONT_KEYS.indexOf(fontSizeKey)}
             onSlidingComplete={(v: number) =>
               setFontSizeKey(FONT_KEYS[Math.round(v)])
             }
             minimumTrackTintColor={subColor}
-            maximumTrackTintColor={isDark ? "#555" : "#ccc"} // ダークモード時のトラック色調整
-            thumbTintColor={Platform.OS === 'android' ? subColor : undefined} // Androidでのみthumbの色を指定
+            maximumTrackTintColor={isDark ? "#555" : "#ccc"}
+            thumbTintColor={Platform.OS === 'android' ? subColor : undefined}
             style={styles.slider}
           />
           <View style={styles.fontLabelRow}>
@@ -153,13 +165,45 @@ export default function SettingsScreen() {
                   fontSizeKey === key && { color: subColor, fontWeight: 'bold' },
                 ]}
               >
-                {t(`settings.font_size_${key}` as any)} {/* tの型エラーを回避するため any を使用 */}
+                {t(`settings.font_size_${key}` as any)}
               </Text>
             ))}
           </View>
         </View>
 
-        {/* --- ここから繰り返しタスクの設定項目を追加 --- */}
+        <View style={styles.card}>
+          <Text style={styles.label}>{t('settings.calendar_background')}</Text>
+          <View style={styles.thumbnailContainer}>
+            {BACKGROUND_IMAGES.map((img) => (
+              <TouchableOpacity
+                key={img.id}
+                onPress={async () => {
+                  setSelectedBgId(img.id);
+                  await AsyncStorage.setItem(CALENDAR_BG_KEY, img.id);
+                }}
+              >
+                {img.source ? (
+                  <Image
+                    source={img.source}
+                    style={[
+                      styles.thumbnail,
+                      selectedBgId === img.id && styles.thumbnailSelected,
+                    ]}
+                  />
+                ) : (
+                  <View style={[
+                    styles.thumbnail,
+                    styles.noImageThumbnail,
+                    selectedBgId === img.id && styles.thumbnailSelected,
+                  ]}>
+                    <Ionicons name="close-circle" size={24} color={isDark ? '#888' : '#aaa'} />
+                  </View>
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
         <View style={styles.card}>
           <Text style={styles.label}>{t('settings.repeating_tasks_title')}</Text>
           <TouchableOpacity
@@ -172,8 +216,7 @@ export default function SettingsScreen() {
             <Ionicons name="chevron-forward" size={fontSizes[fontSizeKey] + 2} color={isDark ? '#A0A0A0' : '#888'} />
           </TouchableOpacity>
         </View>
-        {/* --- 繰り返しタスクの設定項目ここまで --- */}
-
+        
         <View style={styles.card}>
           <Text style={styles.label}>{t('settings.google_calendar_integration', 'Googleカレンダー連携')}</Text>
           <View style={styles.optionRowButton}>
@@ -199,115 +242,121 @@ const createStyles = (
   isTablet: boolean
 ) =>
   StyleSheet.create({
-    container: { flex: 1, backgroundColor: isDark ? '#0C0C0C' : '#f2f2f4' }, // 背景色を微調整
-    scrollContent: { // ScrollViewのcontentContainerStyle用
+    container: { flex: 1, backgroundColor: isDark ? '#0C0C0C' : '#f2f2f4' },
+    scrollContent: {
       paddingTop: 16,
-      paddingBottom: 32, // 下部にも十分なパディング
-      paddingHorizontal: isTablet ? 32 : 16, // タブレットと電話でパディングを調整
+      paddingBottom: 32,
+      paddingHorizontal: isTablet ? 32 : 16,
     },
     appBar: {
       height: 56,
       paddingHorizontal: 16,
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center', // タイトルを中央に
-      // backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF', // AppBarの背景
+      justifyContent: 'center',
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: isDark ? '#3A3A3C' : '#C6C6C8',
     },
     appBarTitle: {
-      fontSize: fontSizes[fsKey] + (Platform.OS === 'ios' ? 2 : 1), // OS毎に微調整
+      fontSize: fontSizes[fsKey] + (Platform.OS === 'ios' ? 2 : 1),
       fontWeight: Platform.OS === 'ios' ? '600' : 'bold',
       color: isDark ? '#EFEFF0' : '#1C1C1E',
-      
     },
     card: {
-      backgroundColor: isDark ? '#1f1f21' : '#FFFFFF', // カード背景
+      backgroundColor: isDark ? '#1f1f21' : '#FFFFFF',
       borderRadius: Platform.OS === 'ios' ? 10 : 8,
-      paddingHorizontal: 16, // カード内の左右パディング
-      // paddingVertical は各行で調整するため、ここでは設定しない
+      paddingHorizontal: 16,
       marginBottom: 20,
-      // iOS風の影（オプション）
-      // shadowColor: '#000',
-      // shadowOffset: { width: 0, height: 1 },
-      // shadowOpacity: isDark ? 0.3 : 0.1,
-      // shadowRadius: 2,
-      // elevation: 2, // Androidの影
     },
     label: {
       fontSize: fontSizes[fsKey] + (Platform.OS === 'ios' ? 1 : 0),
       fontWeight: Platform.OS === 'ios' ? '500' : '600',
       color: subColor,
-      paddingTop: 16, // ラベルの上のパディング
-      paddingBottom: 8, // ラベルの下のパディング
+      paddingTop: 16,
+      paddingBottom: 8,
     },
-    optionRowButton: { // ラジオボタンや言語設定行などのスタイル
+    optionRowButton: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between', // ラベルとシェブロン/チェックマークを両端に
-      paddingVertical: 12, // 行の上下パディング
+      justifyContent: 'space-between',
+      paddingVertical: 12,
       borderTopWidth: StyleSheet.hairlineWidth,
-      borderColor: isDark ? '#3A3A3C' : '#E0E0E0', // 区切り線の色を微調整
+      borderColor: isDark ? '#3A3A3C' : '#E0E0E0',
     },
     radio: {
-      width: 22, // サイズを少し大きく
+      width: 22,
       height: 22,
       borderRadius: 11,
       borderWidth: 2,
-      borderColor: isDark ? '#5A5A5E' : '#AEAEB2', // ラジオボタンの枠線
+      borderColor: isDark ? '#5A5A5E' : '#AEAEB2',
       marginRight: 12,
       justifyContent: 'center',
       alignItems: 'center',
     },
     radioSelected: {
       borderColor: subColor,
-      // 内側の円は疑似要素やIconで表現した方が綺麗だが、簡易的にbackgroundColorで対応
-      // もし内側の円が必要なら、<View style={styles.radioInnerCircle} /> を中に入れる
-      // backgroundColor: subColor, // これだと全体が塗りつぶされる
     },
-    // radioInnerCircle: { // 選択時の中の円（オプション）
-    //   width: 12,
-    //   height: 12,
-    //   borderRadius: 6,
-    //   backgroundColor: subColor,
-    // },
     optionLabel: {
       fontSize: fontSizes[fsKey] + (Platform.OS === 'ios' ? 2 : 1),
       color: isDark ? '#EFEFF0' : '#1C1C1E',
-      flexShrink: 1, // ラベルが長い場合に縮小するように
+      flexShrink: 1,
     },
-    currentLanguageHint: { // "(現在)" の部分のスタイル
+    currentLanguageHint: {
       fontSize: fontSizes[fsKey] -1,
       color: isDark ? '#bbbbbf' : '#2d2d2e',
     },
     colorRow: {
       flexDirection: 'row',
-      justifyContent: 'space-around', // space-between から space-around へ変更して均等配置
+      justifyContent: 'space-around',
       alignItems: 'center',
-      paddingVertical: 12, // 上下パディング
+      paddingVertical: 12,
     },
-    colorCircleBase: { // カラー選択の円の基本スタイル
+    colorCircleBase: {
       width: 32,
       height: 32,
       borderRadius: 16,
       borderWidth: 2,
-      borderColor: 'transparent', // 通常時は枠線なし
+      borderColor: 'transparent',
     },
-    colorCircleSelected: { // 選択されているカラーの円のスタイル
-      borderColor: subColor, // 選択されている色で枠線
-      transform: [{ scale: 1.1 }], // 少し大きくして選択を強調
+    colorCircleSelected: {
+      borderColor: subColor,
+      transform: [{ scale: 1.1 }],
     },
     slider: {
-        marginVertical: Platform.OS === 'ios' ? 10 : 0, // スライダーの上下マージン
+        marginVertical: Platform.OS === 'ios' ? 10 : 0,
     },
     fontLabelRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      paddingTop: 8, // スライダーとの間隔
-      paddingBottom: 12, // カード下部との間隔
+      paddingTop: 8,
+      paddingBottom: 12,
     },
     fontLabel: {
       fontSize: fontSizes[fsKey] - (Platform.OS === 'ios' ? 0 : 1),
-      color: isDark ? '#8E8E93' : '#6D6D72', // 通常時のフォントラベル色
+      color: isDark ? '#8E8E93' : '#6D6D72',
+    },
+    thumbnailContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 16,
+      paddingTop: 8,
+      paddingBottom: 16,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderColor: isDark ? '#3A3A3C' : '#E0E0E0',
+    },
+    thumbnail: {
+      width: isTablet ? 100 : 80,
+      height: isTablet ? 100 : 80,
+      borderRadius: 8,
+      borderWidth: 3,
+      borderColor: 'transparent',
+    },
+    thumbnailSelected: {
+      borderColor: subColor,
+    },
+    noImageThumbnail: {
+      backgroundColor: isDark ? '#2c2c2e' : '#e5e5ea',
+      justifyContent: 'center',
+      alignItems: 'center',
     },
   });

@@ -1,8 +1,7 @@
 // features/calendar/utils.ts
 import dayjs from 'dayjs';
-import { MarkedDates } from 'react-native-calendars/src/types';
-import { isHoliday } from '@holiday-jp/holiday_jp';
 import type { Task } from '@/features/tasks/types';
+import type { GoogleEvent } from './useGoogleCalendar';
 import { calculateActualDueDate, calculateNextDisplayInstanceDate } from '@/features/tasks/utils';
 
 export const groupTasksByDate = (tasks: Task[]): Record<string, Task[]> => {
@@ -26,41 +25,64 @@ export const groupTasksByDate = (tasks: Task[]): Record<string, Task[]> => {
   return map;
 };
 
-export const getHolidayMarksForMonths = (
-  months: dayjs.Dayjs[],
-  currentMarks: MarkedDates
-): MarkedDates => {
-  const newMarks: MarkedDates = { ...currentMarks };
-  months.forEach(month => {
-    const start = month.startOf('month');
-    const end = month.endOf('month');
-    for (let d = start; d.isBefore(end.add(1, 'day')); d = d.add(1, 'day')) {
-      const ds = d.format('YYYY-MM-DD');
-      if (isHoliday(new Date(ds))) {
-        newMarks[ds] = { ...(newMarks[ds] || {}), marked: true, dotColor: 'red' };
-      }
-    }
-  });
-  return newMarks;
+export type EventLayoutSegment = {
+  event: GoogleEvent;
+  lane: number;
+  type: 'start' | 'middle' | 'end' | 'single';
 };
 
-export const createMarkedDates = (
-  grouped: Record<string, Task[]>,
-  selected: string,
-  holidayMarks: MarkedDates,
-  subColor: string
-): MarkedDates => {
-  const marks: MarkedDates = { ...holidayMarks };
-  Object.keys(grouped).forEach(date => {
-    marks[date] = { ...(marks[date] || {}), marked: true, dotColor: subColor };
-  });
+export type EventLayout = Record<string, EventLayoutSegment[]>;
 
-  marks[selected] = {
-    ...(marks[selected] || {}),
-    selected: true,
-    selectedColor: subColor,
-    disableTouchEvent: true
-  };
+export const processMultiDayEvents = (events: GoogleEvent[], displayMonth: dayjs.Dayjs): EventLayout => {
+    const layout: EventLayout = {};
+    const monthStart = displayMonth.startOf('month');
+    const monthEnd = displayMonth.endOf('month');
 
-  return marks;
+    const sortedEvents = [...events].sort((a, b) => dayjs(a.start).diff(dayjs(b.start)));
+
+    const lanes: (string | null)[] = []; 
+
+    for (const event of sortedEvents) {
+        const start = dayjs(event.start);
+        const end = dayjs(event.end);
+
+        if (end.isBefore(monthStart) || start.isAfter(monthEnd)) {
+            continue;
+        }
+
+        let laneIndex = lanes.findIndex(lane => {
+            if (!lane) return true;
+            const laneEnd = dayjs(lane);
+            return start.isAfter(laneEnd);
+        });
+
+        if (laneIndex === -1) {
+            laneIndex = lanes.length;
+        }
+        lanes[laneIndex] = end.format('YYYY-MM-DD');
+
+        for (let d = start.clone(); d.isBefore(end.add(1, 'day')); d = d.add(1, 'day')) {
+            const dateStr = d.format('YYYY-MM-DD');
+            if (!layout[dateStr]) layout[dateStr] = [];
+
+            const isStart = d.isSame(start, 'day');
+            const isEnd = d.isSame(end, 'day');
+            
+            let type: EventLayoutSegment['type'] = 'middle';
+            if (isStart && isEnd) {
+                type = 'single';
+            } else if (isStart) {
+                type = 'start';
+            } else if (isEnd) {
+                type = 'end';
+            }
+
+            layout[dateStr].push({
+                event,
+                lane: laneIndex,
+                type,
+            });
+        }
+    }
+    return layout;
 };

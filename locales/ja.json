@@ -2,7 +2,6 @@
   "task_detail": {
     "title": "タスク詳細",
     "memo": "メモ",
-    "deadline": "締切",
     "photo": "写真",
     "delete_confirm_title": "削除確認",
     "delete_confirm": "このタスクを削除しますか？"
@@ -34,7 +33,8 @@
     "stop_repeating_confirm_message": "このタスクの繰り返し設定を解除しますか？\nタスク自体は削除されません。",
     "stop_action": "解除する",
     "view_task_details_tooltip": "タスク詳細を見る",
-    "google_calendar_integration": "Googleカレンダー連携"
+    "google_calendar_integration": "Googleカレンダー連携",
+    "calendar_background": "カレンダーの背景"
   },
   "common": {
     "loading": "読み込み中...",
@@ -72,7 +72,7 @@
     "clear_date": "日付をクリア",
     "clear_start_date": "開始日をクリア",
     "clear_end_date": "終了日をクリア",
-    "year_month_format": "yyyy年M月",
+    "year_month_format": "YYYY年M月",
     "all_day": "終日",
     "not_set": "未設定",
     "to": "～",
@@ -89,11 +89,11 @@
     "months_unit_after": "ヶ月後",
     "years_unit_after": "年後",
     "clear_duration": "所要時間クリア",
-        "month_day_format": "M月D日",
+    "month_day_format": "M月D日",
     "date_time_format_short": "M/D HH:mm",
     "date_format_short": "YYYY/M/D",
     "time_format_simple": "H:mm",
-        "month_day_format_short": "M/D",
+    "month_day_format_short": "M/D",
     "month_day_format_deadline": "M月D日"
   },
   "add_task": {
@@ -126,7 +126,7 @@
     "photo_selected": "{{count}}枚選択中",
     "no_notification_button": "通知なし",
     "no_notification_display": "なし",
-       "unselected_date_placeholder": "未選択",
+    "unselected_date_placeholder": "未選択",
     "unselected_time_placeholder": "未選択",
     "period_not_fully_set": "期間未完了",
     "period_start_prefix": "開始:",
@@ -248,7 +248,7 @@
     "justNow": "たった今",
     "dueNow": "期限です",
     "dueTomorrowWithTime": "明日 {{time}}",
-     "overdue_days": "{{count}}日前",
+    "overdue_days": "{{count}}日前",
     "overdue_hours": "{{count}}時間前",
     "overdue_minutes": "{{count}}分前",
     "startsInMinutes": "{{count}}分後開始",
@@ -349,9 +349,8 @@
     "start_date_required_for_time": "時刻を設定する場合は開始日も選択してください。",
     "period_start_must_be_before_deadline_alert_message": "期間の開始日はタスクの期限日より前に設定してください。",
     "period_start_time_must_be_before_deadline_time_alert_message": "期間の開始時刻はタスクの期限時刻より前に設定してください。"
-  
   },
-    "tasks": {
+  "tasks": {
     "display_repeating_today": "🔁今日",
     "display_repeating_date": "🔁{{date}}分",
     "no_upcoming_repeat": "🔁今後の予定なし",
@@ -360,5 +359,17 @@
     "completed_on_date": "完了 {{date}}",
     "display_repeating_overdue_short": "🔁{{date}}分",
     "display_repeating_future_short": "🔁{{date}}予定"
+  },
+  "calendar": {
+    "title": "カレンダー",
+    "weekdays": {
+      "0": "日",
+      "1": "月",
+      "2": "火",
+      "3": "水",
+      "4": "木",
+      "5": "金",
+      "6": "土"
+    }
   }
 }
