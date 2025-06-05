@@ -25,6 +25,10 @@ In the output, you'll find options to open the app in a
 
 You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
+### Google Calendar integration
+
+To display events from Google Calendar, set the environment variable `EXPO_PUBLIC_GOOGLE_CALENDAR_ICS_URL` to the public iCalendar URL of the calendar. When `Googleカレンダー連携` is enabled in the settings screen, events for the selected day will appear above the task list.
+
 ## Get a fresh project
 
 When you're ready, run:

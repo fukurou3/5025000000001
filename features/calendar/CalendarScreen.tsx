@@ -39,7 +39,8 @@ export default function CalendarScreen() {
   const dayTasks = grouped[selectedDate] || [];
 
   const renderTask = useCallback(({ item }: { item: Task }) => (
-    <TaskItem task={{ ...item, keyId: item.id, displaySortDate: undefined, isTaskFullyCompleted: !!item.completedAt }}
+    <TaskItem
+      task={{ ...item, keyId: item.id, displaySortDate: undefined, isTaskFullyCompleted: !!item.completedAt }}
       onToggle={() => {}}
       isSelecting={false}
       selectedIds={[]}
@@ -47,6 +48,18 @@ export default function CalendarScreen() {
       currentTab="incomplete"
     />
   ), []);
+
+  const renderHeader = useCallback(() => {
+    if (googleEvents.length === 0) return null;
+    return (
+      <View style={styles.googleHeader}>
+        <Text style={styles.googleHeaderText}>Google</Text>
+        {googleEvents.map(ev => (
+          <Text key={ev.id} style={styles.googleEvent}>{ev.title}</Text>
+        ))}
+      </View>
+    );
+  }, [googleEvents]);
 
   return (
     <View style={[styles.container, { backgroundColor: colorScheme === 'dark' ? '#000' : '#fff' }]}>
@@ -64,9 +77,7 @@ export default function CalendarScreen() {
         data={dayTasks}
         keyExtractor={item => item.id}
         renderItem={renderTask}
-        ListHeaderComponent={googleEvents.length > 0 ? (
-          <View style={styles.googleHeader}><Text style={styles.googleHeaderText}>Google</Text></View>
-        ) : null}
+        ListHeaderComponent={renderHeader}
       />
     </View>
   );
@@ -76,4 +87,5 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   googleHeader: { padding: 8 },
   googleHeaderText: { fontWeight: '600' },
+  googleEvent: { paddingLeft: 8, paddingTop: 2 },
 });
