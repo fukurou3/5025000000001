@@ -1,5 +1,6 @@
+// features/calendar/utils.ts
 import dayjs from 'dayjs';
-import { MarkedDates } from 'react-native-calendars';
+import { MarkedDates } from 'react-native-calendars/src/types';
 import { isHoliday } from '@holiday-jp/holiday_jp';
 import type { Task } from '@/features/tasks/types';
 import { calculateActualDueDate, calculateNextDisplayInstanceDate } from '@/features/tasks/utils';
@@ -25,26 +26,41 @@ export const groupTasksByDate = (tasks: Task[]): Record<string, Task[]> => {
   return map;
 };
 
+export const getHolidayMarksForMonths = (
+  months: dayjs.Dayjs[],
+  currentMarks: MarkedDates
+): MarkedDates => {
+  const newMarks: MarkedDates = { ...currentMarks };
+  months.forEach(month => {
+    const start = month.startOf('month');
+    const end = month.endOf('month');
+    for (let d = start; d.isBefore(end.add(1, 'day')); d = d.add(1, 'day')) {
+      const ds = d.format('YYYY-MM-DD');
+      if (isHoliday(new Date(ds))) {
+        newMarks[ds] = { ...(newMarks[ds] || {}), marked: true, dotColor: 'red' };
+      }
+    }
+  });
+  return newMarks;
+};
+
 export const createMarkedDates = (
   grouped: Record<string, Task[]>,
   selected: string,
-  language: string,
+  holidayMarks: MarkedDates,
   subColor: string
 ): MarkedDates => {
-  const marks: MarkedDates = {};
+  const marks: MarkedDates = { ...holidayMarks };
   Object.keys(grouped).forEach(date => {
-    marks[date] = { marked: true, dotColor: subColor };
+    marks[date] = { ...(marks[date] || {}), marked: true, dotColor: subColor };
   });
-  if (language.startsWith('ja')) {
-    const month = dayjs(selected).startOf('month');
-    const end = dayjs(selected).endOf('month');
-    for (let d = month; d.isBefore(end.add(1, 'day')); d = d.add(1, 'day')) {
-      const ds = d.format('YYYY-MM-DD');
-      if (isHoliday(new Date(ds))) {
-        marks[ds] = { ...(marks[ds] || {}), marked: true, dotColor: 'red' };
-      }
-    }
-  }
-  marks[selected] = { ...(marks[selected] || {}), selected: true };
+
+  marks[selected] = {
+    ...(marks[selected] || {}),
+    selected: true,
+    selectedColor: subColor,
+    disableTouchEvent: true
+  };
+
   return marks;
 };

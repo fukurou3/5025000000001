@@ -1,3 +1,4 @@
+// features/calendar/useGoogleCalendar.ts
 import { useState, useEffect } from 'react';
 import dayjs from 'dayjs';
 
@@ -8,31 +9,42 @@ export type GoogleEvent = {
   end: string;
 };
 
-export const useGoogleCalendarEvents = (date: string, enabled: boolean) => {
+export const useGoogleCalendarAllEvents = (enabled: boolean) => {
   const [events, setEvents] = useState<GoogleEvent[]>([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!enabled) { setEvents([]); return; }
+    if (!enabled) {
+      setEvents([]);
+      return;
+    }
     const url = process.env.EXPO_PUBLIC_GOOGLE_CALENDAR_ICS_URL;
-    if (!url) { setEvents([]); return; }
+    if (!url) {
+      setEvents([]);
+      return;
+    }
+
     const fetchEvents = async () => {
+      setLoading(true);
       try {
         const res = await fetch(url);
         const text = await res.text();
         const parsed = parseICal(text);
-        const filtered = parsed.filter(ev => dayjs(ev.start).format('YYYY-MM-DD') === date);
-        setEvents(filtered);
+        setEvents(parsed);
       } catch {
         setEvents([]);
+      } finally {
+        setLoading(false);
       }
     };
-    fetchEvents();
-  }, [date, enabled]);
 
-  return events;
+    fetchEvents();
+  }, [enabled]);
+
+  return { events, loading };
 };
 
-const parseICal = (ics: string): GoogleEvent[] => {
+export const parseICal = (ics: string): GoogleEvent[] => {
   const events: GoogleEvent[] = [];
   const lines = ics.split(/\r?\n/);
   let current: Partial<GoogleEvent> | null = null;
