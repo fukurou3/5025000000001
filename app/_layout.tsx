@@ -11,6 +11,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { ThemeProvider, useAppTheme } from '@/hooks/ThemeContext';
 import { FontSizeProvider } from '@/context/FontSizeContext';
+import { GoogleCalendarProvider } from '@/context/GoogleCalendarContext';
 import Toast from 'react-native-toast-message';
 
 import * as NavigationBar from 'expo-navigation-bar';
@@ -63,7 +64,9 @@ export default function RootLayout() {
   return (
     <ThemeProvider>
       <FontSizeProvider>
-        <InnerLayout />
+        <GoogleCalendarProvider>
+          <InnerLayout />
+        </GoogleCalendarProvider>
       </FontSizeProvider>
     </ThemeProvider>
   );

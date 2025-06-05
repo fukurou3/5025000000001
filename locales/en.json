@@ -24,7 +24,8 @@
     "font_size_small": "Small",
     "font_size_normal": "Medium",
     "font_size_medium": "Normal",
-    "font_size_large": "Large"
+    "font_size_large": "Large",
+    "google_calendar_integration": "Google Calendar Integration"
   },
   "common": {
     "loading": "Loading...",
@@ -32,6 +33,8 @@
     "delete": "Delete",
     "save": "Save",
     "ok": "OK",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
     "select": "Select",
     "select_all": "Select All",
     "year_unit": "Yr",

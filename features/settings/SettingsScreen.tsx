@@ -8,6 +8,7 @@ import {
   ScrollView,
   useWindowDimensions,
   Platform, // Platform をインポート
+  Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppTheme, ThemeChoice } from '@/hooks/ThemeContext';
@@ -18,6 +19,7 @@ import Slider from '@react-native-community/slider';
 import { FontSizeContext, FontSizeKey } from '@/context/FontSizeContext';
 import { fontSizes } from '@/constants/fontSizes';
 import { Ionicons } from '@expo/vector-icons'; // Ionicons をインポート
+import { useGoogleCalendarSync } from '@/context/GoogleCalendarContext';
 
 export default function SettingsScreen() {
   const {
@@ -28,6 +30,7 @@ export default function SettingsScreen() {
     setSubColor,
   } = useAppTheme();
   const { fontSizeKey, setFontSizeKey } = useContext(FontSizeContext);
+  const { enabled: googleSyncEnabled, setEnabled: setGoogleSyncEnabled } = useGoogleCalendarSync();
   const { t } = useTranslation();
   const router = useRouter();
   const isDark = colorScheme === 'dark';
@@ -170,6 +173,19 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
         {/* --- 繰り返しタスクの設定項目ここまで --- */}
+
+        <View style={styles.card}>
+          <Text style={styles.label}>{t('settings.google_calendar_integration', 'Googleカレンダー連携')}</Text>
+          <View style={styles.optionRowButton}>
+            <Text style={styles.optionLabel}>{googleSyncEnabled ? t('common.enabled', '有効') : t('common.disabled', '無効')}</Text>
+            <Switch
+              value={googleSyncEnabled}
+              onValueChange={setGoogleSyncEnabled}
+              thumbColor={Platform.OS === 'android' ? subColor : undefined}
+              trackColor={{ false: isDark ? '#767577' : '#ccc', true: subColor }}
+            />
+          </View>
+        </View>
 
       </ScrollView>
     </SafeAreaView>
